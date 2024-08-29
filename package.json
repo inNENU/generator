@@ -1,0 +1,60 @@
+{
+  "name": "innenu-generator",
+  "version": "2024.8.5",
+  "private": true,
+  "description": "inNENU 生成器",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:inNENU/generator.git"
+  },
+  "license": "Mr.Hope LICENSE",
+  "author": {
+    "name": "Mr.Hope",
+    "email": "mister-hope@outlook.com",
+    "url": "https://mister-hope.com"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./typings": {
+      "types": "./dist/typings.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c rollup.config.ts --configPlugin esbuild",
+    "clean": "rimraf dist",
+    "lint": "eslint . --fix && pnpm lint:prettier --write",
+    "lint:check": "eslint . && pnpm lint:prettier",
+    "lint:prettier": "prettier --check .",
+    "prepare": "husky",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@mr-hope/assert-type": "3.0.0",
+    "js-yaml": "4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "22.5.1",
+    "eslint": "9.9.1",
+    "eslint-config-mister-hope": "0.2.3",
+    "eslint-plugin-vue": "9.27.0",
+    "husky": "9.1.5",
+    "nano-staged": "0.8.0",
+    "prettier": "3.3.3",
+    "rimraf": "6.0.1",
+    "rollup": "4.21.1",
+    "rollup-plugin-dts": "6.1.1",
+    "rollup-plugin-esbuild": "6.1.1",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
+  },
+  "packageManager": "pnpm@9.9.0",
+  "nano-staged": {
+    "**/*": "prettier --write -u",
+    "*.{js,ts}": "eslint --fix"
+  }
+}
