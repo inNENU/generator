@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
 import { checkKeys } from "@mr-hope/assert-type";
-import { join } from "upath";
+import upath from "upath";
 
 import type {
   MapPageConfig,
@@ -51,8 +51,8 @@ export const getMarkerJSON = (
   };
 
   if (marker.path) {
-    const path = join(category, marker.path);
-    const filePath = join(
+    const path = upath.join(category, marker.path);
+    const filePath = upath.join(
       _config.mapFolder,
       folder,
       category,

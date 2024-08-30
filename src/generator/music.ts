@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { join } from "upath";
+import upath from "upath";
 
 import type { LyricData, MusicList } from "./typings.js";
 import { getFileList } from "../helpers/fs.js";
@@ -23,7 +23,7 @@ export const generateLyric = (lyricFolder: string, output: string): void => {
   lyricList.forEach((lyricPath) => {
     const lyricData: LyricData = [];
 
-    const lyricLines = readFileSync(join(lyricFolder, lyricPath), {
+    const lyricLines = readFileSync(upath.join(lyricFolder, lyricPath), {
       encoding: "utf-8",
     }).split("\n");
 
@@ -42,7 +42,7 @@ export const generateLyric = (lyricFolder: string, output: string): void => {
     });
 
     writeFileSync(
-      join(output, lyricPath.replace(/lrc$/u, "json")),
+      upath.join(output, lyricPath.replace(/lrc$/u, "json")),
       JSON.stringify(lyricData),
     );
   });

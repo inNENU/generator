@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { join } from "upath";
+import upath from "upath";
 
 import type {
   QQAccountConfig,
@@ -61,7 +61,7 @@ export const getWechatJSON = (
 };
 
 export const updateAccountFile = (path: string): Promise<void> => {
-  const filePath = join(_config.accountFolder, path);
+  const filePath = upath.join(_config.accountFolder, path);
 
   let data = readFileSync(filePath, {
     encoding: "utf-8",

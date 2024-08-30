@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { join } from "upath";
+import upath from "upath";
 
 import { getFileList } from "./fs.js";
 
@@ -11,7 +11,9 @@ export const checkAssets = (
 ): void => {
   const assets = new Set(
     assetFolders
-      .map((folder) => getFileList(folder).map((path) => join(folder, path)))
+      .map((folder) =>
+        getFileList(folder).map((path) => upath.join(folder, path)),
+      )
       .flat()
       .filter((link) =>
         ignoreRules.every((rule) =>
@@ -27,7 +29,7 @@ export const checkAssets = (
 
   pageFolders
     .map((folder) =>
-      getFileList(folder, "yml").map((path) => join(folder, path)),
+      getFileList(folder, "yml").map((path) => upath.join(folder, path)),
     )
     .flat()
     .forEach((path) => {
