@@ -13,6 +13,9 @@
     "url": "https://mister-hope.com"
   },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
