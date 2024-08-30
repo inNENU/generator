@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 
-import { checkKeys } from "@mr-hope/assert-type";
 import upath from "upath";
 
 import type {
@@ -19,10 +18,6 @@ export const getMapPageJSON = (
   data: MapPageConfig,
   filePath: string,
 ): MapPageData => {
-  checkKeys(data, {
-    photo: ["string[]", "undefined"],
-  });
-
   if (Array.isArray(data.photo))
     data.photo?.map((link, index) =>
       // `$` alias resolve and file check
