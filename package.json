@@ -1,6 +1,6 @@
 {
   "name": "innenu-generator",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "inNENU 生成器",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
   },
   "scripts": {
     "build": "rollup -c rollup.config.ts --configPlugin esbuild",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist typings.d.ts",
     "lint": "eslint . --fix && pnpm lint:prettier --write",
     "lint:check": "eslint . && pnpm lint:prettier",
     "lint:prettier": "prettier --check .",
