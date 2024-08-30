@@ -100,34 +100,6 @@ export interface MarkerData extends MarkerConfig {
   id: number;
 }
 
-export interface ResolvedMarkerData extends MarkerData {
-  iconPath: string;
-  width: number;
-  height: number;
-  alpha: number;
-  label: {
-    content: string;
-    color: string;
-    fontSize: number;
-    anchorX: number;
-    anchorY: number;
-    bgColor: string;
-    borderWidth: number;
-    borderColor: string;
-    borderRadius: number;
-    padding: number;
-  };
-  callout: {
-    content: string;
-    color: string;
-    fontSize: number;
-    bgColor: string;
-    borderRadius: number;
-    padding: number;
-    display: "BYCLICK" | "ALWAYS";
-  };
-}
-
 export interface Category {
   path: string;
   name: string;
