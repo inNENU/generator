@@ -2,14 +2,14 @@ import type { LocationComponentOptions } from "./typings.js";
 import { _config } from "../../config.js";
 
 export const getLocationMarkdown = ({
-  title,
+  header,
   points = [],
 }: LocationComponentOptions): string =>
   `\
 ${
-  title
+  header
     ? `\
-#### ${title}
+#### ${header}
 
 `
     : ""

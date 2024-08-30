@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 
 import { checkKeys } from "@mr-hope/assert-type";
+import upath from "upath";
 
 import type { LocationComponentOptions } from "./typings.js";
 import { _config } from "../../config.js";
@@ -15,7 +15,7 @@ export const getLocationJSON = (
     component,
     {
       tag: "string",
-      title: "string",
+      header: "string",
       points: "object[]",
       navigate: ["boolean", "undefined"],
     },
@@ -33,7 +33,7 @@ export const getLocationJSON = (
     if (item.path) {
       const path = resolvePath(item.path);
 
-      if (!existsSync(resolve(_config.mapFolder, `${path}.yml`)))
+      if (!existsSync(upath.join(_config.mapFolder, `${path}.yml`)))
         console.error(`Path ${path} not exists in ${location}`);
     }
   });

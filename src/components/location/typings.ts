@@ -14,7 +14,7 @@ export interface LocationConfig {
 export interface LocationComponentOptions extends BaseComponentOptions {
   tag: "location";
   /** 地点标题 */
-  title: string;
+  header: string;
   /** 媒体文件的在线网址或本地路径	 */
   points: LocationConfig[];
   /**
