@@ -1,12 +1,17 @@
 import { checkKeys } from "@mr-hope/assert-type";
 
 import type { ActionComponentOptions } from "./typings.js";
-import { checkFile } from "../../utils.js";
+import { checkFile, getFileLink } from "../../utils.js";
 
 export const getActionJSON = (
   action: ActionComponentOptions,
   location = "",
 ): ActionComponentOptions => {
+  checkFile(action.content, location);
+
+  // Convert alias here to avoid complicated logic in mini app
+  action.content = getFileLink(action.content);
+
   checkKeys(
     action,
     {
@@ -17,7 +22,6 @@ export const getActionJSON = (
     },
     location,
   );
-  checkFile(action.content, location);
 
   return action;
 };

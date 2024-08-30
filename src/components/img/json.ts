@@ -14,7 +14,6 @@ export const getImgJSON = (
     {
       tag: "string",
       src: "string",
-      res: ["string", "undefined"],
       desc: ["string", "undefined"],
       lazy: ["boolean", "undefined"],
       watermark: ["boolean", "undefined"],

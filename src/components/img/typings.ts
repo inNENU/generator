@@ -4,8 +4,6 @@ export interface ImageComponentOptions extends BaseComponentOptions {
   tag: "img";
   /** 图片的本地路径或在线网址 */
   src: string;
-  /** 图片在服务器上的网址 */
-  res?: string;
   /** 图片的描述文字 */
   desc?: string;
   /**
