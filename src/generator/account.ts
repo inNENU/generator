@@ -2,14 +2,14 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { join } from "upath";
 
-import { checkFile, createPromiseQueue, getFileList } from "innenu-generator";
-
 import type {
   QQAccountConfig,
   WechatAccountConfig,
   WechatAccountData,
 } from "./typings.js";
 import { _config } from "../config.js";
+import { createPromiseQueue, getFileList } from "../helpers/index.js";
+import { checkFile } from "../utils.js";
 
 const decodeText = (text: string): string => {
   const encodedText = text

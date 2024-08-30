@@ -15,7 +15,7 @@ export default [
         target: "node18",
       }),
     ],
-    external: [/^node:/, "@mr-hope/assert-type", "cheerio", "js-yaml"],
+    external: [/^node:/, "@mr-hope/assert-type", "js-yaml", "upath"],
   },
   {
     input: "./src/index.ts",
