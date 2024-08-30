@@ -40,7 +40,7 @@ export interface PageTextComponentOptions extends BaseTextComponentOptions {
    *
    * @description 只有当指定样式时才有效
    */
-  path: string;
+  path?: string;
 }
 
 export interface NormalTextComponentOptions extends BaseTextComponentOptions {
