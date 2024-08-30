@@ -12,6 +12,11 @@ export const _config: Config = {
   mapFolder: "",
 };
 
-export const config = (options: Config): void => {
-  Object.assign(_config, options);
+export const config = ({ assets, icon, mapFolder, mapKey }: Config): void => {
+  Object.assign(_config, {
+    assets: assets.replace(/\/$/, ""),
+    icon: icon.replace(/\/$/, ""),
+    mapFolder,
+    mapKey,
+  });
 };
