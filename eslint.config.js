@@ -4,7 +4,7 @@ import hopeConfig, { config, tsParser } from "eslint-config-mister-hope";
 export default config(
   ...hopeConfig,
   {
-    ignores: ["**/node_modules/**", "coverage/**", "dist/**"],
+    ignores: ["**/node_modules/**", "coverage/**", "dist/**", "typings.d.ts"],
   },
 
   {

@@ -29,7 +29,7 @@ export default [
   {
     input: "./src/typings.ts",
     output: {
-      file: "./dist/typings.d.ts",
+      file: "./typings.d.ts",
       format: "esm",
     },
     plugins: [dts()],

@@ -14,15 +14,18 @@
   },
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "typings.d.ts"
   ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./typings": {
-      "types": "./dist/typings.d.ts"
+      "types": "./typings.d.ts"
     }
   },
   "scripts": {
