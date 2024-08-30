@@ -25,7 +25,7 @@ import { getTitleJSON } from "./components/title/json.js";
 import { getVideoJSON } from "./components/video/json.js";
 import { checkIcon } from "./utils.js";
 
-export const resolvePageContent = (
+export const getPageContent = (
   content: ComponentOptions[],
   pagePath: string,
   id = pagePath,
@@ -86,7 +86,7 @@ export const resolvePageContent = (
  *
  * @returns 处理之后的page
  */
-export const resolvePage = (
+export const getPageJSON = (
   page: PageConfig,
   pagePath = "",
   diffResult = "",
@@ -105,7 +105,7 @@ export const resolvePage = (
       ? { author: Array.isArray(author) ? author.join("、") : author }
       : {}),
     cite: typeof cite === "string" ? [cite] : (cite ?? []),
-    content: resolvePageContent(content, pagePath, id),
+    content: getPageContent(content, pagePath, id),
   };
 
   if (!pageData.cite?.length) delete page.cite;

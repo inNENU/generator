@@ -7,7 +7,6 @@ import type {
   WechatAccountConfig,
   WechatAccountData,
 } from "./typings.js";
-import { _config } from "../config.js";
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
 import { checkFile } from "../utils.js";
 
@@ -60,8 +59,11 @@ export const getWechatJSON = (
   return data;
 };
 
-export const updateAccountFile = (path: string): Promise<void> => {
-  const filePath = upath.join(_config.accountFolder, path);
+export const updateAccountFile = (
+  folder: string,
+  path: string,
+): Promise<void> => {
+  const filePath = upath.join(folder, path);
 
   let data = readFileSync(filePath, {
     encoding: "utf-8",
@@ -124,10 +126,12 @@ export const updateAccountFile = (path: string): Promise<void> => {
   });
 };
 
-export const updateAccountFiles = async (): Promise<void> => {
-  const fileList = getFileList(_config.accountFolder, "yml");
+export const updateAccountFiles = async (folder: string): Promise<void> => {
+  const fileList = getFileList(folder, "yml");
 
   await createPromiseQueue(
-    fileList.map((item) => (): Promise<void> => updateAccountFile(item)),
+    fileList.map(
+      (item) => (): Promise<void> => updateAccountFile(folder, item),
+    ),
   );
 };

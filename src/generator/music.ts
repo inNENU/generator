@@ -6,7 +6,10 @@ import type { LyricData, MusicList } from "./typings.js";
 import { getFileList } from "../helpers/fs.js";
 import { checkFile } from "../utils.js";
 
-export const getMusicList = (data: MusicList, location: string): MusicList => {
+export const getMusicListJSON = (
+  data: MusicList,
+  location: string,
+): MusicList => {
   data.forEach((item) => {
     checkFile(item.cover, location);
     checkFile(item.src, location);
@@ -15,7 +18,7 @@ export const getMusicList = (data: MusicList, location: string): MusicList => {
   return data;
 };
 
-export const generateLyric = (lyricFolder: string, output: string): void => {
+export const getLyricJSON = (lyricFolder: string, output: string): void => {
   console.log("Generating lyric...");
 
   const lyricList = getFileList(lyricFolder, ".lrc");

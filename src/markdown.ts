@@ -24,7 +24,7 @@ import { getIconLink } from "./utils.js";
  *
  * @returns Markdown 内容
  */
-export const getMarkdown = (page: PageConfig, pagePath = ""): string => {
+export const getPageMarkdown = (page: PageConfig, pagePath = ""): string => {
   if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
   if (!page.content)

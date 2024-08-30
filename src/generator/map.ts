@@ -12,10 +12,10 @@ import type {
   MarkersData,
 } from "./typings.js";
 import { _config } from "../config.js";
-import { resolvePage } from "../page.js";
+import { getPageJSON } from "../page.js";
 import { checkFile } from "../utils.js";
 
-export const generateMapPageJSON = (
+export const getMapPageJSON = (
   data: MapPageConfig,
   filePath: string,
 ): MapPageData => {
@@ -29,7 +29,7 @@ export const generateMapPageJSON = (
       checkFile(link, `${filePath}.photos[${index}]`),
     );
 
-  return resolvePage(data, filePath);
+  return getPageJSON(data, filePath);
 };
 
 /**
