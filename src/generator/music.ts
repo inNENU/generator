@@ -18,7 +18,7 @@ export const getMusicListJSON = (
   return data;
 };
 
-export const getLyricJSON = (lyricFolder: string, output: string): void => {
+export const generateLyrics = (lyricFolder: string, output: string): void => {
   console.log("Generating lyric...");
 
   const lyricList = getFileList(lyricFolder, ".lrc");
