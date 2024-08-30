@@ -16,17 +16,24 @@ export interface QQAccountInfo {
   openid?: string;
 }
 
-export type QQAccountConfig = {
+export type QQAccountsConfig = {
   name: string;
   account: QQAccountInfo[];
 }[];
 
-export type WechatAccountConfig = {
+export type WechatAccountsConfig = {
   name: string;
   account: WechatAccountInfo[];
 }[];
 
-export interface WechatAccountData {
+export interface WechatArticleConfig {
+  cover: string;
+  title: string;
+  url: string;
+  desc?: string;
+}
+
+export interface WechatAccountConfig {
   /** 账户名称 */
   name: string;
   /** 账户全名 */
@@ -40,7 +47,7 @@ export interface WechatAccountData {
   /** 关注链接 */
   follow?: string;
   /** 文章 */
-  article: { cover: string; title: string; url: string; desc?: string }[];
+  article: WechatArticleConfig[];
 }
 
 export interface MapPageConfig extends PageConfig {

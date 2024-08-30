@@ -3,9 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import upath from "upath";
 
 import type {
-  QQAccountConfig,
+  QQAccountsConfig,
   WechatAccountConfig,
-  WechatAccountData,
+  WechatAccountsConfig,
 } from "./typings.js";
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
 import { checkFile } from "../utils.js";
@@ -37,9 +37,9 @@ const decodeText = (text: string): string => {
 };
 
 export const getAccountListJSON = (
-  data: WechatAccountConfig | QQAccountConfig,
+  data: WechatAccountsConfig | QQAccountsConfig,
   location: string,
-): WechatAccountConfig | QQAccountConfig => {
+): WechatAccountsConfig | QQAccountsConfig => {
   data.forEach(({ account }) => {
     account.forEach((item) => {
       checkFile(item.logo, location);
@@ -51,9 +51,9 @@ export const getAccountListJSON = (
 };
 
 export const getWechatJSON = (
-  data: WechatAccountData,
+  data: WechatAccountConfig,
   location: string,
-): WechatAccountData => {
+): WechatAccountConfig => {
   checkFile(data.logo, location);
 
   return data;
