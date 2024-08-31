@@ -62,7 +62,7 @@ export const getIconLink = (icon?: string): string => {
   if (icon.startsWith("$")) return getFileLink(icon);
 
   if (!/^https?:\/\//.test(icon) && !icon.includes(".")) {
-    return `${_config.icon}/data/icon/${icon}.svg`;
+    return `${_config.icon}/${icon}.svg`;
   }
 
   return icon;
