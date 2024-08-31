@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { checkKeys } from "@mr-hope/assert-type";
+import upath from "upath";
 
 import { getAccountJSON } from "./components/account/json.js";
 import { getActionJSON } from "./components/action/json.js";
@@ -23,6 +24,7 @@ import { getTableJSON } from "./components/table/json.js";
 import { getTextJSON } from "./components/text/json.js";
 import { getTitleJSON } from "./components/title/json.js";
 import { getVideoJSON } from "./components/video/json.js";
+import { _config } from "./config.js";
 import { checkIcon } from "./utils.js";
 
 export const getPageContent = (
@@ -112,8 +114,10 @@ export const getPageJSON = (
   if (images.length) pageData.images = images;
 
   if (time) {
+    const pageYAMLPath = upath.join(_config.pageFolder, `${pagePath}.yml`);
+
     // update time
-    if (diffResult.includes(`pages/${pageData.id}`)) {
+    if (diffResult.includes(pageYAMLPath)) {
       const date = new Date();
 
       const timeText = `${date.getFullYear()} 年 ${
@@ -127,8 +131,8 @@ export const getPageJSON = (
       }`;
 
       writeFileSync(
-        `./pages/${pagePath}.yml`,
-        readFileSync(`./pages/${pagePath}.yml`, { encoding: "utf-8" }).replace(
+        pageYAMLPath,
+        readFileSync(pageYAMLPath, { encoding: "utf-8" }).replace(
           /^time: .+$/m,
           `time: ${date.toISOString()}`,
         ),
