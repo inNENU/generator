@@ -46,7 +46,7 @@ export const getTextJSON = (
     text,
     {
       tag: "string",
-      heading: ["string", "boolean", "undefined"],
+      header: ["string", "boolean", "undefined"],
       type: {
         type: ["string", "undefined"],
         enum: ["info", "tip", "warning", "danger", "note", "none"],

@@ -4,7 +4,7 @@ export interface BaseTextComponentOptions extends BaseComponentOptions {
   /** 文字标签 */
   tag: "text" | "p" | "ol" | "ul";
   /** 段落标题 */
-  heading?: string | true;
+  header?: string | false;
   /** 段落文字 */
   text?: string[];
   /** 段落文字样式 */

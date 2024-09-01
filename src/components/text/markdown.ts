@@ -12,7 +12,7 @@ export const getTextMarkdown = (text: TextComponentOptions): string => {
   // 处理段落
   if (typeof text.text === "string") text.text = [text.text];
 
-  const { align, tag, heading } = text;
+  const { align, tag, header } = text;
   const shouldUseContainer = "type" in text && text.type !== "none";
 
   return `\
@@ -26,10 +26,10 @@ ${
 ${
   shouldUseContainer
     ? `${`::: ${text.type === "danger" ? "caution" : text.type}`}${
-        typeof heading === "string" ? ` ${heading}` : ""
+        typeof header === "string" ? ` ${header}` : ""
       }`
-    : typeof heading === "string"
-      ? `### ${heading}`
+    : typeof header === "string"
+      ? `### ${header}`
       : ""
 }
 ${
