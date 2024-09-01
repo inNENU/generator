@@ -2,6 +2,7 @@ export * from "./accessToken.js";
 export * from "./checkAssets.js";
 export * from "./getFileList.js";
 export * from "./git.js";
+export * from "./markdown.js";
 export * from "./json.js";
 export * from "./oss.js";
 export * from "./promiseQueue.js";
