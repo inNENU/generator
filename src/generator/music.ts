@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import upath from "upath";
 
 import type { LyricData, MusicList } from "./typings.js";
-import { getFileList } from "../helpers/fs.js";
+import { getFileList } from "../helpers/getFileList.js";
 import { checkFile } from "../utils.js";
 
 export const getMusicListJSON = (

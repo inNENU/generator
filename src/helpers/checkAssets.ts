@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import upath from "upath";
 
-import { getFileList } from "./fs.js";
+import { getFileList } from "./getFileList.js";
 
 export const checkAssets = (
   pageFolders: string[],

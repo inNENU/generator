@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { getFileList } from "./fs.js";
+import { getFileList } from "./getFileList.js";
 
 /**
  * Extract Latin words from content

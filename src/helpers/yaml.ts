@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from "node:path";
 
 import { load } from "js-yaml";
 
-import { getFileList } from "./fs.js";
+import { getFileList } from "./getFileList.js";
 
 export const getYAMLValue = (content: string): string =>
   content.startsWith("@") || content.includes(": ")
