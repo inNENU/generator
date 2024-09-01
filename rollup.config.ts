@@ -15,7 +15,7 @@ export default [
         target: "node18",
       }),
     ],
-    external: [/^node:/, "@mr-hope/assert-type", "js-yaml", "upath"],
+    external: [/^node:/, "@mr-hope/assert-type", "ali-oss", "js-yaml", "upath"],
   },
   {
     input: "./src/index.ts",
@@ -24,7 +24,7 @@ export default [
       format: "esm",
     },
     plugins: [dts()],
-    external: ["domhandler"],
+    external: [],
   },
   {
     input: "./src/typings.ts",
