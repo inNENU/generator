@@ -12,7 +12,7 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       ali-oss:
-        specifier: 6.21.0
+        specifier: ^6.21.0
         version: 6.21.0
       js-yaml:
         specifier: ^4.1.0

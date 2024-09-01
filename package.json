@@ -1,6 +1,6 @@
 {
   "name": "innenu-generator",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "inNENU 生成器",
   "repository": {
     "type": "git",
@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@mr-hope/assert-type": "^3.0.0",
-    "ali-oss": "6.21.0",
+    "ali-oss": "^6.21.0",
     "js-yaml": "^4.1.0",
     "upath": "^2.0.1"
   },
