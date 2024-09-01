@@ -35,25 +35,26 @@ export const convertYamlFilesToJson = <T = unknown, U = T>(
   const fileList = getFileList(sourceFolder, "yml");
 
   fileList.forEach((filePath) => {
-    const folderPath = upath.dirname(upath.resolve(targetFolder, filePath));
+    const sourceFilename = upath.resolve(sourceFolder, filePath);
+    const targetFilename = upath.resolve(
+      targetFolder,
+      filePath.replace(/\.yml$/u, ".json"),
+    );
+    const targetFolderPath = upath.dirname(targetFilename);
 
-    if (!existsSync(folderPath)) mkdirSync(folderPath, { recursive: true });
+    if (!existsSync(targetFolderPath))
+      mkdirSync(targetFolderPath, { recursive: true });
 
-    const content = readFileSync(upath.resolve(sourceFolder, filePath), {
-      encoding: "utf-8",
-    });
-    const json = load(content) as T;
+    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
 
     const result = convertFunction(
-      json,
+      load(content) as T,
       upath.relative("./", filePath.replace(/\.yml$/u, "")),
     );
 
     if (result)
-      writeFileSync(
-        upath.resolve(targetFolder, filePath.replace(/\.yml$/u, ".json")),
-        JSON.stringify(result),
-        { encoding: "utf-8" },
-      );
+      writeFileSync(targetFilename, JSON.stringify(result), {
+        encoding: "utf-8",
+      });
   });
 };

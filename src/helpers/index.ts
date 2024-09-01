@@ -5,5 +5,6 @@ export * from "./git.js";
 export * from "./json.js";
 export * from "./oss.js";
 export * from "./promiseQueue.js";
+export * from "./svg.js";
 export * from "./wordCount.js";
 export * from "./yaml.js";

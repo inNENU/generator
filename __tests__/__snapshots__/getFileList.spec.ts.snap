@@ -62,6 +62,7 @@ exports[`getFileList 1`] = `
   "generator/index.ts",
   "generator/map.ts",
   "generator/music.ts",
+  "generator/svgIcons.ts",
   "generator/typings.ts",
   "helpers/accessToken.ts",
   "helpers/checkAssets.ts",
@@ -69,8 +70,10 @@ exports[`getFileList 1`] = `
   "helpers/git.ts",
   "helpers/index.ts",
   "helpers/json.ts",
+  "helpers/markdown.ts",
   "helpers/oss.ts",
   "helpers/promiseQueue.ts",
+  "helpers/svg.ts",
   "helpers/wordCount.ts",
   "helpers/yaml.ts",
 ]
