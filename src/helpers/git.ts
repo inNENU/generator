@@ -9,6 +9,9 @@ export interface ChangedFilesInfo {
   deleted: string[];
 }
 
+export const getCurrentChangedFiles = (): string[] =>
+  execSync(`git diff --name-only`).toString().trim().split("\n");
+
 export const getLastChangedFiles = (): ChangedFilesInfo => {
   // Execute the git diff-tree command
   const result = execSync(`git diff-tree --no-commit-id --name-status -r HEAD`)
