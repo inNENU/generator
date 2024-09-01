@@ -1,5 +1,10 @@
 import type { PageConfig, PageData } from "../typings.js";
 
+export interface ResourceVersionInfo {
+  version: Record<string, number>;
+  size: Record<string, number>;
+}
+
 export interface WechatAccountInfo {
   name: string;
   desc: string;
