@@ -13,7 +13,7 @@ import { getTableMarkdown } from "./components/table/markdown.js";
 import { getTextMarkdown } from "./components/text/markdown.js";
 import { getTitleMarkdown } from "./components/title/markdown.js";
 import { getVideoMarkdown } from "./components/video/markdown.js";
-import { getYAMLValue } from "./helpers/index.js";
+import { getYamlValue } from "./helpers/index.js";
 import { getIconLink } from "./utils.js";
 
 /**
@@ -36,7 +36,7 @@ export const getPageMarkdown = (page: PageConfig, pagePath = ""): string => {
 
   content += `\
 ---
-title: ${getYAMLValue(title)}
+title: ${getYamlValue(title)}
 `;
 
   if (icon) {
@@ -51,11 +51,11 @@ icon: ${iconLink}
   if (Array.isArray(author))
     content += `\
 author:
-${author.map((author) => `  - ${getYAMLValue(author)}`).join("\n")}
+${author.map((author) => `  - ${getYamlValue(author)}`).join("\n")}
 `;
   else if (author)
     content += `\
-author: ${getYAMLValue(author)}
+author: ${getYamlValue(author)}
 `;
 
   if (time)
