@@ -91,7 +91,7 @@ export const getPageContent = (
 export const getPageJSON = (
   page: PageConfig,
   pagePath = "",
-  diffResult = "",
+  diffFiles: string[] = [],
 ): PageData => {
   if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
@@ -117,7 +117,7 @@ export const getPageJSON = (
     const pageYAMLPath = upath.join(_config.pageFolder, `${pagePath}.yml`);
 
     // update time
-    if (diffResult.includes(pageYAMLPath)) {
+    if (diffFiles.includes(pageYAMLPath)) {
       const date = new Date();
 
       const timeText = `${date.getFullYear()} 年 ${
