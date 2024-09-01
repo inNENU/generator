@@ -33,16 +33,16 @@ export const generateSvgIcons = (
       iconStore[category] ??= {};
 
       iconStore[category][iconName] = convertSVGToBase64DataURI(svgContent);
+    } else {
+      const targetFilename = upath.resolve(
+        targetFolder,
+        filePath.replace(/\.svg$/u, ""),
+      );
+
+      writeFileSync(targetFilename, convertSVGToBase64DataURI(svgContent), {
+        encoding: "utf-8",
+      });
     }
-
-    const targetFilename = upath.resolve(
-      targetFolder,
-      filePath.replace(/\.svg$/u, ""),
-    );
-
-    writeFileSync(targetFilename, convertSVGToBase64DataURI(svgContent), {
-      encoding: "utf-8",
-    });
   });
 
   Object.entries(iconStore).forEach(([category, icons]) => {
