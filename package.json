@@ -47,10 +47,10 @@
   "devDependencies": {
     "@types/ali-oss": "6.16.11",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "22.7.4",
+    "@types/node": "22.7.5",
     "eslint": "9.12.0",
-    "eslint-config-mister-hope": "0.2.3",
-    "eslint-plugin-vue": "9.28.0",
+    "eslint-config-mister-hope": "0.3.0",
+    "eslint-plugin-vue": "9.29.0",
     "husky": "9.1.6",
     "nano-staged": "0.8.0",
     "prettier": "3.3.3",
@@ -58,10 +58,10 @@
     "rollup": "4.24.0",
     "rollup-plugin-dts": "6.1.1",
     "rollup-plugin-esbuild": "6.1.1",
-    "typescript": "5.6.2",
+    "typescript": "5.6.3",
     "vitest": "2.1.2"
   },
-  "packageManager": "pnpm@9.12.0",
+  "packageManager": "pnpm@9.12.1",
   "nano-staged": {
     "**/*": "prettier --write -u",
     "*.{js,ts}": "eslint --fix"
