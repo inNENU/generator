@@ -168,7 +168,7 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
         const { name, detail, desc, logo, qq, wxid, site, mail } = component;
 
         return `\
-${logo ? `![${name}](${getFileLink(logo)})\n` : ""}\
+${logo ? `![${name}](${getFileLink(logo)})\n\n` : ""}\
 ${name ? `- 名称: ${name}\n` : ""}\
 ${detail ? `- 详情: ${detail}\n` : ""}\
 ${desc ? `- 描述: ${desc}\n` : ""}\
