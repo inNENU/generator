@@ -15,7 +15,7 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
 # ${title}
 
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
-${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- ${line}`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
+${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
 
 ${content
   .map((component) => {
@@ -24,7 +24,8 @@ ${content
         return `## ${component.text}\n\n`;
       }
 
-      case "text": {
+      case "text":
+      case "p": {
         const texts = Array.isArray(component.text)
           ? component.text
           : component.text
@@ -32,6 +33,26 @@ ${content
             : [];
 
         return `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}\n\n`;
+      }
+
+      case "ul": {
+        const texts = Array.isArray(component.text)
+          ? component.text
+          : component.text
+            ? [component.text]
+            : [];
+
+        return `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}\n\n`;
+      }
+
+      case "ol": {
+        const texts = Array.isArray(component.text)
+          ? component.text
+          : component.text
+            ? [component.text]
+            : [];
+
+        return `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}\n\n`;
       }
 
       case "grid":
