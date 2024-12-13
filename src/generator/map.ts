@@ -19,7 +19,7 @@ export const getMapPageJSON = (
   filePath: string,
 ): MapPageData => {
   if (Array.isArray(data.photo))
-    data.photo?.map((link, index) =>
+    data.photo.map((link, index) =>
       // `$` alias resolve and file check
       checkFile(link, `${filePath}.photos[${index}]`),
     );

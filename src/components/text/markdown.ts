@@ -25,7 +25,7 @@ ${
 }\
 ${
   shouldUseContainer
-    ? `${`::: ${text.type === "danger" ? "caution" : text.type}`}${
+    ? `::: ${text.type === "danger" ? "caution" : text.type}${
         typeof header === "string" ? ` ${header}` : ""
       }`
     : typeof header === "string"
@@ -41,7 +41,7 @@ ${
           ? `1. ${indentMarkdownListItem(item, 3)}`
           : item,
     )
-    ?.join("\n\n") || ""
+    .join("\n\n") || ""
 }
 
 ${

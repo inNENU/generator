@@ -34,13 +34,16 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
       const result = /\[(.*)\](.*)?/u.exec(lyric);
 
       if (result) {
-        const timeResult = /(.*):(.*)/u.exec(result[1])!;
-        /** 正确的时间 */
-        const time = Number(
-          (Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3),
-        );
+        const timeResult = /(.*):(.*)/u.exec(result[1]);
 
-        lyricData.push({ time, text: result[2] });
+        if (timeResult) {
+          /** 正确的时间 */
+          const time = Number(
+            (Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3),
+          );
+
+          lyricData.push({ time, text: result[2] });
+        }
       }
     });
 

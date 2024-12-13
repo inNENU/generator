@@ -10,11 +10,14 @@ const headers = {
 };
 
 export const initOSS = (): void => {
+  if (!process.env.OSS_KEY_ID || !process.env.OSS_KEY_SECRET)
+    throw new Error("OSS_KEY_ID or OSS_KEY_SECRET is not set");
+
   client ??= new OSS({
-    region: process.env.OSS_REGION!,
-    bucket: process.env.OSS_BUCKET!,
-    accessKeyId: process.env.OSS_KEY_ID!,
-    accessKeySecret: process.env.OSS_KEY_SECRET!,
+    accessKeyId: process.env.OSS_KEY_ID,
+    accessKeySecret: process.env.OSS_KEY_SECRET,
+    region: process.env.OSS_REGION,
+    bucket: process.env.OSS_BUCKET,
     secure: true,
   });
 };

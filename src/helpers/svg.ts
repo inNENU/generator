@@ -8,6 +8,7 @@ export const convertSVGToDataURI = (content: string): string =>
 
 export const convertSVGToBase64DataURI = (content: string): string =>
   `data:image/svg+xml;base64,${Buffer.from(
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     unescape(encodeURIComponent(content)),
     "utf8",
   ).toString("base64")}`;

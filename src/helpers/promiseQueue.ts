@@ -54,7 +54,7 @@ export class Queue {
    * @param ctx 函数运行上下文
    * @param args 函数参数
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-parameters
   public add<T, A extends any[]>(
     func: (next: () => void, ...args: A) => void,
     ctx?: T,

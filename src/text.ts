@@ -110,6 +110,7 @@ ${points
       case "doc": {
         const { name, url } = component;
         const docUrl = getFileLink(url);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const docName = `${name}.${url.split(".").pop()!}`;
 
         return `- [${docName}](${docUrl})\n\n`;

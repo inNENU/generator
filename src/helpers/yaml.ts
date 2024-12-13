@@ -10,6 +10,7 @@ export const getYamlValue = (content: string): string =>
     ? `"${content.replace(/"/g, '\\"')}"`
     : content;
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export const checkYamlFiles = <T = unknown>(
   sourceFolder: string,
   checker: (data: T, filePath: string) => void,

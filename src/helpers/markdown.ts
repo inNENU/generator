@@ -5,6 +5,7 @@ import upath from "upath";
 
 import { getFileList } from "./getFileList.js";
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 export const convertYamlFilesToMarkdown = <T = unknown>(
   sourceFolder: string,
   targetFolder = sourceFolder,

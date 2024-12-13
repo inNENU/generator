@@ -7,10 +7,11 @@ export const getCarouselJSON = (
   carousel: CarouselComponentOptions,
   location = "",
 ): CarouselComponentOptions => {
-  carousel.images?.forEach((link, index) => {
-    // `$` alias resolve and file check
-    checkFile(link, `${location}[${index}]`);
-  });
+  if (Array.isArray(carousel.images))
+    carousel.images.forEach((link, index) => {
+      // `$` alias resolve and file check
+      checkFile(link, `${location}[${index}]`);
+    });
 
   // 处理样式
   if (typeof carousel.style === "object")

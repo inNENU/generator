@@ -40,28 +40,27 @@
   },
   "dependencies": {
     "@mr-hope/assert-type": "^3.0.0",
-    "ali-oss": "^6.21.0",
+    "ali-oss": "^6.22.0",
     "js-yaml": "^4.1.0",
     "upath": "^2.0.1"
   },
   "devDependencies": {
     "@types/ali-oss": "6.16.11",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "22.7.5",
-    "eslint": "9.12.0",
-    "eslint-config-mister-hope": "0.3.0",
-    "eslint-plugin-vue": "9.29.0",
-    "husky": "9.1.6",
+    "@types/node": "22.10.1",
+    "eslint": "9.16.0",
+    "eslint-config-mister-hope": "0.4.0-beta.7",
+    "husky": "9.1.7",
     "nano-staged": "0.8.0",
-    "prettier": "3.3.3",
+    "prettier": "3.4.2",
     "rimraf": "6.0.1",
-    "rollup": "4.24.0",
+    "rollup": "4.28.1",
     "rollup-plugin-dts": "6.1.1",
     "rollup-plugin-esbuild": "6.1.1",
-    "typescript": "5.6.3",
-    "vitest": "2.1.2"
+    "typescript": "5.7.2",
+    "vitest": "2.1.8"
   },
-  "packageManager": "pnpm@9.12.1",
+  "packageManager": "pnpm@9.15.0",
   "nano-staged": {
     "**/*": "prettier --write -u",
     "*.{js,ts}": "eslint --fix"

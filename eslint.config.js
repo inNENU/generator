@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-unresolved */
 import hopeConfig, { config, tsParser } from "eslint-config-mister-hope";
 
 export default config(
@@ -17,7 +16,6 @@ export default config(
         projectService: {
           allowDefaultProject: ["eslint.config.js", "rollup.config.ts"],
         },
-        extraFileExtensions: [".vue"],
       },
     },
   },
@@ -64,13 +62,7 @@ export default config(
           format: ["PascalCase"],
         },
       ],
+      "@typescript-eslint/no-unnecessary-condition": "off",
     },
   },
-
-  // {
-  //   files: ["rollup.config.ts"],
-  //   languageOptions: {
-  //     globals: globals.node,
-  //   },
-  // },
 );

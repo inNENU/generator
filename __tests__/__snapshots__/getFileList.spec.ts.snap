@@ -6,6 +6,7 @@ exports[`getFileList 1`] = `
   "index.ts",
   "markdown.ts",
   "page.ts",
+  "text.ts",
   "typings.ts",
   "utils.ts",
   "components/common.ts",

@@ -116,7 +116,9 @@ export const updateAccountFile = (
             );
           })
           .then(() => console.log(`${item} fetched`))
-          .catch((err) => console.error(`Fetching ${item} failed:`, err)),
+          .catch((err: unknown) =>
+            console.error(`Fetching ${item} failed:`, err),
+          ),
     ),
     3,
   ).then(() => {
