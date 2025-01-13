@@ -13,12 +13,6 @@
     "url": "https://mister-hope.com"
   },
   "type": "module",
-  "files": [
-    "dist",
-    "typings.d.ts"
-  ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -28,6 +22,12 @@
       "types": "./typings.d.ts"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "typings.d.ts"
+  ],
   "scripts": {
     "build": "rollup -c rollup.config.ts --configPlugin esbuild",
     "clean": "rimraf dist typings.d.ts",
@@ -38,6 +38,10 @@
     "prepublish": "pnpm build",
     "test": "vitest"
   },
+  "nano-staged": {
+    "**/*": "prettier --write -u",
+    "*.{js,ts}": "eslint --fix"
+  },
   "dependencies": {
     "@mr-hope/assert-type": "^3.0.0",
     "ali-oss": "^6.22.0",
@@ -47,22 +51,23 @@
   "devDependencies": {
     "@types/ali-oss": "6.16.11",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "22.10.2",
-    "eslint": "9.17.0",
-    "eslint-config-mister-hope": "0.4.0",
+    "@types/node": "22.10.5",
+    "eslint": "9.18.0",
+    "eslint-config-mister-hope": "0.4.1",
     "husky": "9.1.7",
     "nano-staged": "0.8.0",
     "prettier": "3.4.2",
     "rimraf": "6.0.1",
-    "rollup": "4.29.0",
+    "rollup": "4.30.1",
     "rollup-plugin-dts": "6.1.1",
     "rollup-plugin-esbuild": "6.1.1",
-    "typescript": "5.7.2",
-    "vitest": "2.1.8"
+    "typescript": "5.7.3",
+    "vitest": "3.0.0-beta.4"
   },
-  "packageManager": "pnpm@9.15.1",
-  "nano-staged": {
-    "**/*": "prettier --write -u",
-    "*.{js,ts}": "eslint --fix"
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
