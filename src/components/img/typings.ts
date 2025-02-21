@@ -17,7 +17,7 @@ export interface ImageComponentOptions extends BaseComponentOptions {
    *
    * @default false
    */
-  watermark?: false;
+  watermark?: boolean;
   /**
    * 图片显示模式
    *
