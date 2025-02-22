@@ -162,7 +162,7 @@ export const getListJSON = (
           );
       }
       // 处理路径
-      else if (listItem.path) {
+      else if (listItem.path && !("appId" in listItem)) {
         if (listItem.path.startsWith("/")) {
           const path = resolvePath(listItem.path);
 

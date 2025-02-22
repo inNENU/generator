@@ -24,4 +24,13 @@ export interface ImageComponentOptions extends BaseComponentOptions {
    * @default "widthFix"
    */
   imgMode?: ImageMode;
+
+  /**
+   * 是否支持长按弹出菜单
+   *
+   * @description 仅限微信小程序
+   *
+   * @default false
+   */
+  menu?: boolean;
 }
