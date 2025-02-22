@@ -36,6 +36,7 @@ export const getImgJSON = (
           undefined,
         ],
       },
+      menu: ["boolean", "undefined"],
       env: ["string[]", "undefined"],
     },
     location,
