@@ -98,6 +98,9 @@ export const getPageJSON = (
   if (!page.content)
     throw new Error(`${pagePath}.content doesn't contain anything`);
 
+  if (!Array.isArray(page.content))
+    throw new Error(`${pagePath}.content should be an array`);
+
   const { id = pagePath, author, cite, content, time, ...others } = page;
   const images: string[] = [];
   const pageData: PageData = {
