@@ -16,7 +16,6 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
 
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
 ${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
-
 ${content
   .map((component) => {
     switch (component.tag) {
@@ -32,7 +31,9 @@ ${content
             ? [component.text]
             : [];
 
-        return `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}\n\n`;
+        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}`;
+
+        return content ? `${content}\n\n` : "";
       }
 
       case "ul": {
@@ -42,7 +43,9 @@ ${content
             ? [component.text]
             : [];
 
-        return `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}\n\n`;
+        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}`;
+
+        return content ? `${content}\n\n` : "";
       }
 
       case "ol": {
@@ -52,7 +55,9 @@ ${content
             ? [component.text]
             : [];
 
-        return `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}\n\n`;
+        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}`;
+
+        return content ? `${content}\n\n` : "";
       }
 
       case "grid":
@@ -60,14 +65,7 @@ ${content
         const { header, items = [], footer } = component;
 
         return `\
-${
-  header
-    ? `\
-#### ${header}
-
-`
-    : ""
-}\
+${header ? `#### ${header}\n\n` : ""}\
 ${items.map((item) => `- ${item.text}${"desc" in item && item.desc ? ` - ${desc}` : ""}`).join("\n")}
 
 ${footer ? `> ${footer}\n\n` : ""}\
@@ -78,14 +76,7 @@ ${footer ? `> ${footer}\n\n` : ""}\
         const { header, points = [] } = component;
 
         return `\
-${
-  header
-    ? `\
-#### ${header}位置
-
-`
-    : ""
-}\
+${header ? `#### ${header}位置\n\n` : ""}\
 ${points
   .map(
     ({ loc, name = "位置", detail = "详情" }) =>
@@ -200,5 +191,5 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
     }
   })
   .join("")}
-`;
+`.trim();
 };

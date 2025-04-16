@@ -6,13 +6,7 @@ export const getTableMarkdown = ({
   body,
 }: TableComponentOptions): string =>
   `\
-${
-  caption
-    ? `### ${caption}
-
-`
-    : ""
-}\
+${caption ? `### ${caption}\n\n` : ""}\
 | ${header.map((item) => item.replace(/\|/g, "\\|")).join(" | ")} |
 | ${header.map(() => ":-:").join(" | ")} |
 | ${body

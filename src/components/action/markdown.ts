@@ -11,14 +11,7 @@ export const getActionMarkdown = ({
     );
 
   return `\
-${
-  header
-    ? `\
-#### ${header}
-
-`
-    : ""
-}\
+${header ? `#### ${header}\n\n` : ""}\
 ${
   isLink
     ? `\
