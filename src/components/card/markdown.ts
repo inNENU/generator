@@ -1,5 +1,5 @@
 import type { CardComponentOptions } from "./typings.js";
-import { getFileLink, getIconLink, getMarkdownPath } from "../../utils.js";
+import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getCardMarkdown = (card: CardComponentOptions): string => {
   const logo = getIconLink(card.logo);
@@ -54,7 +54,7 @@ ${cardChildren}
 
   if ("path" in card) {
     return `\
-<RouteLink class="innenu-card" to="${getMarkdownPath(card.path)}">
+<RouteLink class="innenu-card" to="${getHTMLPath(card.path)}">
 ${cardChildren}
 </RouteLink>
 

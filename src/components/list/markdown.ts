@@ -2,7 +2,7 @@ import type {
   FunctionalListComponentOptions,
   ListComponentOptions,
 } from "./typings.js";
-import { getIconLink, getMarkdownPath } from "../../utils.js";
+import { getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getListMarkdown = ({
   header,
@@ -58,7 +58,7 @@ ${
 ${listItemContent}
 </a>`
     : "path" in item
-      ? `<RouteLink class="innenu-list-item" to="${getMarkdownPath(item.path)}">
+      ? `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
 ${listItemContent}
 </RouteLink>`
       : `\

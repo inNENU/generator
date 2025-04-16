@@ -25,6 +25,13 @@ export const indentMarkdownListItem = (content: string, indent = 0): string =>
 export const getMarkdownPath = (path: string): string =>
   `${path.replace(/\/(?:index)?$/, "/README")}.md`;
 
+export const getHTMLPath = (path: string): string =>
+  path.endsWith("/")
+    ? path
+    : path.endsWith("/index")
+      ? path.substring(0, path.length - 5)
+      : `${path}.html`;
+
 export const checkFile = (link?: string, location = ""): void => {
   if (typeof link === "string" && link.startsWith("$")) {
     const localPath = link.replace(/^\$/, "./").split("?")[0];
