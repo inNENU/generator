@@ -40,6 +40,7 @@ export const generateDirItems = (
   }: GenerateOptions = {},
 ): string | void => {
   if (!existsSync(destination)) mkdirSync(destination, { recursive: true });
+  const dirname = upath.basename(destination);
 
   const content = items
     .map((item) => {
@@ -71,10 +72,11 @@ export const generateDirItems = (
 
   let homeItemContent =
     content.find((item) => item?.filename === "index.yml")?.value ?? "";
+  let index = 0;
 
   content
     .filter((item) => {
-      if (content.length > maxLength) {
+      if (item.length > maxLength) {
         writeFileSync(
           upath.join(destination, item.filename.replace(/\.yml$/u, ".md")),
           item.value,
@@ -84,7 +86,21 @@ export const generateDirItems = (
         return false;
       }
 
-      if (content.length < minLength) {
+      if (item.length < minLength) {
+        if (item.length + homeItemContent.length > maxLength) {
+          writeFileSync(
+            upath.join(
+              destination,
+              `${dirname}-README${index === 0 ? "" : index}.md`,
+            ),
+            item.value,
+            { encoding: "utf-8" },
+          );
+
+          homeItemContent = item.value;
+          index++;
+        }
+
         homeItemContent += `\n\n${item.value}`;
 
         return false;
@@ -104,14 +120,24 @@ export const generateDirItems = (
       }
     });
 
-  if (!mergeCrossDir && content.length) {
-    writeFileSync(upath.join(destination, "README.md"), homeItemContent, {
-      encoding: "utf-8",
-    });
+  if (!mergeCrossDir && homeItemContent.length) {
+    writeFileSync(
+      upath.join(
+        destination,
+        `${dirname}-README${index === 0 ? "" : index}.md`,
+      ),
+      homeItemContent,
+      { encoding: "utf-8" },
+    );
   } else if (homeItemContent.length > minLength) {
-    writeFileSync(upath.join(destination, "README.md"), homeItemContent, {
-      encoding: "utf-8",
-    });
+    writeFileSync(
+      upath.join(
+        destination,
+        `${dirname}-README${index === 0 ? "" : index}.md`,
+      ),
+      homeItemContent,
+      { encoding: "utf-8" },
+    );
   } else {
     return homeItemContent;
   }
@@ -129,8 +155,10 @@ export const generateKnowledgeBase = (
   );
 
   if (generateDirItemsResult) {
-    writeFileSync(upath.join(distFolder, "README.md"), generateDirItemsResult, {
-      encoding: "utf-8",
-    });
+    writeFileSync(
+      upath.join(distFolder, `${upath.dirname(distFolder)}-README.md`),
+      generateDirItemsResult,
+      { encoding: "utf-8" },
+    );
   }
 };
