@@ -21,7 +21,7 @@ export const getMusicListJSON = (
 export const generateLyrics = (lyricFolder: string, output: string): void => {
   console.log("Generating lyric...");
 
-  const lyricList = getFileList(lyricFolder, ".lrc");
+  const lyricList = getFileList(lyricFolder, "lrc");
 
   lyricList.forEach((lyricPath) => {
     const lyricData: LyricData = [];

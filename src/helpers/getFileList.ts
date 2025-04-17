@@ -37,4 +37,4 @@ const getFiles = (base: string, dir = "", ext?: string): string[] => {
 };
 
 export const getFileList = (dirPath: string, ext?: string): string[] =>
-  getFiles(dirPath, "", ext);
+  getFiles(dirPath, "", `.${ext}`);
