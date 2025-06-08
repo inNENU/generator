@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Build project
@@ -35,10 +35,8 @@ jobs:
           pnpm lint
 
       - name: Unit test
-        env:
-          NODE_OPTIONS: --max_old_space_size=8192
         run: pnpm test
 
       - name: Upload coverage
         if: github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
