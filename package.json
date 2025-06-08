@@ -44,30 +44,31 @@
   },
   "dependencies": {
     "@mr-hope/assert-type": "^3.0.0",
-    "ali-oss": "^6.22.0",
+    "ali-oss": "^6.23.0",
     "js-yaml": "^4.1.0",
     "upath": "^2.0.1"
   },
   "devDependencies": {
     "@types/ali-oss": "6.16.11",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "22.14.1",
-    "eslint": "9.24.0",
-    "eslint-config-mister-hope": "0.9.0",
+    "@types/node": "22.15.30",
+    "eslint": "9.28.0",
+    "eslint-config-mister-hope": "0.9.5",
     "husky": "9.1.7",
     "nano-staged": "0.8.0",
     "prettier": "3.5.3",
     "rimraf": "6.0.1",
-    "rollup": "4.40.0",
+    "rollup": "4.42.0",
     "rollup-plugin-dts": "6.2.1",
     "rollup-plugin-esbuild": "6.2.1",
     "typescript": "5.8.3",
-    "vitest": "3.1.1"
+    "vitest": "3.2.2"
   },
-  "packageManager": "pnpm@10.8.1",
+  "packageManager": "pnpm@10.11.1",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "unrs-resolver"
     ],
     "overrides": {
       "esbuild": "^0.25.0"
