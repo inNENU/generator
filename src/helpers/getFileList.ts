@@ -9,7 +9,12 @@ export interface DirContent {
   files: string[];
 }
 
-const getFiles = (base: string, dir = "", ext?: string): string[] => {
+const getFiles = (
+  cwd: string,
+  base: string,
+  ext: string,
+  dir = "",
+): string[] => {
   const dirPath = upath.resolve(base, dir);
 
   if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true });
@@ -26,15 +31,23 @@ const getFiles = (base: string, dir = "", ext?: string): string[] => {
 
   return [
     ...fileList
-      .filter((filename) => (ext ? filename.endsWith(ext) : true))
+      .filter((filename) => !ext || filename.endsWith(ext))
       .map((filePath) => upath.relative("./", upath.resolve(dir, filePath))),
     ...dirList
       .map((dirname) =>
-        getFiles(base, upath.relative("./", upath.resolve(dir, dirname)), ext),
+        getFiles(
+          cwd,
+          base,
+          ext,
+          upath.relative("./", upath.resolve(dir, dirname)),
+        ),
       )
       .flat(),
   ];
 };
 
-export const getFileList = (dirPath: string, ext?: string): string[] =>
-  getFiles(dirPath, "", `.${ext}`);
+export const getFileList = (
+  dirPath: string,
+  ext?: string,
+  cwd = process.cwd(),
+): string[] => getFiles(cwd, upath.join(cwd, dirPath), ext ? `.${ext}` : "");

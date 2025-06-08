@@ -4,7 +4,7 @@ import { load } from "js-yaml";
 import upath from "upath";
 
 import { getFileList } from "./getFileList.js";
-import type { FileMapItem} from "./getFileMap.js";
+import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
 
 export const getYamlValue = (content: string): string =>

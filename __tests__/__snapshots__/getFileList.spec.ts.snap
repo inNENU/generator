@@ -2,6 +2,7 @@
 
 exports[`getFileList 1`] = `
 [
+  "ai.ts",
   "config.ts",
   "index.ts",
   "markdown.ts",
@@ -68,10 +69,10 @@ exports[`getFileList 1`] = `
   "helpers/accessToken.ts",
   "helpers/checkAssets.ts",
   "helpers/getFileList.ts",
+  "helpers/getFileMap.ts",
   "helpers/git.ts",
   "helpers/index.ts",
   "helpers/json.ts",
-  "helpers/markdown.ts",
   "helpers/oss.ts",
   "helpers/promiseQueue.ts",
   "helpers/svg.ts",
