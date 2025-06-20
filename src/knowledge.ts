@@ -1,13 +1,15 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
+import { load } from "js-yaml";
 import upath from "upath";
 
 import type { YamlMapItem } from "./helpers/index.js";
-import { getYamlMap } from "./helpers/index.js";
+import { getFileList, getYamlMap } from "./helpers/index.js";
 import { getPageText } from "./text.js";
 import type { PageConfig } from "./typings.js";
 
-export interface GenerateKnowledgeOptions {
+/** @deprecated */
+export interface DeprecatedGenerateKnowledgeOptions {
   /**
    * 最小长度
    *
@@ -30,6 +32,7 @@ export interface GenerateKnowledgeOptions {
   mergeCrossDir?: boolean;
 }
 
+/** @deprecated */
 export const generateKnowledgeBaseDirItems = (
   items: YamlMapItem<string>[],
   destination: string,
@@ -37,7 +40,8 @@ export const generateKnowledgeBaseDirItems = (
     minLength = 100,
     maxLength = 1000,
     mergeCrossDir = false,
-  }: GenerateKnowledgeOptions = {},
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+  }: DeprecatedGenerateKnowledgeOptions = {},
 ): string | void => {
   if (!existsSync(destination)) mkdirSync(destination, { recursive: true });
   const dirname = upath.basename(destination);
@@ -46,6 +50,7 @@ export const generateKnowledgeBaseDirItems = (
     .map((item) => {
       // convert nested directory
       if (item.type === "dir") {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         const content = generateKnowledgeBaseDirItems(
           item.content,
           upath.join(destination, item.dirname),
@@ -149,8 +154,10 @@ export const generateKnowledgeBaseDirItems = (
 export const generateKnowledgeBase = (
   folder: string,
   distFolder: string,
-  options?: GenerateKnowledgeOptions,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  options?: DeprecatedGenerateKnowledgeOptions,
 ): void => {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   const generateDirItemsResult = generateKnowledgeBaseDirItems(
     getYamlMap<PageConfig, string>(folder, getPageText),
     distFolder,
@@ -164,4 +171,45 @@ export const generateKnowledgeBase = (
       { encoding: "utf-8" },
     );
   }
+};
+
+export const generateKnowledgeContent = (
+  sourceFolder: string,
+  distFolder: string,
+): void => {
+  if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
+
+  const fileList = getFileList(sourceFolder, "yml");
+
+  fileList.forEach((filePath) => {
+    const filePathRelative = upath.relative(
+      "./",
+      filePath.replace(/\.yml$/u, ""),
+    );
+    const sourceFilename = upath.resolve(sourceFolder, filePath);
+
+    const targetFilename = filePath
+      .replace(/\//g, "-")
+      .replace(/\.yml$/u, ".md")
+      .replace(/(\/|^)index.md$/, "$1README.md");
+
+    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
+
+    const data = load(content) as PageConfig;
+
+    if (data.aiIgnore || !data.tags?.length) return;
+
+    const text = getPageText(data, filePathRelative);
+
+    data.tags.forEach((tag) => {
+      const targetFolderPath = upath.resolve(distFolder, tag);
+
+      if (!existsSync(targetFolderPath))
+        mkdirSync(targetFolderPath, { recursive: true });
+
+      const targetFilePath = upath.join(targetFolderPath, targetFilename);
+
+      writeFileSync(targetFilePath, text, { encoding: "utf-8" });
+    });
+  });
 };
