@@ -55,7 +55,7 @@ export const getMarkerJSON = (
     );
 
     if (!existsSync(filePath))
-      console.error(`${filePath} as ${path} not exists!`);
+      console.error(`路径 ${filePath} 在 ${path} 中不存在!`);
 
     markerData.path = path;
   }

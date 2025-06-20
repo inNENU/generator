@@ -19,7 +19,7 @@ export const getMusicListJSON = (
 };
 
 export const generateLyrics = (lyricFolder: string, output: string): void => {
-  console.log("Generating lyric...");
+  console.log("生成歌词...");
 
   const lyricList = getFileList(lyricFolder, "lrc");
 
@@ -53,5 +53,5 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
     );
   });
 
-  console.info("Generated lyric!");
+  console.info("歌词已生成");
 };

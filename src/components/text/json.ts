@@ -25,7 +25,7 @@ export const getTextJSON = (
       const path = resolvePath(text.path);
 
       if (!existsSync(`./pages/${path}.yml`))
-        console.error(`Path ${path} not exists in ${location}`);
+        console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       text.path = path;
     } else {
@@ -36,7 +36,7 @@ export const getTextJSON = (
       const path = resolvePath(`${paths.join("/")}/${text.path}`);
 
       if (!existsSync(`./pages/${path}.yml`))
-        console.error(`Path ${path} not exists in ${location}`);
+        console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       text.path = path;
     }

@@ -18,7 +18,7 @@ export const generateSvgIcons = (
     const results = filePath.split("/");
 
     if (results.length > 2) {
-      console.error("Deep nested icon generation is not supported!");
+      console.error("不支持深层嵌套图标生成!");
     }
 
     const sourceFilename = upath.resolve(sourceFolder, filePath);

@@ -167,7 +167,7 @@ export const getListJSON = (
           const path = resolvePath(listItem.path);
 
           if (!existsSync(`./pages/${path}.yml`))
-            console.error(`Path ${path} not exists in ${location}`);
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
           listItem.path = path;
         } else {
@@ -178,7 +178,7 @@ export const getListJSON = (
           const path = resolvePath(`${paths.join("/")}/${listItem.path}`);
 
           if (!existsSync(`./pages/${path}.yml`))
-            console.error(`Path ${path} not exists in ${location}`);
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
           listItem.path = path;
         }

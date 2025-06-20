@@ -11,7 +11,7 @@ const headers = {
 
 export const initOSS = (): void => {
   if (!process.env.OSS_KEY_ID || !process.env.OSS_KEY_SECRET)
-    throw new Error("OSS_KEY_ID or OSS_KEY_SECRET is not set");
+    throw new Error("OSS_KEY_ID 或 OSS_KEY_SECRET 未设置");
 
   client ??= new OSS({
     accessKeyId: process.env.OSS_KEY_ID,
@@ -34,14 +34,14 @@ export const uploadOSSFiles = async (
           ? [filePath, filePath]
           : [filePath.local, filePath.online];
 
-      console.debug(`Putting file ${localPath}`);
+      console.debug(`上传文件 ${localPath}`);
       const result = await client.put(onlinePath, localPath, { headers });
 
       if (result.res.status !== 200)
-        console.error(`upload ${localPath} failed:`, result.res.status);
+        console.error(`上传 ${localPath} 失败:`, result.res.status);
     }
   } catch (err) {
-    console.error("Upload files to OSS failed:", err);
+    console.error("上传文件到 OSS 失败:", err);
   }
 };
 
@@ -51,13 +51,13 @@ export const removeOSSFiles = async (filePaths: string[]): Promise<void> => {
 
     initOSS();
 
-    console.debug(`Deleting file ${filePaths.join(", ")}`);
+    console.debug(`删除 OSS 文件 ${filePaths.join(", ")}`);
 
     const result = await client.deleteMulti(filePaths);
 
     if (result.res.status !== 200)
-      console.error(`delete failed:`, result.res.status);
+      console.error(`删除失败:`, result.res.status);
   } catch (err) {
-    console.error(`delete failed:`, err);
+    console.error(`删除失败:`, err);
   }
 };

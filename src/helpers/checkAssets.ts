@@ -40,5 +40,5 @@ export const checkAssets = (
       });
     });
 
-  console.log("Assets not in use:\n", Array.from(assets).join("\n"));
+  console.log("未使用的资源:\n", Array.from(assets).join("\n"));
 };

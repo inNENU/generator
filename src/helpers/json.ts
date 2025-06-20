@@ -4,14 +4,14 @@ const testJSON = (path: string): Promise<void> =>
   new Promise((resolve, reject) => {
     readFile(path, { encoding: "utf-8" }, (err, content) => {
       if (err) {
-        console.error(`Read file ${path} failed:`, err);
+        console.error(`读取文件 ${path} 失败:`, err);
 
         return reject(err);
       }
       try {
         JSON.parse(content);
       } catch {
-        throw new Error(`${path} is not a correct JSON file`);
+        throw new Error(`${path} 不是一个正确的 JSON 文件`);
       }
 
       resolve();
@@ -22,7 +22,7 @@ export const checkJSON = (path: string): Promise<void> =>
   new Promise((resolve, reject) => {
     readdir(path, { withFileTypes: true }, (err, files) => {
       if (err) {
-        console.error(`Read dir ${path} failed:`, err);
+        console.error(`读取目录 ${path} 失败:`, err);
 
         return reject(err);
       }

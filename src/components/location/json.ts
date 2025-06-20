@@ -34,7 +34,7 @@ export const getLocationJSON = (
       const path = resolvePath(item.path);
 
       if (!existsSync(upath.join(_config.mapFolder, `${path}.yml`)))
-        console.error(`Path ${path} not exists in ${location}`);
+        console.error(`路径 ${path} 在 ${location} 中不存在`);
     }
   });
 

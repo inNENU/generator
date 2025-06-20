@@ -58,7 +58,7 @@ export const checkIcon = (icon?: string, location = ""): void => {
       const iconPath = `./data/icon/${icon}.svg`;
 
       if (!existsSync(iconPath))
-        console.error(`Icon ${icon} not exist in ${location}`);
+        console.error(`图标 ${icon} 在 ${location} 中不存在`);
     }
   }
 };

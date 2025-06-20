@@ -61,6 +61,10 @@ export interface PageConfig {
   title: string;
   /** 页面图标 */
   icon: string;
+  /** 是否被 AI 忽略 */
+  aiIgnore?: boolean;
+  /** 页面标签 */
+  tags?: string[];
   /** 页面描述 */
   desc?: string;
   /** 页面作者 */

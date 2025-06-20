@@ -115,9 +115,9 @@ export const updateAccountFile = (
               }    url: ${item}`,
             );
           })
-          .then(() => console.log(`${item} fetched`))
+          .then(() => console.log(`账号 ${item} 已获取`))
           .catch((err: unknown) =>
-            console.error(`Fetching ${item} failed:`, err),
+            console.error(`获取账户 ${item} 失败:`, err),
           ),
     ),
     3,

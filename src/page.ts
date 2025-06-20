@@ -80,6 +80,26 @@ export const getPageContent = (
     return element;
   });
 
+export interface GetPageJSONOptions {
+  /**
+   * 是否强制图标
+   *
+   * @default false
+   */
+  iconRequired?: boolean;
+  /**
+   * 是否强制标签
+   *
+   * @default false
+   *
+   */
+  tagRequired?: boolean;
+  /** 允许的标签 */
+  allowedTags?: string[];
+  /** 需要移除的字段 */
+  removeFields?: string[];
+}
+
 /**
  * 处理页面数据
  *
@@ -92,14 +112,14 @@ export const getPageJSON = (
   page: PageConfig,
   pagePath = "",
   diffFiles: string[] = [],
+  options: GetPageJSONOptions = {},
 ): PageData => {
-  if (!page) throw new Error(`${pagePath} doesn't contain anything`);
+  if (!page) throw new Error(`${pagePath} 不存在内容`);
 
-  if (!page.content)
-    throw new Error(`${pagePath}.content doesn't contain anything`);
+  if (!page.content) throw new Error(`${pagePath}.content 不存在内容`);
 
   if (!Array.isArray(page.content))
-    throw new Error(`${pagePath}.content should be an array`);
+    throw new Error(`${pagePath}.content 应为数组`);
 
   const { id = pagePath, author, cite, content, time, ...others } = page;
   const images: string[] = [];
@@ -159,13 +179,27 @@ export const getPageJSON = (
 
   checkIcon(page.icon, pagePath);
 
+  if (!page.aiIgnore) {
+    if (options.allowedTags?.length) {
+      page.tags?.forEach((tag) => {
+        if (!options.allowedTags?.includes(tag))
+          throw new Error(`${pagePath} page contains illegal tag ${tag}`);
+      });
+    }
+
+    if (options.tagRequired && !page.tags?.length) {
+      console.error(`${pagePath} 应包含标签`);
+    }
+  }
+
   checkKeys(
     pageData,
     {
       title: "string",
       id: "string",
-      // icon: "string",
-      icon: ["string", "undefined"],
+      tags: ["string[]", "undefined"],
+      aiIgnore: ["boolean", "undefined"],
+      icon: options.iconRequired ? "string" : ["string", "undefined"],
       desc: ["string", "undefined"],
       author: ["string", "undefined"],
       time: ["string", "undefined"],
@@ -181,6 +215,14 @@ export const getPageJSON = (
     },
     `${pagePath} page`,
   );
+
+  if (options.removeFields?.length) {
+    options.removeFields.forEach((field) => {
+      if (field in pageData) {
+        delete pageData[field as keyof PageData];
+      }
+    });
+  }
 
   return pageData;
 };

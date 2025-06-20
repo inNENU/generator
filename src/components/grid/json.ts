@@ -18,7 +18,7 @@ export const getGridJSON = (
           const path = resolvePath(gridItem.path);
 
           if (!existsSync(`./pages/${path}.yml`))
-            console.error(`Path ${path} not exists in ${location}`);
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
           gridItem.path = path;
         } else {
@@ -29,7 +29,7 @@ export const getGridJSON = (
           const path = resolvePath(`${paths.join("/")}/${gridItem.path}`);
 
           if (!existsSync(`./pages/${path}.yml`))
-            console.error(`Path ${path} not exists in ${location}`);
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
           gridItem.path = path;
         }

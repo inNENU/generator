@@ -40,7 +40,7 @@ export const getCardJSON = (
       const path = resolvePath(card.path);
 
       if (!existsSync(`./pages/${path}.yml`))
-        console.error(`Path ${path} not exists in ${location}`);
+        console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       card.path = path;
     } else {
@@ -51,7 +51,7 @@ export const getCardJSON = (
       const path = resolvePath(`${paths.join("/")}/${card.path}`);
 
       if (!existsSync(`./pages/${path}.yml`))
-        console.error(`Path ${path} not exists in ${location}`);
+        console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       card.path = path;
     }
