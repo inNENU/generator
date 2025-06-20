@@ -52,7 +52,7 @@
     "@types/ali-oss": "6.16.11",
     "@types/js-yaml": "4.0.9",
     "@types/node": "22.15.30",
-    "eslint": "9.28.0",
+    "eslint": "9.29.0",
     "eslint-config-mister-hope": "0.9.5",
     "husky": "9.1.7",
     "nano-staged": "0.8.0",
