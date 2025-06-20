@@ -30,7 +30,16 @@ export const getPageMarkdown = (page: PageConfig, pagePath = ""): string => {
   if (!page.content)
     throw new Error(`${pagePath}.content doesn't contain anything`);
 
-  const { title, icon, author, desc, cite, content: pageContents, time } = page;
+  const {
+    title,
+    icon,
+    author,
+    desc,
+    cite,
+    tags,
+    content: pageContents,
+    time,
+  } = page;
 
   let content = "";
 
@@ -61,6 +70,12 @@ author: ${getYamlValue(author)}
   if (time)
     content += `\
 date: ${time.toISOString()}
+`;
+
+  if (tags?.length)
+    content += `\
+tags:
+${tags.map((tag) => `  - ${getYamlValue(tag)}`).join("\n")}
 `;
 
   if (!cite)
