@@ -30,7 +30,7 @@ export interface GenerateKnowledgeOptions {
   mergeCrossDir?: boolean;
 }
 
-export const generateDirItems = (
+export const generateKnowledgeBaseDirItems = (
   items: YamlMapItem<string>[],
   destination: string,
   {
@@ -46,7 +46,7 @@ export const generateDirItems = (
     .map((item) => {
       // convert nested directory
       if (item.type === "dir") {
-        const content = generateDirItems(
+        const content = generateKnowledgeBaseDirItems(
           item.content,
           upath.join(destination, item.dirname),
         );
@@ -151,7 +151,7 @@ export const generateKnowledgeBase = (
   distFolder: string,
   options?: GenerateKnowledgeOptions,
 ): void => {
-  const generateDirItemsResult = generateDirItems(
+  const generateDirItemsResult = generateKnowledgeBaseDirItems(
     getYamlMap<PageConfig, string>(folder, getPageText),
     distFolder,
     options,

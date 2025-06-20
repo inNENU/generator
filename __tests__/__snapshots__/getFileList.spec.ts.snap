@@ -2,9 +2,9 @@
 
 exports[`getFileList 1`] = `
 [
-  "ai.ts",
   "config.ts",
   "index.ts",
+  "knowledge.ts",
   "markdown.ts",
   "page.ts",
   "text.ts",
