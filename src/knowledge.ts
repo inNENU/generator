@@ -7,7 +7,7 @@ import { getYamlMap } from "./helpers/index.js";
 import { getPageText } from "./text.js";
 import type { PageConfig } from "./typings.js";
 
-export interface GenerateOptions {
+export interface GenerateKnowledgeOptions {
   /**
    * 最小长度
    *
@@ -37,7 +37,7 @@ export const generateDirItems = (
     minLength = 100,
     maxLength = 1000,
     mergeCrossDir = false,
-  }: GenerateOptions = {},
+  }: GenerateKnowledgeOptions = {},
 ): string | void => {
   if (!existsSync(destination)) mkdirSync(destination, { recursive: true });
   const dirname = upath.basename(destination);
@@ -143,10 +143,13 @@ export const generateDirItems = (
   }
 };
 
+/**
+ * @deprecated
+ */
 export const generateKnowledgeBase = (
   folder: string,
   distFolder: string,
-  options?: GenerateOptions,
+  options?: GenerateKnowledgeOptions,
 ): void => {
   const generateDirItemsResult = generateDirItems(
     getYamlMap<PageConfig, string>(folder, getPageText),
