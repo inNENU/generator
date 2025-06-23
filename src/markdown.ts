@@ -84,7 +84,7 @@ ${tags.map((tag) => `  - ${getYamlValue(tag)}`).join("\n")}
         ? `\
 cite:
 ${cite.map((c) => `  - ${getYamlValue(c)}`).join("\n")}
-      `
+`
         : `\
 cite:
   - ${getYamlValue(cite)}
