@@ -86,7 +86,8 @@ cite:
 ${cite.map((c) => `  - ${getYamlValue(c)}`).join("\n")}
       `
         : `\
-cite: ${getYamlValue(cite)}
+cite:
+  - ${getYamlValue(cite)}
 `;
     else
       content += `\
