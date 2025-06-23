@@ -79,7 +79,16 @@ tags:
 ${tags.map((tag) => `  - ${getYamlValue(tag)}`).join("\n")}
 `;
 
-    if (!cite)
+    if (cite)
+      content += Array.isArray(cite)
+        ? `\
+cite:
+${cite.map((c) => `  - ${getYamlValue(c)}`).join("\n")}
+      `
+        : `\
+cite: ${getYamlValue(cite)}
+`;
+    else
       content += `\
 isOriginal: true
 `;
@@ -134,24 +143,6 @@ ${
     .map((line) => `> ${line}`)
     .join("\n>\n") ?? ""
 }\
-
-${
-  Array.isArray(cite)
-    ? cite.length > 1
-      ? `\
-> 相关链接:
->
-${cite.map((line, index) => `> [相关链接${index + 1}](${line})`).join("\n>\n")}
-`
-      : `\
-> [相关链接](${cite[0]})
-`
-    : cite
-      ? `\
-> [相关链接](${cite})
-`
-      : ""
-}
 `;
 
     return content;

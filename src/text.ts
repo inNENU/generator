@@ -1,5 +1,6 @@
 import { getActionMarkdown } from "./components/action/markdown.js";
 import { getTableMarkdown } from "./components/table/markdown.js";
+import { _config } from "./config.js";
 import type { PageConfig } from "./typings.js";
 import { getFileLink } from "./utils.js";
 
@@ -78,14 +79,16 @@ ${footer ? `> ${footer}\n\n` : ""}\
 
         return `\
 ${header ? `#### ${header}位置\n\n` : ""}\
-${points
-  .map(
-    ({ loc, name = "位置", detail = "详情" }) =>
-      `- ${name} - ${detail}: ${loc}`,
-  )
-  .join("\n")}
-
-`;
+![在腾讯地图中查看](https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
+          // maximum 4 points
+          .slice(0, 4)
+          .map(
+            ({ loc, name = "位置", detail = "详情" }) =>
+              `coord:${loc};title:${encodeURIComponent(
+                name,
+              )};addr:${encodeURIComponent(detail)}`,
+          )
+          .join("|")}&key=${_config.mapKey}&referer=inNENU)\n\n`;
       }
 
       case "img": {
@@ -166,7 +169,7 @@ ${name ? `- 名称: ${name}\n` : ""}\
 ${detail ? `- 详情: ${detail}\n` : ""}\
 ${desc ? `- 描述: ${desc}\n` : ""}\
 ${qq ? `- QQ: ${qq}\n` : ""}\
-${wxid ? `- 微信公众号 ID: ${wxid}\n` : ""}\
+${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
 ${site ? `- 网站: <${site}>\n` : ""}\
 ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
 
