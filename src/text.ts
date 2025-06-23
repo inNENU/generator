@@ -4,14 +4,15 @@ import type { PageConfig } from "./typings.js";
 import { getFileLink } from "./utils.js";
 
 export const getPageText = (page: PageConfig, pagePath = ""): string => {
-  if (!page) throw new Error(`${pagePath} doesn't contain anything`);
+  try {
+    if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
-  if (!page.content)
-    throw new Error(`${pagePath}.content doesn't contain anything`);
+    if (!page.content)
+      throw new Error(`${pagePath}.content doesn't contain anything`);
 
-  const { title, desc, cite, content } = page;
+    const { title, desc, cite, content } = page;
 
-  return `\
+    return `\
 # ${title}
 
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
@@ -192,4 +193,9 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
   })
   .join("")}
 `.trim();
+  } catch (error) {
+    throw new Error(
+      `${pagePath} page.content 处理失败: ${(error as Error).message}`,
+    );
+  }
 };

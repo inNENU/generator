@@ -30,103 +30,104 @@ export const getPageMarkdown = (page: PageConfig, pagePath = ""): string => {
   if (!page.content)
     throw new Error(`${pagePath}.content doesn't contain anything`);
 
-  const {
-    title,
-    icon,
-    author,
-    desc,
-    cite,
-    tags,
-    content: pageContents,
-    time,
-  } = page;
+  try {
+    const {
+      title,
+      icon,
+      author,
+      desc,
+      cite,
+      tags,
+      content: pageContents,
+      time,
+    } = page;
 
-  let content = "";
+    let content = "";
 
-  content += `\
+    content += `\
 ---
 title: ${getYamlValue(title)}
 `;
 
-  if (icon) {
-    const iconLink = getIconLink(icon);
+    if (icon) {
+      const iconLink = getIconLink(icon);
 
-    if (iconLink)
-      content += `\
+      if (iconLink)
+        content += `\
 icon: ${iconLink}
 `;
-  }
+    }
 
-  if (Array.isArray(author))
-    content += `\
+    if (Array.isArray(author))
+      content += `\
 author:
 ${author.map((author) => `  - ${getYamlValue(author)}`).join("\n")}
 `;
-  else if (author)
-    content += `\
+    else if (author)
+      content += `\
 author: ${getYamlValue(author)}
 `;
 
-  if (time)
-    content += `\
+    if (time)
+      content += `\
 date: ${time.toISOString()}
 `;
 
-  if (tags?.length)
-    content += `\
+    if (tags?.length)
+      content += `\
 tags:
 ${tags.map((tag) => `  - ${getYamlValue(tag)}`).join("\n")}
 `;
 
-  if (!cite)
-    content += `\
+    if (!cite)
+      content += `\
 isOriginal: true
 `;
 
-  content += `\
+    content += `\
 ---
 
 `;
 
-  pageContents.forEach((component) => {
-    const { env, tag } = component;
+    pageContents.forEach((component) => {
+      const { env, tag } = component;
 
-    if (!env || env.includes("web")) {
-      // 处理图片
-      if (tag === "img") content += getImgMarkdown(component);
-      // 设置标题
-      else if (tag === "title") content += getTitleMarkdown(component);
-      // 设置文字
-      else if (tag === "text" || tag === "p" || tag === "ul" || tag === "ol")
-        content += getTextMarkdown(component);
-      // 设置列表组件
-      else if (tag === "list" || tag === "functional-list")
-        content += getListMarkdown(component);
-      // 设置网格组件
-      else if (tag === "grid") content += getGridMarkdown(component);
-      // 检测文档
-      else if (tag === "doc") content += getDocMarkdown(component);
-      // 设置电话
-      else if (tag === "phone") content += getPhoneMarkdown(component);
-      // 检测音频
-      else if (tag === "card") content += getCardMarkdown(component);
-      // 检测音频
-      else if (tag === "audio") content += getAudioMarkdown(component);
-      // 检测视频
-      else if (tag === "video") content += getVideoMarkdown(component);
-      // 检测动作
-      else if (tag === "action") content += getActionMarkdown(component);
-      // 检测账号
-      else if (tag === "account") content += getAccountMarkdown(component);
-      // 检测地点
-      else if (tag === "location") content += getLocationMarkdown(component);
-      // 表格
-      else if (tag === "table") content += getTableMarkdown(component);
-    }
-  });
+      if (!env || env.includes("web")) {
+        // 处理图片
+        if (tag === "img") content += getImgMarkdown(component);
+        // 设置标题
+        else if (tag === "title") content += getTitleMarkdown(component);
+        // 设置文字
+        else if (tag === "text" || tag === "p" || tag === "ul" || tag === "ol")
+          content += getTextMarkdown(component);
+        // 设置列表组件
+        else if (tag === "list" || tag === "functional-list")
+          content += getListMarkdown(component);
+        // 设置网格组件
+        else if (tag === "grid") content += getGridMarkdown(component);
+        // 检测文档
+        else if (tag === "doc") content += getDocMarkdown(component);
+        // 设置电话
+        else if (tag === "phone") content += getPhoneMarkdown(component);
+        // 检测音频
+        else if (tag === "card") content += getCardMarkdown(component);
+        // 检测音频
+        else if (tag === "audio") content += getAudioMarkdown(component);
+        // 检测视频
+        else if (tag === "video") content += getVideoMarkdown(component);
+        // 检测动作
+        else if (tag === "action") content += getActionMarkdown(component);
+        // 检测账号
+        else if (tag === "account") content += getAccountMarkdown(component);
+        // 检测地点
+        else if (tag === "location") content += getLocationMarkdown(component);
+        // 表格
+        else if (tag === "table") content += getTableMarkdown(component);
+      }
+    });
 
-  if (desc ?? cite)
-    content += `\
+    if (desc ?? cite)
+      content += `\
 ${
   desc
     ?.split("\n")
@@ -153,5 +154,10 @@ ${cite.map((line, index) => `> [相关链接${index + 1}](${line})`).join("\n>\n
 }
 `;
 
-  return content;
+    return content;
+  } catch (error) {
+    throw new Error(
+      `Error generating markdown for ${pagePath}: ${(error as Error).message}`,
+    );
+  }
 };
