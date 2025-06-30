@@ -1,12 +1,12 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, imgSchema } from "../common.js";
+import { envListSchema, iconSchema } from "../common.js";
 
 const baseGridItemSchema = zod.object({
   /** 网格文字 */
   text: zod.string().min(1, "网格文字不能为空"),
   /** 网格图标的在线路径或本地路径 */
-  icon: imgSchema,
+  icon: iconSchema,
   /** 环境列表 */
   env: envListSchema,
 });

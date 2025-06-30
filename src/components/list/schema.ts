@@ -1,12 +1,12 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, imgSchema } from "../common.js";
+import { envListSchema, iconSchema } from "../common.js";
 
 const baseListItemSchema = zod.object({
   /** 列表单元的显示文字 */
   text: zod.string().min(1, "列表文字不能为空"),
   /** 列表图标的本地路径或在线网址 */
-  icon: imgSchema.optional(),
+  icon: iconSchema.optional(),
   /** 列表内容的描述 */
   desc: zod.string().optional(),
   /**
@@ -89,7 +89,7 @@ const pickerListItemSchema = baseListItemSchema.extend({
   /** 选择器当前值的索引 */
   current: zod.number().min(0, "当前值索引不能为负数").optional(),
   /** 选择器所控变量在 storage 中的 key 值 */
-  key: zod.string().optional(),
+  key: zod.string().min(1, "选择器 key 不能为空"),
   /** 选择器对应的函数名称 */
   handler: zod.string().optional(),
   /** 是否为单列选择器 */
