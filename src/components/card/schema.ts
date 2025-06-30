@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, iconSchema, imgSchema } from "../common.js";
+import { envListSchema, iconSchema, imgSchema } from "../../schema/common.js";
 
 const baseCardSchema = zod.object({
   tag: zod.literal("card"),
@@ -68,6 +68,6 @@ export const checkCard = (card: CardComponentOptions, location = ""): void => {
   try {
     cardSchema.parse(card);
   } catch (error) {
-    console.error(`Invalid card data at ${location}:`, error);
+    console.error(`${location} 发现非法 card 数据:`, error);
   }
 };

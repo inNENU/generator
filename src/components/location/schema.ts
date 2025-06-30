@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, locSchema } from "../common.js";
+import { envListSchema, locSchema } from "../../schema/common.js";
 
 const pointSchema = zod.strictObject({
   /** 位置信息 */
@@ -39,6 +39,6 @@ export const checkLocation = (
   try {
     locationSchema.parse(location);
   } catch (error) {
-    console.error(`Invalid location data at ${locationStr}:`, error);
+    console.error(`非法 location 数据在 ${locationStr}:`, error);
   }
 };

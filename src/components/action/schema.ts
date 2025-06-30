@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema } from "../common.js";
+import { envListSchema } from "../../schema/common.js";
 
 export const actionSchema = zod.strictObject({
   tag: zod.literal("action"),
@@ -21,6 +21,6 @@ export const checkAction = (
   try {
     actionSchema.parse(action);
   } catch (error) {
-    console.error(`Invalid action data at ${location}:`, error);
+    console.error(`${location} 发现非法 action 数据:`, error);
   }
 };

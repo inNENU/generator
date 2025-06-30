@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, fileSchema, imgSchema } from "../common.js";
+import { envListSchema, fileSchema, imgSchema } from "../../schema/common.js";
 
 const danmuSchema = zod.strictObject({
   text: zod.string().min(1, "弹幕文字不能为空"),
@@ -64,6 +64,6 @@ export const checkVideo = (
   try {
     videoSchema.parse(video);
   } catch (error) {
-    console.error(`Invalid video data at ${location}:`, error);
+    console.error(`${location} 发现非法 video 数据:`, error);
   }
 };

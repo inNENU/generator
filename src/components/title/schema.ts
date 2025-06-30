@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, styleSchema } from "../common.js";
+import { envListSchema, styleSchema } from "../../schema/common.js";
 
 export const titleSchema = zod.strictObject({
   tag: zod.literal("title"),
@@ -27,6 +27,6 @@ export const checkTitle = (
   try {
     titleSchema.parse(title);
   } catch (error) {
-    console.error(`Invalid title data at ${location}:`, error);
+    console.error(`${location} 发现非法 title 数据:`, error);
   }
 };

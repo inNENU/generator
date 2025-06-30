@@ -1,8 +1,6 @@
 import { existsSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
-import { assertType } from "@mr-hope/assert-type";
-
 import { _config } from "./config.js";
 
 export const camelCase2kebabCase = (str: string): string => {
@@ -82,18 +80,6 @@ export const resolvePath = (path: string): string =>
       path.replace(/\/\//u, "/").replace(/^\//u, "").replace(/\/$/u, "/index"),
     ),
   ).replaceAll(sep, "/");
-
-/** 处理样式 */
-export const resolveStyle = (styleObj: Record<string, string>): string => {
-  assertType(styleObj, "Record<string,string>", "style");
-
-  let result = "";
-
-  for (const key in styleObj)
-    result += `${camelCase2kebabCase(key)}:${styleObj[key]};`;
-
-  return result;
-};
 
 export const getAssetIconLink = (name: string): string =>
   `/assets/icon/${name}.svg`;

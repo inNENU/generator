@@ -14,5 +14,5 @@ export type * from "./table/schema.js";
 export type * from "./text/schema.js";
 export type * from "./title/schema.js";
 export type * from "./video/schema.js";
-export * from "./common.js";
+export * from "../schema/common.js";
 export * from "./page.js";

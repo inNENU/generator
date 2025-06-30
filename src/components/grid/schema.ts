@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, iconSchema } from "../common.js";
+import { envListSchema, iconSchema } from "../../schema/common.js";
 
 const baseGridItemSchema = zod.object({
   /** 网格文字 */
@@ -70,6 +70,6 @@ export const checkGrid = (grid: GridComponentOptions, location = ""): void => {
   try {
     gridSchema.parse(grid);
   } catch (error) {
-    console.error(`Invalid grid data at ${location}:`, error);
+    console.error(`${location} 发现非法 grid 数据:`, error);
   }
 };

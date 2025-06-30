@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema } from "../common.js";
+import { envListSchema } from "../../schema/common.js";
 
 export const phoneNumberSchema = zod.union(
   [
@@ -99,6 +99,6 @@ export const checkPhone = (
   try {
     phoneSchema.parse(phone);
   } catch (error) {
-    console.error(`Invalid phone data at ${location}:`, error);
+    console.error(`${location} 发现非法 phone 数据:`, error);
   }
 };

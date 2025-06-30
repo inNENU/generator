@@ -2,13 +2,17 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import upath from "upath";
 
-import type {
-  QQAccountsConfig,
-  WechatAccountConfig,
-  WechatAccountsConfig,
-} from "./typings.js";
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
-import { checkFile } from "../utils.js";
+import type {
+  QQAccounts,
+  WechatAccountData,
+  WechatAccounts,
+} from "../schema/index.js";
+import {
+  checkQQAccounts,
+  checkWechatAccountData,
+  checkWechatAccounts,
+} from "../schema/index.js";
 
 const decodeText = (text: string): string => {
   const encodedText = text
@@ -36,25 +40,29 @@ const decodeText = (text: string): string => {
       : encodedText;
 };
 
-export const getAccountListJSON = (
-  data: WechatAccountsConfig | QQAccountsConfig,
+export const getQQAccounts = (
+  data: QQAccounts,
   location: string,
-): WechatAccountsConfig | QQAccountsConfig => {
-  data.forEach(({ account }) => {
-    account.forEach((item) => {
-      checkFile(item.logo, location);
-      if ("qrcode" in item) checkFile(item.qrcode, location);
-    });
-  });
+): QQAccounts => {
+  checkQQAccounts(data, location);
 
   return data;
 };
 
-export const getWechatJSON = (
-  data: WechatAccountConfig,
+export const getWechatAccounts = (
+  data: WechatAccounts,
   location: string,
-): WechatAccountConfig => {
-  checkFile(data.logo, location);
+): WechatAccounts => {
+  checkWechatAccounts(data, location);
+
+  return data;
+};
+
+export const getWechatAccountDataJSON = (
+  data: WechatAccountData,
+  location: string,
+): WechatAccountData => {
+  checkWechatAccountData(data, location);
 
   return data;
 };
@@ -65,9 +73,7 @@ export const updateAccountFile = (
 ): Promise<void> => {
   const filePath = upath.join(folder, path);
 
-  let data = readFileSync(filePath, {
-    encoding: "utf-8",
-  });
+  let data = readFileSync(filePath, "utf-8");
 
   const results = data
     .split("\n")
@@ -122,9 +128,7 @@ export const updateAccountFile = (
     ),
     3,
   ).then(() => {
-    writeFileSync(filePath, data, {
-      encoding: "utf-8",
-    });
+    writeFileSync(filePath, data, "utf-8");
   });
 };
 

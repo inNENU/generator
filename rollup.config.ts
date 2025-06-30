@@ -11,8 +11,9 @@ export default [
     },
     plugins: [
       esbuild({
+        charset: "utf8",
         minify: true,
-        target: "node18",
+        target: "node20",
       }),
     ],
     external: [

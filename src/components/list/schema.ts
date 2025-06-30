@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, iconSchema } from "../common.js";
+import { envListSchema, iconSchema } from "../../schema/common.js";
 
 const baseListItemSchema = zod.object({
   /** 列表单元的显示文字 */
@@ -169,7 +169,7 @@ export const checkList = (list: ListComponentOptions, location = ""): void => {
   try {
     listSchema.parse(list);
   } catch (error) {
-    console.error(`Invalid list data at ${location}:`, error);
+    console.error(`${location} 发现非法 list 数据:`, error);
   }
 };
 
@@ -180,6 +180,6 @@ export const checkFunctionalList = (
   try {
     functionalListSchema.parse(functionalList);
   } catch (error) {
-    console.error(`Invalid functional list data at ${location}:`, error);
+    console.error(`${location} 发现非法 functional list 数据:`, error);
   }
 };

@@ -5,7 +5,7 @@ import {
   imageModeSchema,
   imgSchema,
   styleSchema,
-} from "../common.js";
+} from "../../schema/common.js";
 
 export const carouselSchema = zod.object({
   tag: zod.literal("carousel"),
@@ -92,6 +92,6 @@ export const checkCarousel = (
   try {
     carouselSchema.parse(carousel);
   } catch (error) {
-    console.error(`Invalid carousel data at ${location}:`, error);
+    console.error(`${location} 发现非法 carousel 数据:`, error);
   }
 };

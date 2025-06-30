@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, fileSchema } from "../common.js";
+import { envListSchema, fileSchema } from "../../schema/common.js";
 
 export const docSchema = zod.strictObject({
   tag: zod.literal("doc"),
@@ -31,6 +31,6 @@ export const checkDoc = (doc: DocComponentOptions, location = ""): void => {
   try {
     docSchema.parse(doc);
   } catch (error) {
-    console.error(`Invalid doc data at ${location}:`, error);
+    console.error(`${location} 发现非法 doc 数据:`, error);
   }
 };

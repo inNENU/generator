@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, styleSchema } from "../common.js";
+import { envListSchema, styleSchema } from "../../schema/common.js";
 
 const baseTextComponentSchema = zod.strictObject({
   /** 文字标签 */
@@ -95,6 +95,6 @@ export const checkText = (text: TextComponentOptions, location = ""): void => {
   try {
     textComponentSchema.parse(text);
   } catch (error) {
-    console.error(`Invalid text data at ${location}:`, error);
+    console.error(`${location} 发现非法 text 数据:`, error);
   }
 };

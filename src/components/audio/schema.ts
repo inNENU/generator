@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, fileSchema } from "../common.js";
+import { envListSchema, fileSchema } from "../../schema/common.js";
 
 export const audioSchema = zod.strictObject({
   tag: zod.literal("audio"),
@@ -37,6 +37,6 @@ export const checkAudio = (
   try {
     audioSchema.parse(audio);
   } catch (error) {
-    console.error(`Invalid audio data at ${location}:`, error);
+    console.error(`${location} 发现非法 audio 数据:`, error);
   }
 };

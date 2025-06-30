@@ -1,6 +1,10 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, internalImgSchema, locSchema } from "../common.js";
+import {
+  envListSchema,
+  internalImgSchema,
+  locSchema,
+} from "../../schema/common.js";
 
 export const qqSchema = zod
   .number()
@@ -59,6 +63,6 @@ export const checkAccount = (
   try {
     accountSchema.parse(account);
   } catch (error) {
-    console.error(`Invalid account data at ${location}:`, error);
+    console.error(`${location} 发现非法 account 数据:`, error);
   }
 };

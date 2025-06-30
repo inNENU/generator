@@ -1,6 +1,10 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, imageModeSchema, imgSchema } from "../common.js";
+import {
+  envListSchema,
+  imageModeSchema,
+  imgSchema,
+} from "../../schema/common.js";
 
 export const imageSchema = zod.strictObject({
   tag: zod.literal("img"),
@@ -47,6 +51,6 @@ export const checkImage = (
   try {
     imageSchema.parse(image);
   } catch (error) {
-    console.error(`Invalid image data at ${location}:`, error);
+    console.error(`${location} 发现非法 image 数据:`, error);
   }
 };

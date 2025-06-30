@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema } from "../common.js";
+import { envListSchema } from "../../schema/common.js";
 
 export const tableSchema = zod.strictObject({
   /** 文字标签 */
@@ -24,6 +24,6 @@ export const checkTable = (
   try {
     tableSchema.parse(table);
   } catch (error) {
-    console.error(`Invalid table data at ${location}:`, error);
+    console.error(`${location} 发现非法 table 数据:`, error);
   }
 };

@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema } from "../common.js";
+import { envListSchema } from "../../schema/common.js";
 
 export const footerSchema = zod.strictObject({
   tag: zod.literal("footer"),
@@ -25,6 +25,6 @@ export const checkFooter = (
   try {
     footerSchema.parse(footer);
   } catch (error) {
-    console.error(`Invalid footer data at ${location}:`, error);
+    console.error(`${location} 发现非法 footer 数据:`, error);
   }
 };
