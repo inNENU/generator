@@ -97,3 +97,18 @@ export const resolveStyle = (styleObj: Record<string, string>): string => {
 
 export const getAssetIconLink = (name: string): string =>
   `/assets/icon/${name}.svg`;
+
+export const convertStyle = (
+  style?: string | Record<string, string>,
+): string | null => {
+  if (!style) return null;
+
+  if (typeof style === "string") return style;
+
+  let result = "";
+
+  for (const key in style)
+    result += `${camelCase2kebabCase(key)}:${style[key]};`;
+
+  return result;
+};

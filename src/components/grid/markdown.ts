@@ -1,12 +1,15 @@
-import type { GridComponentOptions } from "./typings.js";
+import type { GridComponentOptions } from "./schema.js";
+import { checkGrid } from "./schema.js";
 import { getIconLink, getMarkdownPath } from "../../utils.js";
 
-export const getGridMarkdown = ({
-  header,
-  footer,
-  items = [],
-}: GridComponentOptions): string =>
-  `\
+export const getGridMarkdown = (grid: GridComponentOptions): string => {
+  if (grid.env && !grid.env.includes("web")) return "";
+
+  checkGrid(grid);
+
+  const { header, footer, items = [] } = grid;
+
+  return `\
 ${
   header
     ? `\
@@ -19,7 +22,7 @@ ${
 
 ${items
   .map((item) => {
-    if ("env" in item && !item.env.includes("web")) return null;
+    if ("env" in item && item.env && !item.env.includes("web")) return null;
     if ("appId" in item) return null;
 
     const resolvedIcon = getIconLink(item.icon);
@@ -37,7 +40,7 @@ ${item.text.replace(/\n/g, "<br />")}
 
     return `\
 ${
-  "url" in item && /^https?:\/\//.exec(item.url)
+  "url" in item && item.url && /^https?:\/\//.exec(item.url)
     ? `<a class="innenu-grid-item" href="${item.url}" target="_blank">
 ${gridItemContent}
 </a>`
@@ -68,3 +71,4 @@ ${footer}
 }\
 
 `;
+};

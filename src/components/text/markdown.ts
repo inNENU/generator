@@ -1,4 +1,5 @@
-import type { TextComponentOptions } from "./typings.js";
+import type { TextComponentOptions } from "./schema.js";
+import { checkText } from "./schema.js";
 import {
   getMarkdownPath,
   indentMarkdownListItem,
@@ -6,6 +7,10 @@ import {
 } from "../../utils.js";
 
 export const getTextMarkdown = (text: TextComponentOptions): string => {
+  if (text.env && !text.env.includes("web")) return "";
+
+  checkText(text);
+
   // 处理样式
   if (typeof text.style === "object") text.style = resolveStyle(text.style);
 
@@ -47,7 +52,7 @@ ${
 ${
   "url" in text && /^https?:\/\//.test(text.url)
     ? `- [查看详情](${text.url})\n\n`
-    : "path" in text && !("appId" in text)
+    : "path" in text && text.path && !("appId" in text)
       ? `- [查看详情](${getMarkdownPath(text.path)})\n\n`
       : ""
 }\

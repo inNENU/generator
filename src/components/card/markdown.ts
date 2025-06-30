@@ -1,7 +1,12 @@
-import type { CardComponentOptions } from "./typings.js";
+import type { CardComponentOptions } from "./schema.js";
+import { checkCard } from "./schema.js";
 import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getCardMarkdown = (card: CardComponentOptions): string => {
+  if (card.env && !card.env.includes("web")) return "";
+
+  checkCard(card);
+
   const logo = getIconLink(card.logo);
   const cover = card.cover ? getFileLink(card.cover) : null;
 
@@ -45,7 +50,7 @@ ${
 </div>
 `;
 
-  if ("url" in card && /^https?:\/\//.exec(card.url))
+  if ("url" in card && card.url && /^https?:\/\//.exec(card.url))
     return `\
 <a class="innenu-card" href="${card.url}" target="_blank">
 ${cardChildren}

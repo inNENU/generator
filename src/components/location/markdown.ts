@@ -1,11 +1,17 @@
-import type { LocationComponentOptions } from "./typings.js";
+import type { LocationComponentOptions } from "./schema.js";
+import { checkLocation } from "./schema.js";
 import { _config } from "../../config.js";
 
-export const getLocationMarkdown = ({
-  header,
-  points = [],
-}: LocationComponentOptions): string =>
-  `\
+export const getLocationMarkdown = (
+  location: LocationComponentOptions,
+): string => {
+  if (location.env && !location.env.includes("web")) return "";
+
+  checkLocation(location);
+
+  const { header, points = [] } = location;
+
+  return `\
 ${
   header
     ? `\
@@ -28,3 +34,4 @@ ${
     )}&key=${_config.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
 
 `;
+};

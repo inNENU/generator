@@ -1,44 +1,17 @@
-import { checkKeys } from "@mr-hope/assert-type";
-
-import type { PhoneComponentOptions } from "./typings.js";
+import type { PhoneComponentOptions } from "./schema.js";
+import { checkPhone } from "./schema.js";
 
 export const getPhoneJSON = (
   phone: PhoneComponentOptions,
   location = "",
 ): PhoneComponentOptions => {
+  checkPhone(phone, location);
+
   for (const key in phone)
     if (typeof phone[key as keyof PhoneComponentOptions] === "number")
       // @ts-expect-error: Type does not fit
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       phone[key] = phone[key].toString();
-
-  checkKeys(
-    phone,
-    {
-      tag: "string",
-      num: "string",
-      fName: "string",
-      header: ["string", "undefined"],
-      lName: ["string", "undefined"],
-      org: ["string", "undefined"],
-      remark: ["string", "undefined"],
-      workNum: ["string", "undefined"],
-      nick: ["string", "undefined"],
-      site: ["string", "undefined"],
-      wechat: ["string", "undefined"],
-      province: ["string", "undefined"],
-      city: ["string", "undefined"],
-      street: ["string", "undefined"],
-      postCode: ["string", "undefined"],
-      title: ["string", "undefined"],
-      hostNum: ["string", "undefined"],
-      mail: ["string", "undefined"],
-      homeNum: ["string", "undefined"],
-      avatar: ["string", "undefined"],
-      env: ["string[]", "undefined"],
-    },
-    location,
-  );
 
   return phone;
 };

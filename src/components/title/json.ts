@@ -1,25 +1,20 @@
-import { checkKeys } from "@mr-hope/assert-type";
-
-import type { TitleComponentOptions } from "./typings.js";
-import { resolveStyle } from "../../utils.js";
+import type { TitleComponentOptions } from "./schema.js";
+import { checkTitle } from "./schema.js";
+import { convertStyle } from "../../utils.js";
 
 export const getTitleJSON = (
   title: TitleComponentOptions,
   location = "",
 ): TitleComponentOptions => {
-  // 处理样式
-  if (typeof title.style === "object") title.style = resolveStyle(title.style);
+  checkTitle(title, location);
 
-  checkKeys(
-    title,
-    {
-      tag: "string",
-      text: "string",
-      style: ["string", "undefined"],
-      env: ["string[]", "undefined"],
-    },
-    location,
-  );
+  const { style, ...rest } = title;
+  const convertedStyle = convertStyle(style);
 
-  return title;
+  // 1. 首先执行 schema 验证
+
+  return {
+    ...rest,
+    ...(convertedStyle ? { style: convertedStyle } : {}),
+  };
 };

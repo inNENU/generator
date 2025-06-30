@@ -1,6 +1,6 @@
 import * as zod from "zod/v4";
 
-import { envListSchema, internalImgSchema } from "../common.js";
+import { envListSchema, internalImgSchema, locSchema } from "../common.js";
 
 export const qqSchema = zod
   .number()
@@ -14,7 +14,7 @@ export const wxidSchema = zod
   .string()
   .regex(/^[a-zA-Z][-_a-zA-Z0-9]{5,19}$/, "非法的微信公众号 ID");
 
-export const accountSchema = zod.object({
+export const accountSchema = zod.strictObject({
   tag: zod.literal("account"),
   /** 主体名称 */
   name: zod.string(),
@@ -35,7 +35,7 @@ export const accountSchema = zod.object({
   /** 账户 ID */
   account: zod.string().optional(),
   /** 位置  */
-  loc: zod.string().optional(),
+  loc: locSchema.optional(),
   /** 邮箱地址 */
   mail: zod.email().optional(),
   /** 网站地址 */

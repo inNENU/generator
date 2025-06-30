@@ -1,15 +1,16 @@
 import { existsSync } from "node:fs";
 
-import { checkKeys } from "@mr-hope/assert-type";
-
-import type { GridComponentOptions } from "./typings.js";
-import { checkIcon, resolvePath } from "../../utils.js";
+import type { GridComponentOptions } from "./schema.js";
+import { checkGrid } from "./schema.js";
+import { resolvePath } from "../../utils.js";
 
 export const getGridJSON = (
   grid: GridComponentOptions,
   pageId: string,
   location = "",
 ): GridComponentOptions => {
+  checkGrid(grid, location);
+
   if (Array.isArray(grid.items))
     grid.items.forEach((gridItem) => {
       // 处理路径
@@ -33,40 +34,7 @@ export const getGridJSON = (
 
           gridItem.path = path;
         }
-
-      checkIcon(gridItem.icon, location);
-
-      checkKeys(
-        gridItem,
-        {
-          text: "string",
-          icon: "string",
-          base64Icon: ["string", "undefined"],
-          path: ["string", "undefined"],
-          url: ["string", "undefined"],
-          appId: ["string", "undefined"],
-          extraData: ["Record<string, any>", "undefined"],
-          versionType: {
-            type: ["string", "undefined"],
-            enum: ["develop", "trial", "release", undefined],
-          },
-          env: ["string[]", "undefined"],
-        },
-        `${location}.content`,
-      );
     });
-
-  checkKeys(
-    grid,
-    {
-      tag: "string",
-      header: { type: ["string", "undefined"], additional: [false] },
-      items: "array",
-      footer: ["string", "undefined"],
-      env: ["string[]", "undefined"],
-    },
-    location,
-  );
 
   return grid;
 };

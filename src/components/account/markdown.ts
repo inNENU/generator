@@ -1,9 +1,14 @@
 import type { AccountComponentOptions } from "./schema.js";
+import { checkAccount } from "./schema.js";
 import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getAccountMarkdown = (
   account: AccountComponentOptions,
 ): string => {
+  if (account.env && !account.env.includes("web")) return "";
+
+  checkAccount(account);
+
   // `$` alias resolve and file check
   const logo = getFileLink(account.logo);
   const qqcode = getFileLink(account.qqcode);

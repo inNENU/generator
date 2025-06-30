@@ -1,22 +1,22 @@
 import type { AccountComponentOptions } from "./account/schema.js";
-import type { ActionComponentOptions } from "./action/typings.js";
-import type { AudioComponentOptions } from "./audio/typings.js";
-import type { CardComponentOptions } from "./card/typings.js";
-import type { CarouselComponentOptions } from "./carousel/typings.js";
-import type { DocComponentOptions } from "./doc/typings.js";
-import type { FooterComponentOptions } from "./footer/typings.js";
-import type { GridComponentOptions } from "./grid/typings.js";
-import type { ImageComponentOptions } from "./img/typings.js";
+import type { ActionComponentOptions } from "./action/schema.js";
+import type { AudioComponentOptions } from "./audio/schema.js";
+import type { CardComponentOptions } from "./card/schema.js";
+import type { CarouselComponentOptions } from "./carousel/schema.js";
+import type { DocComponentOptions } from "./doc/schema.js";
+import type { FooterComponentOptions } from "./footer/schema.js";
+import type { GridComponentOptions } from "./grid/schema.js";
+import type { ImageComponentOptions } from "./img/schema.js";
 import type {
   FunctionalListComponentOptions,
   ListComponentOptions,
-} from "./list/typings.js";
-import type { LocationComponentOptions } from "./location/typings.js";
-import type { PhoneComponentOptions } from "./phone/typings.js";
-import type { TableComponentOptions } from "./table/typings.js";
-import type { TextComponentOptions } from "./text/typings.js";
-import type { TitleComponentOptions } from "./title/typings.js";
-import type { VideoComponentOptions } from "./video/typings.js";
+} from "./list/schema.js";
+import type { LocationComponentOptions } from "./location/schema.js";
+import type { PhoneComponentOptions } from "./phone/schema.js";
+import type { TableComponentOptions } from "./table/schema.js";
+import type { TextComponentOptions } from "./text/schema.js";
+import type { TitleComponentOptions } from "./title/schema.js";
+import type { VideoComponentOptions } from "./video/schema.js";
 
 export type PageTag =
   | "account"

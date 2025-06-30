@@ -46,21 +46,21 @@ export const docExtensionSchema = zod.enum([
 
 export const internalImgSchema = zod
   .templateLiteral(["$img/", zod.string(), imageExtensionSchema])
-  .refine((link) => existsSync("./" + link.substring(1).split("?")[0]), {
+  .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
   });
 
 export const internalDocsSchema = zod
   .templateLiteral(["$file/", zod.string(), docExtensionSchema])
-  .refine((link) => existsSync("./" + link.substring(1).split("?")[0]), {
+  .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
   });
 
 export const internalFileSchema = zod
   .templateLiteral(["$file/", zod.string()])
-  .refine((link) => existsSync("./" + link.substring(1).split("?")[0]), {
+  .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
   });
@@ -69,6 +69,16 @@ export const httpsLinkSchema = zod.url({ protocol: /^https$/ });
 
 export const imgSchema = zod.union([internalImgSchema, httpsLinkSchema]);
 export const fileSchema = zod.union([internalFileSchema, httpsLinkSchema]);
+
+export const internalIconSchema = zod
+  .string()
+  .regex(/^[a-z][a-z-]*[a-z]$/, "图标名称只能包含小写字母和连字符")
+  .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
+    error: "图标文件不存在",
+    abort: true,
+  });
+
+export const iconSchema = zod.union([internalIconSchema, imgSchema]);
 
 export const locSchema = zod.templateLiteral([
   zod
@@ -87,6 +97,10 @@ export const locSchema = zod.templateLiteral([
     )
     .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
 ]);
+
+export const styleSchema = zod
+  .union([zod.string(), zod.record(zod.string(), zod.string())])
+  .optional();
 
 export type Env = zod.infer<typeof envSchema>;
 

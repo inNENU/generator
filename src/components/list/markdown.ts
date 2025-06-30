@@ -1,7 +1,7 @@
 import type {
   FunctionalListComponentOptions,
   ListComponentOptions,
-} from "./typings.js";
+} from "./schema.js";
 import { getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getListMarkdown = ({
@@ -22,7 +22,7 @@ ${
 
 ${items
   .map((item) => {
-    if ("env" in item && !item.env.includes("web")) return null;
+    if (item.env && !item.env.includes("web")) return null;
     if ("appId" in item) return null;
 
     const { icon, text, desc } = item;
@@ -53,11 +53,11 @@ ${desc}
 
     return `\
 ${
-  "url" in item && /^https?:\/\//.exec(item.url)
+  "url" in item && item.url && /^https?:\/\//.exec(item.url)
     ? `<a class="innenu-list-item" href="${item.url}" target="_blank">
 ${listItemContent}
 </a>`
-    : "path" in item
+    : "path" in item && item.path
       ? `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
 ${listItemContent}
 </RouteLink>`

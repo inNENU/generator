@@ -1,11 +1,17 @@
-import type { DocComponentOptions } from "./typings.js";
+import type { DocComponentOptions } from "./schema.js";
+import { checkDoc } from "./schema.js";
 import { getDocIcon } from "./utils.js";
 import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getDocMarkdown = (doc: DocComponentOptions): string => {
-  doc.url = getFileLink(doc.url);
+  if (doc.env && !doc.env.includes("web")) return "";
 
-  const { name, url } = doc;
+  checkDoc(doc);
+
+  const processedUrl = getFileLink(doc.url);
+  const url = processedUrl ?? doc.url;
+
+  const { name } = doc;
 
   const docIcon = `<img class="innenu-doc-icon" src="${getAssetIconLink(
     getDocIcon(url),

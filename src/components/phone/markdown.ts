@@ -1,25 +1,32 @@
-import type { PhoneComponentOptions } from "./typings.js";
+import type { PhoneComponentOptions } from "./schema.js";
+import { checkPhone } from "./schema.js";
 
-export const getPhoneMarkdown = ({
-  header = "",
-  fName,
-  lName = "",
-  num,
-  workNum,
-  homeNum,
-  hostNum,
-  nick,
-  org,
-  title,
-  remark,
-  province = "",
-  city = "",
-  street = "",
-  postCode,
-  mail,
-  site,
-}: PhoneComponentOptions): string =>
-  `\
+export const getPhoneMarkdown = (phone: PhoneComponentOptions): string => {
+  if (phone.env && !phone.env.includes("web")) return "";
+
+  checkPhone(phone);
+
+  const {
+    header = "",
+    fName,
+    lName = "",
+    num,
+    workNum,
+    homeNum,
+    hostNum,
+    nick,
+    org,
+    title,
+    remark,
+    province = "",
+    city = "",
+    street = "",
+    postCode,
+    mail,
+    site,
+  } = phone;
+
+  return `\
 ::: info ${header || `${lName}${fName} 联系方式`}
 
 - 姓名: ${lName}${fName}
@@ -39,3 +46,4 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
 :::
 
 `;
+};

@@ -1,22 +1,17 @@
 import { existsSync } from "node:fs";
 
-import { checkKeys } from "@mr-hope/assert-type";
-
-import type { TextComponentOptions } from "./typings.js";
-import { resolvePath, resolveStyle } from "../../utils.js";
+import type { TextComponentData, TextComponentOptions } from "./schema.js";
+import { checkText } from "./schema.js";
+import { convertStyle, resolvePath } from "../../utils.js";
 
 export const getTextJSON = (
   text: TextComponentOptions,
   pageId: string,
   location = "",
-): TextComponentOptions => {
-  // 处理样式
-  if (typeof text.style === "object") text.style = resolveStyle(text.style);
+): TextComponentData => {
+  checkText(text, location);
 
-  // 处理段落
-  if (typeof text.text === "string") text.text = [text.text];
-
-  if ("path" in text && !("appId" in text)) {
+  if ("path" in text && text.path && !("appId" in text)) {
     // @ts-expect-error: checking for invalid types
     if (text.type === "none" || !text.type)
       console.warn(`${location}: A type must be set when path is set`);
@@ -42,27 +37,12 @@ export const getTextJSON = (
     }
   }
 
-  checkKeys(
-    text,
-    {
-      tag: "string",
-      header: ["string", "boolean", "undefined"],
-      type: {
-        type: ["string", "undefined"],
-        enum: ["info", "tip", "warning", "danger", "note", "none"],
-      },
-      text: ["string[]", "undefined"],
-      style: ["string", "undefined"],
-      align: {
-        type: ["string", "undefined"],
-        enum: ["left", "right", "center", "justify"],
-      },
-      path: ["string", "undefined"],
-      url: ["string", "undefined"],
-      env: ["string[]", "undefined"],
-    },
-    location,
-  );
+  const { style, text: textContent, ...data } = text;
+  const convertedStyle = convertStyle(style);
 
-  return text;
+  return {
+    ...data,
+    text: typeof textContent === "string" ? [textContent] : (textContent ?? []),
+    ...(convertedStyle ? { style: convertedStyle } : {}),
+  };
 };

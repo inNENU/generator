@@ -1,27 +1,11 @@
-import { assertType, checkKeys } from "@mr-hope/assert-type";
-
-import type { TableComponentOptions } from "./typings.js";
+import type { TableComponentOptions } from "./schema.js";
+import { checkTable } from "./schema.js";
 
 export const getTableJSON = (
   table: TableComponentOptions,
   location = "",
 ): TableComponentOptions => {
-  checkKeys(
-    table,
-    {
-      tag: "string",
-      caption: ["string", "undefined"],
-      header: "string[]",
-      body: "array",
-      env: ["string[]", "undefined"],
-    },
-    location,
-  );
-
-  if (Array.isArray(table.body))
-    table.body.forEach((item) => {
-      assertType(item, "string[]");
-    });
+  checkTable(table, location);
 
   return table;
 };
