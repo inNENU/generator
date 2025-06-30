@@ -74,7 +74,10 @@ export const fileSchema = zod.union([internalFileSchema, httpsLinkSchema]);
 
 export const internalIconSchema = zod
   .string()
-  .regex(/^[a-z][a-z-]*[a-z]$/, "图标名称只能包含小写字母和连字符")
+  .regex(
+    /^[a-z0-9][a-z0-9-]*[a-z0-9]$/,
+    "图标名称只能包含小写字母、数字和连字符",
+  )
   .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
     error: "图标文件不存在",
     abort: true,

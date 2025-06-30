@@ -1,6 +1,6 @@
 {
   "name": "innenu-generator",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "inNENU 生成器",
   "repository": {
     "type": "git",
@@ -35,7 +35,7 @@
     "lint:check": "eslint . && pnpm lint:prettier",
     "lint:prettier": "prettier --check .",
     "prepare": "husky",
-    "prepublish": "pnpm clean && pnpm build",
+    "prepublishOnly": "pnpm clean && pnpm build",
     "test": "vitest"
   },
   "nano-staged": {
