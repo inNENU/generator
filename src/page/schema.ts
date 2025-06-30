@@ -61,7 +61,7 @@ export const checkPageContent = (
 export const pageTitleSchema = zod
   .string()
   .min(1, "页面标题不能为空")
-  .max(20, "页面标题不能过长");
+  .max(30, "页面标题不能过长");
 
 export const pageConfigSchema = zod.strictObject({
   /** 页面标题 */
