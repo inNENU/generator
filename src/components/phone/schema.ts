@@ -2,23 +2,32 @@ import * as zod from "zod/v4";
 
 import { envListSchema } from "../common.js";
 
-export const phoneNumberSchema = zod.union([
-  zod
-    .number()
-    .min(10000000000, "手机号码为 11 位")
-    .max(19999999999, "手机号码为 11 位"),
-  zod.string().regex(/1\d{10}/, "手机号格式不正确"),
-  zod.string().regex(/\d{4}-\d{7,8}/, "固定电话号码格式不正确"),
-  zod.string().regex(/400-\d{3}-\d{4}/, "400 电话格式不正确"),
-]);
+export const phoneNumberSchema = zod.union(
+  [
+    // 手机号
+    zod.number().min(10000000000).max(19999999999),
+    zod.string().regex(/^1\d{10}$/, "手机号格式不正确"),
+    // 固定电话
+    zod.string().regex(/^\d{3,4}-\d{7,8}$/),
 
-export const postCodeSchema = zod.union([
-  zod.string().regex(/^\d{6}$/, "邮政编码格式不正确"),
-  zod
-    .number()
-    .min(100000, "邮政编码格式不正确")
-    .max(999999, "邮政编码格式不正确"),
-]);
+    // 特殊电话号码
+    zod.number().min(10000).max(12999),
+    zod.number().min(95000).max(96999),
+    zod.string().regex(/^\d{3,4}-(?:10|11|12|95|96)\d{3}$/),
+
+    // 400 电话
+    zod.string().regex(/^400-\d{3}-\d{4}$/),
+
+    // 国际电话
+    zod.string().regex(/^\d{2}-/),
+  ],
+  "电话号码格式不正确",
+);
+
+export const postCodeSchema = zod.union(
+  [zod.string().regex(/^\d{6}$/), zod.number().min(100000).max(999999)],
+  "邮政编码格式不正确",
+);
 
 export const phoneSchema = zod.strictObject({
   tag: zod.literal("phone"),

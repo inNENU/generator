@@ -18,16 +18,19 @@ const baseCardSchema = zod.object({
   env: envListSchema,
 });
 
-export const normalCardSchema = baseCardSchema.extend({
+export const webCardSchema = baseCardSchema.extend({
   /** 跳转的链接 */
   url: zod.url({ protocol: /^https?$/ }),
 });
 
-export const pageCardSchema = baseCardSchema.extend({
+export const pathCardSchema = baseCardSchema.extend({
   /** 跳转的文件名称 */
   path: zod.string().min(1, "路径不能为空"),
+});
+
+export const urlCardSchema = baseCardSchema.extend({
   /** 处理后的路径 */
-  url: zod.string().optional(),
+  url: zod.string().min(1, "页面路径不能为空"),
 });
 
 export const miniProgramCardSchema = baseCardSchema.extend({
@@ -42,13 +45,16 @@ export const miniProgramCardSchema = baseCardSchema.extend({
 });
 
 export const cardSchema = zod.union([
-  normalCardSchema,
-  pageCardSchema,
+  pathCardSchema,
+  urlCardSchema,
+  webCardSchema,
   miniProgramCardSchema,
 ]);
 
-export type NormalCardComponentOptions = zod.infer<typeof normalCardSchema>;
-export type PageCardComponentOptions = zod.infer<typeof pageCardSchema>;
+export type NormalCardComponentOptions = zod.infer<typeof webCardSchema>;
+export type PageCardComponentOptions =
+  | zod.infer<typeof pathCardSchema>
+  | zod.infer<typeof urlCardSchema>;
 export type MiniProgramCardComponentOptions = zod.infer<
   typeof miniProgramCardSchema
 >;

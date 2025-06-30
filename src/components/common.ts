@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 
 import * as zod from "zod/v4";
 
+zod.config(zod.locales.zhCN());
+
 export const envSchema = zod.enum(["web", "wx", "qq", "app"]);
 
 export const envListSchema = zod.array(envSchema).optional();

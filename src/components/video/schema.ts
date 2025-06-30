@@ -48,7 +48,7 @@ export const videoSchema = zod.strictObject({
    */
   danmuBtn: zod.boolean().optional(),
   /** 弹幕列表 */
-  danmuList: zod.array(danmuSchema),
+  danmuList: zod.array(danmuSchema).optional(),
   /** 环境列表 */
   env: envListSchema,
 });

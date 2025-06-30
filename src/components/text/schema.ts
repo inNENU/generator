@@ -30,7 +30,7 @@ const plainTextComponentSchema = baseTextComponentSchema.extend({
   type: zod.literal("none").optional(),
 });
 
-const pageTextComponentSchema = baseTextComponentSchema.extend({
+const pathTextComponentSchema = baseTextComponentSchema.extend({
   /**
    * 段落类型
    */
@@ -41,7 +41,11 @@ const pageTextComponentSchema = baseTextComponentSchema.extend({
   path: zod.string().optional(),
 });
 
-const normalTextComponentSchema = baseTextComponentSchema.extend({
+const urlTextComponentSchema = baseTextComponentSchema.extend({
+  /**
+   * 段落类型
+   */
+  type: zod.enum(["tip", "warning", "danger", "info", "note"]),
   /** 跳转的链接 */
   url: zod.string(),
 });
@@ -59,8 +63,8 @@ const miniProgramTextComponentSchema = baseTextComponentSchema.extend({
 
 export const textComponentSchema = zod.union([
   plainTextComponentSchema,
-  normalTextComponentSchema,
-  pageTextComponentSchema,
+  pathTextComponentSchema,
+  urlTextComponentSchema,
   miniProgramTextComponentSchema,
 ]);
 
@@ -70,12 +74,10 @@ export type BaseTextComponentOptions = zod.infer<
 export type PlainTextComponentOptions = zod.infer<
   typeof plainTextComponentSchema
 >;
-export type PageTextComponentOptions = zod.infer<
-  typeof pageTextComponentSchema
+export type PathTextComponentOptions = zod.infer<
+  typeof pathTextComponentSchema
 >;
-export type NormalTextComponentOptions = zod.infer<
-  typeof normalTextComponentSchema
->;
+export type UrlTextComponentOptions = zod.infer<typeof urlTextComponentSchema>;
 export type MiniProgramTextComponentOptions = zod.infer<
   typeof miniProgramTextComponentSchema
 >;

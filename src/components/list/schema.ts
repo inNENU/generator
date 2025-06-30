@@ -19,12 +19,21 @@ const baseListItemSchema = zod.object({
   env: envListSchema,
 });
 
-const listItemSchema = baseListItemSchema.extend({
+const listPathItemSchema = baseListItemSchema.extend({
   /** 对应界面的文件路径 */
-  path: zod.string().optional(),
-  /** 列表指向的界面路径或短名称 */
-  url: zod.string().optional(),
+  path: zod.string(),
 });
+
+const listUrlItemSchema = baseListItemSchema.extend({
+  /** 列表指向的界面路径或短名称 */
+  url: zod.string(),
+});
+
+const listItemSchema = zod.union([
+  baseListItemSchema,
+  listPathItemSchema,
+  listUrlItemSchema,
+]);
 
 export const listSchema = zod.strictObject({
   tag: zod.literal("list"),

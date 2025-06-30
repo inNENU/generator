@@ -14,13 +14,11 @@ const baseGridItemSchema = zod.object({
 const normalGridItemSchema = baseGridItemSchema.extend({
   /** 对应页面的文件路径 */
   path: zod.string().min(1, "页面路径不能为空"),
-  /** 解析的页面路径 */
-  url: zod.string().optional(),
 });
 
 const pageGridItemSchema = baseGridItemSchema.extend({
   /** 小程序页面路径 */
-  url: zod.url({ protocol: /^https?$/ }),
+  url: zod.string(),
 });
 
 const miniProgramGridItemSchema = baseGridItemSchema.extend({

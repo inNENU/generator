@@ -39,6 +39,6 @@ export default [
       file: "./typings.d.ts",
       format: "esm",
     },
-    plugins: [dts()],
+    plugins: [dts({ respectExternal: true })],
   },
 ];
