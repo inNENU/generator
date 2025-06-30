@@ -20,6 +20,8 @@ ${desc ? `> 描述: ${desc}\n\n` : ""}\
 ${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
 ${content
   .map((component) => {
+    if (component.env && !component.env.includes("web")) return "";
+
     switch (component.tag) {
       case "title": {
         return `## ${component.text}\n\n`;
