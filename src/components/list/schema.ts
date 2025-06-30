@@ -92,6 +92,8 @@ const pickerListItemSchema = baseListItemSchema.extend({
   key: zod.string().optional(),
   /** 选择器对应的函数名称 */
   handler: zod.string().optional(),
+  /** 是否为单列选择器 */
+  single: zod.boolean().optional(),
 });
 
 const buttonListItemSchema = baseListItemSchema.extend({
