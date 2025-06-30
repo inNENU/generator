@@ -68,7 +68,7 @@ ${content
 
         return `\
 ${header ? `#### ${header}\n\n` : ""}\
-${items.map((item) => `- ${item.text}${"desc" in item && item.desc ? ` - ${desc}` : ""}`).join("\n")}
+${items.map((item) => `- ${item.text}${"desc" in item && item.desc ? ` - ${item.desc}` : ""}`).join("\n")}
 
 ${footer ? `> ${footer}\n\n` : ""}\
 `;
