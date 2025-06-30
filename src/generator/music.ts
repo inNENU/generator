@@ -2,18 +2,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import upath from "upath";
 
+import type { LyricData } from "./typings.js";
 import { getFileList } from "../helpers/getFileList.js";
 import type { MusicList } from "../schema/index.js";
 import { checkMusicList } from "../schema/index.js";
-
-export interface LyricItem {
-  /** 时间戳，单位为秒 */
-  time: number;
-  /** 歌词文本 */
-  text: string;
-}
-
-export type LyricData = LyricItem[];
 
 export const getMusicListJSON = (
   data: MusicList,

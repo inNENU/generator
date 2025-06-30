@@ -4,7 +4,6 @@ import type {
   FunctionalListComponentOptions,
   ListComponentOptions,
 } from "./schema.js";
-import { checkFunctionalList, checkList } from "./schema.js";
 import { resolvePath } from "../../utils.js";
 
 export const getListJSON = (
@@ -13,8 +12,6 @@ export const getListJSON = (
   location = "",
 ): ListComponentOptions | FunctionalListComponentOptions => {
   if (list.tag === "list") {
-    checkList(list, location);
-
     // 处理列表项的路径
     if (Array.isArray(list.items))
       list.items.forEach((listItem) => {
@@ -42,8 +39,6 @@ export const getListJSON = (
         }
       });
   } else {
-    checkFunctionalList(list, location);
-
     // 处理功能列表项的路径
     if (Array.isArray(list.items))
       list.items.forEach((listItem) => {

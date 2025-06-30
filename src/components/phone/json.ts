@@ -1,12 +1,8 @@
 import type { PhoneComponentData, PhoneComponentOptions } from "./schema.js";
-import { checkPhone } from "./schema.js";
 
 export const getPhoneJSON = (
   phone: PhoneComponentOptions,
-  location = "",
 ): PhoneComponentData => {
-  checkPhone(phone, location);
-
   for (const key in phone)
     if (typeof phone[key as keyof PhoneComponentOptions] === "number")
       // @ts-expect-error: Type does not fit

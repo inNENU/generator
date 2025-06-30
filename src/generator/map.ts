@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 
 import upath from "upath";
 
+import { _config } from "../config.js";
+import { getPageJSON } from "../page/json.js";
 import type {
   MapPageConfig,
   MapPageData,
@@ -9,20 +11,14 @@ import type {
   MarkerData,
   MarkersConfig,
   MarkersData,
-} from "./typings.js";
-import { _config } from "../config.js";
-import { getPageJSON } from "../page.js";
-import { checkFile } from "../utils.js";
+} from "../schema/index.js";
+import { checkMapPageConfig, checkMarkerConfig } from "../schema/index.js";
 
 export const getMapPageJSON = (
   data: MapPageConfig,
   filePath: string,
 ): MapPageData => {
-  if (Array.isArray(data.photo))
-    data.photo.map((link, index) =>
-      // `$` alias resolve and file check
-      checkFile(link, `${filePath}.photos[${index}]`),
-    );
+  checkMapPageConfig(data, filePath);
 
   return getPageJSON(data, filePath);
 };
@@ -40,6 +36,8 @@ export const getMarkerJSON = (
   category: string,
   id: number,
 ): MarkerData => {
+  checkMarkerConfig(marker);
+
   const markerData = {
     id,
     ...marker,

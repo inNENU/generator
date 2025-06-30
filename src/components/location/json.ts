@@ -3,7 +3,6 @@ import { existsSync } from "node:fs";
 import upath from "upath";
 
 import type { LocationComponentOptions } from "./schema.js";
-import { checkLocation } from "./schema.js";
 import { _config } from "../../config.js";
 import { resolvePath } from "../../utils.js";
 
@@ -11,8 +10,6 @@ export const getLocationJSON = (
   component: LocationComponentOptions,
   location = "",
 ): LocationComponentOptions => {
-  checkLocation(component, location);
-
   component.points.forEach((item) => {
     if (item.path) {
       const path = resolvePath(item.path);

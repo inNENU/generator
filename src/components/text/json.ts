@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 
 import type { TextComponentData, TextComponentOptions } from "./schema.js";
-import { checkText } from "./schema.js";
 import { convertStyle, resolvePath } from "../../utils.js";
 
 export const getTextJSON = (
@@ -9,8 +8,6 @@ export const getTextJSON = (
   pageId: string,
   location = "",
 ): TextComponentData => {
-  checkText(text, location);
-
   if ("path" in text && text.path && !("appId" in text)) {
     // @ts-expect-error: checking for invalid types
     if (text.type === "none" || !text.type)

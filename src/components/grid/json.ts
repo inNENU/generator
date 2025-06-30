@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 
 import type { GridComponentOptions } from "./schema.js";
-import { checkGrid } from "./schema.js";
 import { resolvePath } from "../../utils.js";
 
 export const getGridJSON = (
@@ -9,8 +8,6 @@ export const getGridJSON = (
   pageId: string,
   location = "",
 ): GridComponentOptions => {
-  checkGrid(grid, location);
-
   if (Array.isArray(grid.items))
     grid.items.forEach((gridItem) => {
       // 处理路径

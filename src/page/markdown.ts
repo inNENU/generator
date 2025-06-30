@@ -1,20 +1,20 @@
-import { getAccountMarkdown } from "./components/account/markdown.js";
-import { getActionMarkdown } from "./components/action/markdown.js";
-import { getAudioMarkdown } from "./components/audio/markdown.js";
-import { getCardMarkdown } from "./components/card/markdown.js";
-import { getDocMarkdown } from "./components/doc/markdown.js";
-import { getGridMarkdown } from "./components/grid/markdown.js";
-import { getImgMarkdown } from "./components/img/markdown.js";
-import { getListMarkdown } from "./components/list/markdown.js";
-import { getLocationMarkdown } from "./components/location/markdown.js";
-import type { PageConfig } from "./components/page.js";
-import { getPhoneMarkdown } from "./components/phone/markdown.js";
-import { getTableMarkdown } from "./components/table/markdown.js";
-import { getTextMarkdown } from "./components/text/markdown.js";
-import { getTitleMarkdown } from "./components/title/markdown.js";
-import { getVideoMarkdown } from "./components/video/markdown.js";
-import { getYamlValue } from "./helpers/index.js";
-import { getIconLink } from "./utils.js";
+import type { PageConfig } from "./schema.js";
+import { getAccountMarkdown } from "../components/account/markdown.js";
+import { getActionMarkdown } from "../components/action/markdown.js";
+import { getAudioMarkdown } from "../components/audio/markdown.js";
+import { getCardMarkdown } from "../components/card/markdown.js";
+import { getDocMarkdown } from "../components/doc/markdown.js";
+import { getGridMarkdown } from "../components/grid/markdown.js";
+import { getImgMarkdown } from "../components/img/markdown.js";
+import { getListMarkdown } from "../components/list/markdown.js";
+import { getLocationMarkdown } from "../components/location/markdown.js";
+import { getPhoneMarkdown } from "../components/phone/markdown.js";
+import { getTableMarkdown } from "../components/table/markdown.js";
+import { getTextMarkdown } from "../components/text/markdown.js";
+import { getTitleMarkdown } from "../components/title/markdown.js";
+import { getVideoMarkdown } from "../components/video/markdown.js";
+import { getYamlValue } from "../helpers/index.js";
+import { getIconLink } from "../utils.js";
 
 /**
  * 生成页面 Markdown
@@ -149,7 +149,7 @@ ${
     return content;
   } catch (error) {
     throw new Error(
-      `Error generating markdown for ${pagePath}: ${(error as Error).message}`,
+      `为 ${pagePath} 生成 Markdown 失败: ${(error as Error).message}`,
     );
   }
 };

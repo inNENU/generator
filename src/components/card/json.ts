@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 
 import type { CardComponentOptions } from "./schema.js";
-import { checkCard } from "./schema.js";
 import { resolvePath } from "../../utils.js";
 
 export const getCardJSON = (
@@ -9,8 +8,6 @@ export const getCardJSON = (
   pageId: string,
   location = "",
 ): CardComponentOptions => {
-  checkCard(card, location);
-
   if ("path" in card && !("appId" in card)) {
     if (card.path.startsWith("/")) {
       const path = resolvePath(card.path);
