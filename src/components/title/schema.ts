@@ -14,6 +14,12 @@ export const titleSchema = zod.strictObject({
 
 export type TitleComponentOptions = zod.infer<typeof titleSchema>;
 
+export interface TitleComponentData
+  extends Omit<TitleComponentOptions, "style"> {
+  /** 处理后的样式 */
+  style?: string;
+}
+
 export const checkTitle = (
   title: TitleComponentOptions,
   location = "",

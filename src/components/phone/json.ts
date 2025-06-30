@@ -1,10 +1,10 @@
-import type { PhoneComponentOptions } from "./schema.js";
+import type { PhoneComponentData, PhoneComponentOptions } from "./schema.js";
 import { checkPhone } from "./schema.js";
 
 export const getPhoneJSON = (
   phone: PhoneComponentOptions,
   location = "",
-): PhoneComponentOptions => {
+): PhoneComponentData => {
   checkPhone(phone, location);
 
   for (const key in phone)
@@ -13,5 +13,5 @@ export const getPhoneJSON = (
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       phone[key] = phone[key].toString();
 
-  return phone;
+  return phone as PhoneComponentData;
 };

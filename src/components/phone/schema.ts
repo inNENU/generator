@@ -66,6 +66,23 @@ export const phoneSchema = zod.strictObject({
 
 export type PhoneComponentOptions = zod.infer<typeof phoneSchema>;
 
+export interface PhoneComponentData
+  extends Omit<
+    PhoneComponentOptions,
+    "num" | "workNum" | "homeNum" | "hostNum" | "postCode"
+  > {
+  /** 联系人电话号码 */
+  num: string;
+  /** 联系人工作电话 */
+  workNum?: string;
+  /** 联系人住宅电话 */
+  homeNum?: string;
+  /** 联系人公司电话 */
+  hostNum?: string;
+  /** 联系人邮政编码 */
+  postCode?: string;
+}
+
 export const checkPhone = (
   phone: PhoneComponentOptions,
   location = "",
