@@ -5,7 +5,7 @@ import upath from "upath";
 
 import type { YamlMapItem } from "./helpers/index.js";
 import { getFileList, getYamlMap } from "./helpers/index.js";
-import { getPageText } from "./text.js";
+import { getPageText } from "./page/text.js";
 import type { PageConfig } from "./typings.js";
 
 /** @deprecated */

@@ -139,6 +139,8 @@ export const functionalListSchema = zod.strictObject({
 });
 
 export type BaseListComponentItemOptions = zod.infer<typeof baseListItemSchema>;
+export type ListPathComponentItemOptions = zod.infer<typeof listPathItemSchema>;
+export type ListUrlComponentItemOptions = zod.infer<typeof listUrlItemSchema>;
 export type ListComponentItemOptions = zod.infer<typeof listItemSchema>;
 export type ListComponentOptions = zod.infer<typeof listSchema>;
 

@@ -1,8 +1,8 @@
-import { getActionMarkdown } from "./components/action/markdown.js";
-import { getTableMarkdown } from "./components/table/markdown.js";
-import { _config } from "./config.js";
-import type { PageConfig } from "./typings.js";
-import { getFileLink } from "./utils.js";
+import { getActionMarkdown } from "../components/action/markdown.js";
+import { getTableMarkdown } from "../components/table/markdown.js";
+import { _config } from "../config.js";
+import type { PageConfig } from "../typings.js";
+import { getFileLink } from "../utils.js";
 
 export const getPageText = (page: PageConfig, pagePath = ""): string => {
   try {
