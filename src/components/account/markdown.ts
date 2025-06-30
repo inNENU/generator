@@ -1,16 +1,14 @@
-import type { AccountComponentOptions } from "./typings.js";
+import type { AccountComponentOptions } from "./schema.js";
 import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getAccountMarkdown = (
   account: AccountComponentOptions,
 ): string => {
   // `$` alias resolve and file check
-  if (account.logo) account.logo = getFileLink(account.logo);
-  if (account.qqcode) account.qqcode = getFileLink(account.qqcode);
-  if (account.wxcode) account.wxcode = getFileLink(account.wxcode);
+  const logo = getFileLink(account.logo);
+  const qqcode = getFileLink(account.qqcode);
 
-  const { name, detail, desc, logo, qq, qqcode, wxid, wxcode, site, mail } =
-    account;
+  const { name, detail, desc, qq, wxid, site, mail } = account;
 
   return `\
 <div class="innenu-account">
@@ -48,11 +46,9 @@ ${
     : ""
 }\
 ${
-  (wxid ?? wxcode)
+  wxid
     ? `\
-    <button class="innenu-account-action" ${
-      wxid ? `data-wxid="${wxid}" ` : ""
-    }${wxcode ? `data-wxcode="${wxcode}" ` : ""}>
+    <button class="innenu-account-action" ${wxid ? `data-wxid="${wxid}" ` : ""}>
       <img class="innenu-account-icon" src="${getAssetIconLink(
         "wechat",
       )}" alt="" no-view />

@@ -15,7 +15,7 @@ exports[`getFileList 1`] = `
   "components/typings.ts",
   "components/account/json.ts",
   "components/account/markdown.ts",
-  "components/account/typings.ts",
+  "components/account/schema.ts",
   "components/action/json.ts",
   "components/action/markdown.ts",
   "components/action/typings.ts",

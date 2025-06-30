@@ -15,7 +15,14 @@ export default [
         target: "node18",
       }),
     ],
-    external: [/^node:/, "@mr-hope/assert-type", "ali-oss", "js-yaml", "upath"],
+    external: [
+      /^node:/,
+      "@mr-hope/assert-type",
+      "ali-oss",
+      "js-yaml",
+      "upath",
+      "zod/v4",
+    ],
   },
   {
     input: "./src/index.ts",

@@ -43,12 +43,12 @@ export const checkFile = (link?: string, location = ""): void => {
   }
 };
 
-export const getFileLink = (link = ""): string => {
+export const getFileLink = (link?: string): string | null => {
   if (typeof link === "string" && link.startsWith("$")) {
     return link.replace(/^\$/, `${_config.assets}/`);
   }
 
-  return link;
+  return null;
 };
 
 export const checkIcon = (icon?: string, location = ""): void => {
@@ -63,8 +63,8 @@ export const checkIcon = (icon?: string, location = ""): void => {
   }
 };
 
-export const getIconLink = (icon?: string): string => {
-  if (!icon) return "";
+export const getIconLink = (icon?: string): string | null => {
+  if (!icon) return null;
 
   if (icon.startsWith("$")) return getFileLink(icon);
 

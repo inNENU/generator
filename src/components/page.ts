@@ -1,4 +1,4 @@
-import type { AccountComponentOptions } from "./account/typings.js";
+import type { AccountComponentOptions } from "./account/schema.js";
 import type { ActionComponentOptions } from "./action/typings.js";
 import type { AudioComponentOptions } from "./audio/typings.js";
 import type { CardComponentOptions } from "./card/typings.js";

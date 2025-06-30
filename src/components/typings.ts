@@ -1,4 +1,4 @@
-export * from "./account/typings.js";
+export type * from "./account/schema.js";
 export * from "./action/typings.js";
 export * from "./audio/typings.js";
 export * from "./card/typings.js";
