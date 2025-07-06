@@ -16,14 +16,7 @@ export default [
         target: "node20",
       }),
     ],
-    external: [
-      /^node:/,
-      "@mr-hope/assert-type",
-      "ali-oss",
-      "js-yaml",
-      "upath",
-      "zod/v4",
-    ],
+    external: [/^node:/, "ali-oss", "js-yaml", "upath", "zod/v4"],
   },
   {
     input: "./src/index.ts",
@@ -40,6 +33,7 @@ export default [
       file: "./typings.d.ts",
       format: "esm",
     },
+    external: [/^node:/, "zod/v4"],
     plugins: [dts({ respectExternal: true })],
   },
 ];
