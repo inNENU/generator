@@ -189,7 +189,7 @@ export interface CheckPageConfigOptions {
 export const checkPageConfig = (
   config: PageConfig,
   location = "",
-  options: CheckPageConfigOptions,
+  options: CheckPageConfigOptions = {},
 ): void => {
   try {
     pageConfigSchema.parse(config);
