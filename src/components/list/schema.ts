@@ -1,4 +1,4 @@
-import * as zod from "zod/v4";
+import * as zod from "zod";
 
 import { envListSchema, iconSchema } from "../../schema/common.js";
 
@@ -67,6 +67,13 @@ const navigatorListItemSchema = baseListItemSchema.extend({
   url: zod.string().optional(),
 });
 
+const wechatListItemSchema = baseListItemSchema.extend({
+  type: zod.literal("wechat"),
+  /** 微信开放能力 */
+  openType: zod.enum(["account", "article", "channel"]),
+  target: zod.string(),
+});
+
 const switchListItemSchema = baseListItemSchema.extend({
   type: zod.literal("switch"),
   /** 所控变量在 storage 中的 key 值 */
@@ -120,6 +127,7 @@ const buttonListItemSchema = baseListItemSchema.extend({
 const functionalListItemSchema = zod.union([
   listItemSchema,
   navigatorListItemSchema,
+  wechatListItemSchema,
   switchListItemSchema,
   pickerListItemSchema,
   sliderListItemSchema,
@@ -146,6 +154,9 @@ export type ListComponentOptions = zod.infer<typeof listSchema>;
 
 export type NavigatorListComponentItemOptions = zod.infer<
   typeof navigatorListItemSchema
+>;
+export type WechatListComponentItemOptions = zod.infer<
+  typeof wechatListItemSchema
 >;
 export type SwitchListComponentItemOptions = zod.infer<
   typeof switchListItemSchema

@@ -1,4 +1,4 @@
-import * as zod from "zod/v4";
+import * as zod from "zod";
 
 import { fileSchema, imgSchema } from "./common.js";
 

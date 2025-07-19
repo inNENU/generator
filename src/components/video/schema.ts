@@ -1,4 +1,4 @@
-import * as zod from "zod/v4";
+import * as zod from "zod";
 
 import { envListSchema, fileSchema, imgSchema } from "../../schema/common.js";
 

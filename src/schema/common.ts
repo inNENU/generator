@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 
-import * as zod from "zod/v4";
+import * as zod from "zod";
 
 zod.config(zod.locales.zhCN());
 

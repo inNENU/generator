@@ -1,4 +1,4 @@
-import * as zod from "zod/v4";
+import * as zod from "zod";
 
 import { envListSchema, iconSchema, imgSchema } from "../../schema/common.js";
 
@@ -33,6 +33,12 @@ export const urlCardSchema = baseCardSchema.extend({
   url: zod.string().min(1, "页面路径不能为空"),
 });
 
+export const wechatProfileCardSchema = baseCardSchema.extend({
+  type: zod.enum(["account", "channel"]),
+  /** 用户名 */
+  username: zod.string(),
+});
+
 export const miniProgramCardSchema = baseCardSchema.extend({
   /** 要打开的小程序 appId */
   appId: zod.string().min(1, "小程序 appId 不能为空"),
@@ -48,6 +54,7 @@ export const cardSchema = zod.union([
   pathCardSchema,
   urlCardSchema,
   webCardSchema,
+  wechatProfileCardSchema,
   miniProgramCardSchema,
 ]);
 
@@ -58,11 +65,15 @@ export type PageCardComponentOptions =
 export type MiniProgramCardComponentOptions = zod.infer<
   typeof miniProgramCardSchema
 >;
+export type WechatProfileCardComponentOptions = zod.infer<
+  typeof wechatProfileCardSchema
+>;
 
 export type CardComponentOptions =
   | MiniProgramCardComponentOptions
   | NormalCardComponentOptions
-  | PageCardComponentOptions;
+  | PageCardComponentOptions
+  | WechatProfileCardComponentOptions;
 
 export const checkCard = (card: CardComponentOptions, location = ""): void => {
   try {

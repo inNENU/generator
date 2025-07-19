@@ -16,7 +16,7 @@ export default [
         target: "node20",
       }),
     ],
-    external: [/^node:/, "ali-oss", "js-yaml", "upath", "zod/v4"],
+    external: [/^node:/, "ali-oss", "js-yaml", "upath", "zod"],
   },
   {
     input: "./src/index.ts",
@@ -33,7 +33,7 @@ export default [
       file: "./typings.d.ts",
       format: "esm",
     },
-    external: [/^node:/, "zod/v4"],
+    external: [/^node:/, "zod"],
     plugins: [dts({ respectExternal: true })],
   },
 ];
