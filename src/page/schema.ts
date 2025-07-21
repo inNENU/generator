@@ -51,10 +51,13 @@ export const checkPageContent = (
   content: ComponentOptions[],
   location: string,
 ): void => {
-  try {
-    zod.parse(pageContentSchema, content);
-  } catch (error) {
-    console.error(`${location} 发现非法页面内容:`, error);
+  const result = pageContentSchema.safeParse(content);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法页面内容:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
@@ -191,10 +194,13 @@ export const checkPageConfig = (
   location = "",
   options: CheckPageConfigOptions = {},
 ): void => {
-  try {
-    pageConfigSchema.parse(config);
-  } catch (error) {
-    console.error(`${location} 发现非法页面配置:`, error);
+  const result = pageConfigSchema.safeParse(config);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法页面配置:`,
+      zod.prettifyError(result.error),
+    );
   }
 
   if (options.iconRequired && !config.icon) {
@@ -216,9 +222,12 @@ export const checkPageConfig = (
 };
 
 export const checkPageData = (data: PageData, location = ""): void => {
-  try {
-    pageDataSchema.parse(data);
-  } catch (error) {
-    console.error(`${location} 发现非法页面数据:`, error);
+  const result = pageDataSchema.safeParse(data);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法页面数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

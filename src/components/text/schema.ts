@@ -1,6 +1,17 @@
 import * as zod from "zod";
 
-import { envListSchema, styleSchema } from "../../schema/common.js";
+import {
+  channelProfileSchema,
+  channelVideoSchema,
+  envListSchema,
+  miniProgramFullSchema,
+  miniProgramShortLinkSchema,
+  officialArticleSchema,
+  officialProfileSchema,
+  pathSchema,
+  styleSchema,
+  urlSchema,
+} from "../../schema/common.js";
 
 const baseTextComponentSchema = zod.strictObject({
   /** 文字标签 */
@@ -21,7 +32,8 @@ const baseTextComponentSchema = zod.strictObject({
   env: envListSchema,
 });
 
-const plainTextComponentSchema = baseTextComponentSchema.extend({
+const plainTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
   /**
    * 段落类型
    *
@@ -30,42 +42,68 @@ const plainTextComponentSchema = baseTextComponentSchema.extend({
   type: zod.literal("none").optional(),
 });
 
-const pathTextComponentSchema = baseTextComponentSchema.extend({
+const hintTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
   /**
    * 段落类型
    */
-  type: zod.enum(["tip", "warning", "danger", "info", "note"]),
-  /**
-   * 跳转到的路径
-   */
-  path: zod.string().optional(),
+  type: zod.enum(
+    ["tip", "warning", "danger", "info", "note"],
+    "提示类型必须为 tip、warning、danger、info 或 note",
+  ),
 });
 
-const urlTextComponentSchema = baseTextComponentSchema.extend({
-  /**
-   * 段落类型
-   */
-  type: zod.enum(["tip", "warning", "danger", "info", "note"]),
-  /** 跳转的链接 */
-  url: zod.string(),
+const pathTextComponentSchema = zod.strictObject({
+  ...hintTextComponentSchema.shape,
+  ...pathSchema.shape,
 });
 
-const miniProgramTextComponentSchema = baseTextComponentSchema.extend({
-  /** 要打开的小程序 appId */
-  appId: zod.string().min(1, "小程序 appId 不能为空"),
-  /** 打开的页面路径 */
-  path: zod.string().optional(),
-  /** 需要传递给目标小程序的数据 */
-  extraData: zod.record(zod.string(), zod.unknown()).optional(),
-  /** 要打开的小程序版本 */
-  versionType: zod.enum(["develop", "trial", "release"]).optional(),
+const pageTextComponentSchema = zod.strictObject({
+  ...hintTextComponentSchema.shape,
+  ...urlSchema.shape,
+});
+
+const miniProgramFullTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...miniProgramFullSchema.shape,
+});
+
+const miniProgramShortLinkTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...miniProgramShortLinkSchema.shape,
+});
+
+const officialProfileTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...officialProfileSchema.shape,
+});
+
+const channelProfileTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...channelProfileSchema.shape,
+});
+
+const articleTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...officialArticleSchema.shape,
+});
+
+const videoTextComponentSchema = zod.strictObject({
+  ...baseTextComponentSchema.shape,
+  ...channelVideoSchema.shape,
 });
 
 export const textComponentSchema = zod.union([
   plainTextComponentSchema,
+  hintTextComponentSchema,
   pathTextComponentSchema,
-  urlTextComponentSchema,
-  miniProgramTextComponentSchema,
+  pageTextComponentSchema,
+  officialProfileTextComponentSchema,
+  channelProfileTextComponentSchema,
+  articleTextComponentSchema,
+  videoTextComponentSchema,
+  miniProgramShortLinkTextComponentSchema,
+  miniProgramFullTextComponentSchema,
 ]);
 
 export type BaseTextComponentOptions = zod.infer<
@@ -74,14 +112,41 @@ export type BaseTextComponentOptions = zod.infer<
 export type PlainTextComponentOptions = zod.infer<
   typeof plainTextComponentSchema
 >;
+export type HintTextComponentOptions = zod.infer<
+  typeof hintTextComponentSchema
+>;
 export type PathTextComponentOptions = zod.infer<
   typeof pathTextComponentSchema
 >;
-export type UrlTextComponentOptions = zod.infer<typeof urlTextComponentSchema>;
-export type MiniProgramTextComponentOptions = zod.infer<
-  typeof miniProgramTextComponentSchema
+export type PageTextComponentOptions = zod.infer<
+  typeof pageTextComponentSchema
 >;
-export type TextComponentOptions = zod.infer<typeof textComponentSchema>;
+export type OfficialProfileTextComponentOptions = zod.infer<
+  typeof officialProfileTextComponentSchema
+>;
+export type ChannelProfileTextComponentOptions = zod.infer<
+  typeof channelProfileTextComponentSchema
+>;
+export type ArticleTextComponentOptions = zod.infer<
+  typeof articleTextComponentSchema
+>;
+export type VideoTextComponentOptions = zod.infer<
+  typeof videoTextComponentSchema
+>;
+export type MiniProgramTextComponentOptions = zod.infer<
+  | typeof miniProgramShortLinkTextComponentSchema
+  | typeof miniProgramFullTextComponentSchema
+>;
+export type TextComponentOptions =
+  | PlainTextComponentOptions
+  | HintTextComponentOptions
+  | PathTextComponentOptions
+  | PageTextComponentOptions
+  | OfficialProfileTextComponentOptions
+  | ChannelProfileTextComponentOptions
+  | ArticleTextComponentOptions
+  | VideoTextComponentOptions
+  | MiniProgramTextComponentOptions;
 
 export interface TextComponentData
   extends Omit<TextComponentOptions, "style" | "text"> {
@@ -92,9 +157,12 @@ export interface TextComponentData
 }
 
 export const checkText = (text: TextComponentOptions, location = ""): void => {
-  try {
-    textComponentSchema.parse(text);
-  } catch (error) {
-    console.error(`${location} 发现非法 text 数据:`, error);
+  const result = textComponentSchema.safeParse(text);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 text 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

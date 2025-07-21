@@ -1,6 +1,17 @@
 import * as zod from "zod";
 
-import { envListSchema, iconSchema } from "../../schema/common.js";
+import {
+  channelProfileSchema,
+  envListSchema,
+  iconSchema,
+  miniProgramFullSchema,
+  miniProgramShortLinkSchema,
+  officialArticleSchema,
+  officialProfileSchema,
+  pathSchema,
+  urlSchema,
+} from "../../schema/common.js";
+import { videoSchema } from "../schema.js";
 
 const baseGridItemSchema = zod.object({
   /** 网格文字 */
@@ -11,37 +22,61 @@ const baseGridItemSchema = zod.object({
   env: envListSchema,
 });
 
-const normalGridItemSchema = baseGridItemSchema.extend({
-  /** 对应页面的文件路径 */
-  path: zod.string().min(1, "页面路径不能为空"),
+const normalGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...pathSchema.shape,
 });
 
-const pageGridItemSchema = baseGridItemSchema.extend({
-  /** 小程序页面路径 */
-  url: zod.string(),
+const pageGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...urlSchema.shape,
 });
 
-const miniProgramGridItemSchema = baseGridItemSchema.extend({
-  /** 要打开的小程序 appId */
-  appId: zod.string().min(1, "小程序 appId 不能为空"),
-  /** 打开的页面路径 */
-  path: zod.string().optional(),
-  /** 需要传递给目标小程序的数据 */
-  extraData: zod.record(zod.string(), zod.unknown()).optional(),
-  /** 要打开的小程序版本 */
-  versionType: zod.enum(["develop", "trial", "release"]).optional(),
+const officialProfileGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...officialProfileSchema.shape,
+});
+
+const channelProfileGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...channelProfileSchema.shape,
+});
+
+const articleGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...officialArticleSchema.shape,
+});
+
+const videoGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...videoSchema.shape,
+});
+
+const miniProgramFullGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...miniProgramFullSchema.shape,
+});
+
+const miniProgramShortLinkGridItemSchema = zod.strictObject({
+  ...baseGridItemSchema.shape,
+  ...miniProgramShortLinkSchema.shape,
 });
 
 const gridItemSchema = zod.union([
   normalGridItemSchema,
   pageGridItemSchema,
-  miniProgramGridItemSchema,
+  officialProfileGridItemSchema,
+  channelProfileGridItemSchema,
+  articleGridItemSchema,
+  videoGridItemSchema,
+  miniProgramFullGridItemSchema,
+  miniProgramShortLinkGridItemSchema,
 ]);
 
 export const gridSchema = zod.strictObject({
   tag: zod.literal("grid"),
   /** 网格标题 */
-  header: zod.union([zod.string(), zod.literal(false)]).optional(),
+  header: zod.string().optional(),
   /** 网格项目列表 */
   items: zod.array(gridItemSchema).min(1, "至少需要一个网格项目"),
   /** 网格页脚 */
@@ -56,7 +91,8 @@ export type NormalGridComponentItemOptions = zod.infer<
 >;
 export type PageGridComponentItemOptions = zod.infer<typeof pageGridItemSchema>;
 export type MiniProgramGridComponentItemOptions = zod.infer<
-  typeof miniProgramGridItemSchema
+  | typeof miniProgramFullGridItemSchema
+  | typeof miniProgramShortLinkGridItemSchema
 >;
 
 export type GridComponentItemOptions =
@@ -67,9 +103,12 @@ export type GridComponentItemOptions =
 export type GridComponentOptions = zod.infer<typeof gridSchema>;
 
 export const checkGrid = (grid: GridComponentOptions, location = ""): void => {
-  try {
-    gridSchema.parse(grid);
-  } catch (error) {
-    console.error(`${location} 发现非法 grid 数据:`, error);
+  const result = gridSchema.safeParse(grid);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 grid 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

@@ -10,11 +10,9 @@ export const getCardMarkdown = (card: CardComponentOptions): string => {
   const logo = getIconLink(card.logo);
   const cover = card.cover ? getFileLink(card.cover) : null;
 
-  if ("appId" in card) return "";
-
   const { name, desc, title } = card;
 
-  const cardChildren = `
+  const cardContent = `
 ${
   cover
     ? `\
@@ -50,17 +48,23 @@ ${
 </div>
 `;
 
-  if ("url" in card && card.url && /^https?:\/\//.exec(card.url))
-    return `\
-<a class="innenu-card" href="${card.url}" target="_blank">
-${cardChildren}
-</a>
-`;
+  if ("action" in card) {
+    if (card.action === "official")
+      return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${card.username}" target="_blank">
+${cardContent}
+</a>`;
 
-  if ("path" in card) {
+    if (card.action === "article") {
+      return `<a class="innenu-card" href="${card.url}" target="_blank">
+${cardContent}
+</a>`;
+    }
+
+    return "";
+  } else if ("path" in card) {
     return `\
 <RouteLink class="innenu-card" to="${getHTMLPath(card.path)}">
-${cardChildren}
+${cardContent}
 </RouteLink>
 
 `;

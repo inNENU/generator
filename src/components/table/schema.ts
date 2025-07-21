@@ -21,9 +21,12 @@ export const checkTable = (
   table: TableComponentOptions,
   location = "",
 ): void => {
-  try {
-    tableSchema.parse(table);
-  } catch (error) {
-    console.error(`${location} 发现非法 table 数据:`, error);
+  const result = tableSchema.safeParse(table);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 table 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

@@ -1,6 +1,15 @@
 import * as zod from "zod";
 
-import { envListSchema, iconSchema } from "../../schema/common.js";
+import {
+  channelProfileSchema,
+  channelVideoSchema,
+  envListSchema,
+  iconSchema,
+  officialArticleSchema,
+  officialProfileSchema,
+  pathSchema,
+  urlSchema,
+} from "../../schema/common.js";
 
 const baseListItemSchema = zod.object({
   /** 列表单元的显示文字 */
@@ -19,14 +28,14 @@ const baseListItemSchema = zod.object({
   env: envListSchema,
 });
 
-const listPathItemSchema = baseListItemSchema.extend({
-  /** 对应界面的文件路径 */
-  path: zod.string(),
+const listPathItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...pathSchema.shape,
 });
 
-const listUrlItemSchema = baseListItemSchema.extend({
-  /** 列表指向的界面路径或短名称 */
-  url: zod.string(),
+const listUrlItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...urlSchema.shape,
 });
 
 const listItemSchema = zod.union([
@@ -48,7 +57,8 @@ export const listSchema = zod.strictObject({
 });
 
 // 功能性列表项类型
-const navigatorListItemSchema = baseListItemSchema.extend({
+const navigatorListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
   type: zod.literal("navigator"),
   /** 小程序提供的开放能力 */
   openType: zod
@@ -67,14 +77,28 @@ const navigatorListItemSchema = baseListItemSchema.extend({
   url: zod.string().optional(),
 });
 
-const wechatListItemSchema = baseListItemSchema.extend({
-  type: zod.literal("wechat"),
-  /** 微信开放能力 */
-  openType: zod.enum(["account", "article", "channel"]),
-  target: zod.string(),
+const officialProfileListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...officialProfileSchema.shape,
 });
 
-const switchListItemSchema = baseListItemSchema.extend({
+const channelProfileListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...channelProfileSchema.shape,
+});
+
+const articleListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...officialArticleSchema.shape,
+});
+
+const videoListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...channelVideoSchema.shape,
+});
+
+const switchListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
   type: zod.literal("switch"),
   /** 所控变量在 storage 中的 key 值 */
   key: zod.string().min(1, "开关 key 不能为空"),
@@ -84,7 +108,8 @@ const switchListItemSchema = baseListItemSchema.extend({
   color: zod.string().optional(),
 });
 
-const sliderListItemSchema = baseListItemSchema.extend({
+const sliderListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
   type: zod.literal("slider"),
   /** 滑块所控变量在 storage 中的 key 值 */
   key: zod.string().min(1, "滑块 key 不能为空"),
@@ -98,7 +123,8 @@ const sliderListItemSchema = baseListItemSchema.extend({
   step: zod.number().positive("步长必须为正数").optional(),
 });
 
-const pickerListItemSchema = baseListItemSchema.extend({
+const pickerListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
   type: zod.literal("picker"),
   /** 选择器中包含的值 */
   select: zod.array(zod.unknown()).min(1, "至少需要一个选择项"),
@@ -112,7 +138,8 @@ const pickerListItemSchema = baseListItemSchema.extend({
   single: zod.boolean().optional(),
 });
 
-const buttonListItemSchema = baseListItemSchema.extend({
+const buttonListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
   type: zod.literal("button"),
   /** 按钮颜色 */
   color: zod.string().optional(),
@@ -127,7 +154,10 @@ const buttonListItemSchema = baseListItemSchema.extend({
 const functionalListItemSchema = zod.union([
   listItemSchema,
   navigatorListItemSchema,
-  wechatListItemSchema,
+  officialProfileListItemSchema,
+  channelProfileListItemSchema,
+  articleListItemSchema,
+  videoListItemSchema,
   switchListItemSchema,
   pickerListItemSchema,
   sliderListItemSchema,
@@ -155,8 +185,17 @@ export type ListComponentOptions = zod.infer<typeof listSchema>;
 export type NavigatorListComponentItemOptions = zod.infer<
   typeof navigatorListItemSchema
 >;
-export type WechatListComponentItemOptions = zod.infer<
-  typeof wechatListItemSchema
+export type OfficialProfileListComponentItemOptions = zod.infer<
+  typeof officialProfileListItemSchema
+>;
+export type ChannelProfileListComponentItemOptions = zod.infer<
+  typeof channelProfileListItemSchema
+>;
+export type ArticleListComponentItemOptions = zod.infer<
+  typeof articleListItemSchema
+>;
+export type VideoListComponentItemOptions = zod.infer<
+  typeof videoListItemSchema
 >;
 export type SwitchListComponentItemOptions = zod.infer<
   typeof switchListItemSchema
@@ -179,10 +218,13 @@ export type FunctionalListComponentOptions = zod.infer<
 >;
 
 export const checkList = (list: ListComponentOptions, location = ""): void => {
-  try {
-    listSchema.parse(list);
-  } catch (error) {
-    console.error(`${location} 发现非法 list 数据:`, error);
+  const result = listSchema.safeParse(list);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 list 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
@@ -190,9 +232,12 @@ export const checkFunctionalList = (
   functionalList: FunctionalListComponentOptions,
   location = "",
 ): void => {
-  try {
-    functionalListSchema.parse(functionalList);
-  } catch (error) {
-    console.error(`${location} 发现非法 functional list 数据:`, error);
+  const result = functionalListSchema.safeParse(functionalList);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 functional list 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

@@ -61,9 +61,12 @@ export const checkVideo = (
   video: VideoComponentOptions,
   location = "",
 ): void => {
-  try {
-    videoSchema.parse(video);
-  } catch (error) {
-    console.error(`${location} 发现非法 video 数据:`, error);
+  const result = videoSchema.safeParse(video);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 video 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

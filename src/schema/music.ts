@@ -25,10 +25,13 @@ export const checkMusicList = (
   data: MusicList,
   location: string,
 ): MusicList => {
-  try {
-    zod.parse(musicListSchema, data);
-  } catch (error) {
-    console.error(`${location} 发现非法音乐数据:`, error);
+  const result = musicListSchema.safeParse(data);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法音乐数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 
   return data;

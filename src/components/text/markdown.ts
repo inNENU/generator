@@ -43,9 +43,13 @@ ${
 }
 
 ${
-  "url" in text && /^https?:\/\//.test(text.url)
-    ? `- [查看详情](${text.url})\n\n`
-    : "path" in text && text.path && !("appId" in text)
+  "action" in text
+    ? text.action === "official"
+      ? `- [查看详情](https://open.weixin.qq.com/qr/code?username=${text.username})\n\n`
+      : text.action === "article"
+        ? `- [查看详情](${text.url})\n\n`
+        : ""
+    : "path" in text && text.path
       ? `- [查看详情](${getMarkdownPath(text.path)})\n\n`
       : ""
 }\

@@ -96,9 +96,12 @@ export const checkPhone = (
   phone: PhoneComponentOptions,
   location = "",
 ): void => {
-  try {
-    phoneSchema.parse(phone);
-  } catch (error) {
-    console.error(`${location} 发现非法 phone 数据:`, error);
+  const result = phoneSchema.safeParse(phone);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 phone 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

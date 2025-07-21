@@ -34,9 +34,12 @@ export const checkAudio = (
   audio: AudioComponentOptions,
   location = "",
 ): void => {
-  try {
-    audioSchema.parse(audio);
-  } catch (error) {
-    console.error(`${location} 发现非法 audio 数据:`, error);
+  const result = audioSchema.safeParse(audio);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 audio 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

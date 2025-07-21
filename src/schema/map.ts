@@ -3,12 +3,14 @@ import * as zod from "zod";
 import { imgSchema, locSchema } from "./common.js";
 import { pageConfigSchema, pageDataSchema } from "../page/schema.js";
 
-export const mapPageConfigSchema = pageConfigSchema.extend({
+export const mapPageConfigSchema = zod.strictObject({
+  ...pageConfigSchema.shape,
   /** 地点图片 */
   photo: zod.array(imgSchema).optional(),
 });
 
-export const mapPageDataSchema = pageDataSchema.extend({
+export const mapPageDataSchema = zod.strictObject({
+  ...pageDataSchema.shape,
   /** 地点图片 */
   photo: zod.array(imgSchema).optional(),
 });
@@ -37,7 +39,8 @@ export const markersConfigSchema = zod.record(
 );
 
 /** 标记点数据 schema */
-export const markerDataSchema = markerConfigSchema.extend({
+export const markerDataSchema = zod.strictObject({
+  ...markerConfigSchema.shape,
   id: zod.number().int().positive("标记点ID必须为正整数"),
 });
 
@@ -65,18 +68,24 @@ export const checkMapPageConfig = (
   config: MapPageConfig,
   location = "",
 ): void => {
-  try {
-    mapPageConfigSchema.parse(config);
-  } catch (error) {
-    console.error(`${location} 发现非法地图页面配置:`, error);
+  const result = mapPageConfigSchema.safeParse(config);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法地图页面配置:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
 export const checkMapPageData = (data: MapPageData, location = ""): void => {
-  try {
-    mapPageDataSchema.parse(data);
-  } catch (error) {
-    console.error(`${location} 发现非法地图页面数据:`, error);
+  const result = mapPageDataSchema.safeParse(data);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法地图页面数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
@@ -84,10 +93,13 @@ export const checkMarkerConfig = (
   marker: MarkerConfig,
   location = "",
 ): void => {
-  try {
-    markerConfigSchema.parse(marker);
-  } catch (error) {
-    console.error(`${location} 发现非法标记点配置:`, error);
+  const result = markerConfigSchema.safeParse(marker);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法标记点配置:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
@@ -95,17 +107,23 @@ export const checkMarkersConfig = (
   markers: MarkersConfig,
   location = "",
 ): void => {
-  try {
-    markersConfigSchema.parse(markers);
-  } catch (error) {
-    console.error(`${location} 发现非法标记点配置:`, error);
+  const result = markersConfigSchema.safeParse(markers);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法标记点配置:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
 
 export const checkMarkersData = (data: MarkersData, location = ""): void => {
-  try {
-    markersDataSchema.parse(data);
-  } catch (error) {
-    console.error(`${location} 发现非法标记点数据:`, error);
+  const result = markersDataSchema.safeParse(data);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法标记点数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

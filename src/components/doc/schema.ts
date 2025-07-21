@@ -28,9 +28,12 @@ export interface DocComponentData extends DocComponentOptions {
 }
 
 export const checkDoc = (doc: DocComponentOptions, location = ""): void => {
-  try {
-    docSchema.parse(doc);
-  } catch (error) {
-    console.error(`${location} 发现非法 doc 数据:`, error);
+  const result = docSchema.safeParse(doc);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 doc 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

@@ -48,9 +48,12 @@ export const checkImage = (
   image: ImageComponentOptions,
   location = "",
 ): void => {
-  try {
-    imageSchema.parse(image);
-  } catch (error) {
-    console.error(`${location} 发现非法 image 数据:`, error);
+  const result = imageSchema.safeParse(image);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 image 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

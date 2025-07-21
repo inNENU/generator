@@ -29,50 +29,61 @@ ${items
 
     const resolvedIcon = getIconLink(icon);
 
-    const listItemContent = `
-${
-  resolvedIcon
-    ? `<img class="innenu-list-icon" src="${resolvedIcon}" alt="" no-view />`
-    : ""
-}
-<div class="innenu-list-detail">
+    const iconContent = resolvedIcon
+      ? `\
+<img class="innenu-list-icon" src="${resolvedIcon}" alt="" no-view />
+`
+      : "";
+
+    const textContent = `\
 <div class="innenu-list-text">
 ${text.replace(/\n/g, "<br />")}
 </div>
-${
-  desc
-    ? `\
+`;
+
+    const descContent = desc
+      ? `\
 <div class="innenu-list-desc">
 ${desc}
 </div>
 `
-    : ""
-}
+      : "";
+
+    const listItemContent = `
+${iconContent}\
+<div class="innenu-list-detail">
+${textContent}\
+${descContent}\
 </div>
 `;
 
+    if ("type" in item) {
+      if (item.type === "official")
+        return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
+${listItemContent}
+</a>`;
+
+      if (item.type === "article") {
+        return `<a class="innenu-list-item" href="${item.url}" target="_blank">
+${listItemContent}
+</a>`;
+      }
+    } else if ("path" in item && item.path) {
+      return `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
+        ${listItemContent}
+        </RouteLink>`;
+    }
+
     return `\
-${
-  "url" in item && item.url && /^https?:\/\//.exec(item.url)
-    ? `<a class="innenu-list-item" href="${item.url}" target="_blank">
-${listItemContent}
-</a>`
-    : "path" in item && item.path
-      ? `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
-${listItemContent}
-</RouteLink>`
-      : `\
 <div class="innenu-list-item">
 ${listItemContent}
-</div>`
-}
+</div>
 `;
   })
   .filter((item): item is string => item !== null)
   .join("\n")}
 
 </div>
-
 ${
   footer
     ? `\

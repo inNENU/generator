@@ -24,9 +24,12 @@ export const checkTitle = (
   title: TitleComponentOptions,
   location = "",
 ): void => {
-  try {
-    titleSchema.parse(title);
-  } catch (error) {
-    console.error(`${location} 发现非法 title 数据:`, error);
+  const result = titleSchema.safeParse(title);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 title 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

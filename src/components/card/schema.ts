@@ -1,8 +1,20 @@
 import * as zod from "zod";
 
-import { envListSchema, iconSchema, imgSchema } from "../../schema/common.js";
+import {
+  channelProfileSchema,
+  channelVideoSchema,
+  envListSchema,
+  iconSchema,
+  imgSchema,
+  miniProgramFullSchema,
+  miniProgramShortLinkSchema,
+  officialArticleSchema,
+  officialProfileSchema,
+  pathSchema,
+  urlSchema,
+} from "../../schema/common.js";
 
-const baseCardSchema = zod.object({
+const baseCardSchema = zod.strictObject({
   tag: zod.literal("card"),
   /** 卡片标题 */
   title: zod.string().min(1, "卡片标题不能为空"),
@@ -18,67 +30,86 @@ const baseCardSchema = zod.object({
   env: envListSchema,
 });
 
-export const webCardSchema = baseCardSchema.extend({
-  /** 跳转的链接 */
-  url: zod.url({ protocol: /^https?$/ }),
+export const pathCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...pathSchema.shape,
 });
 
-export const pathCardSchema = baseCardSchema.extend({
-  /** 跳转的文件名称 */
-  path: zod.string().min(1, "路径不能为空"),
+export const urlCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...urlSchema.shape,
 });
 
-export const urlCardSchema = baseCardSchema.extend({
-  /** 处理后的路径 */
-  url: zod.string().min(1, "页面路径不能为空"),
+export const officialProfileCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...officialProfileSchema.shape,
 });
 
-export const wechatProfileCardSchema = baseCardSchema.extend({
-  type: zod.enum(["account", "channel"]),
-  /** 用户名 */
-  username: zod.string(),
+export const channelProfileCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...channelProfileSchema.shape,
 });
 
-export const miniProgramCardSchema = baseCardSchema.extend({
-  /** 要打开的小程序 appId */
-  appId: zod.string().min(1, "小程序 appId 不能为空"),
-  /** 打开的页面路径 */
-  path: zod.string().optional(),
-  /** 需要传递给目标小程序的数据 */
-  extraData: zod.record(zod.string(), zod.unknown()).optional(),
-  /** 要打开的小程序版本 */
-  versionType: zod.enum(["develop", "trial", "release"]).optional(),
+export const articleCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...officialArticleSchema.shape,
+});
+
+export const videoCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...channelVideoSchema.shape,
+});
+
+export const miniProgramFullCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...miniProgramFullSchema.shape,
+});
+
+export const miniProgramShortLinkCardSchema = zod.strictObject({
+  ...baseCardSchema.shape,
+  ...miniProgramShortLinkSchema.shape,
 });
 
 export const cardSchema = zod.union([
   pathCardSchema,
   urlCardSchema,
-  webCardSchema,
-  wechatProfileCardSchema,
-  miniProgramCardSchema,
+  officialProfileCardSchema,
+  channelProfileCardSchema,
+  articleCardSchema,
+  videoCardSchema,
+  miniProgramFullCardSchema,
+  miniProgramShortLinkCardSchema,
 ]);
 
-export type NormalCardComponentOptions = zod.infer<typeof webCardSchema>;
-export type PageCardComponentOptions =
-  | zod.infer<typeof pathCardSchema>
-  | zod.infer<typeof urlCardSchema>;
+export type NormalCardComponentOptions = zod.infer<typeof pathCardSchema>;
+export type PageCardComponentOptions = zod.infer<typeof urlCardSchema>;
+export type OfficialProfileCardComponentOptions = zod.infer<
+  typeof officialProfileCardSchema
+>;
+export type ChannelProfileCardComponentOptions = zod.infer<
+  typeof channelProfileCardSchema
+>;
+export type ArticleCardComponentOptions = zod.infer<typeof articleCardSchema>;
+export type VideoCardComponentOptions = zod.infer<typeof videoCardSchema>;
 export type MiniProgramCardComponentOptions = zod.infer<
-  typeof miniProgramCardSchema
+  typeof miniProgramFullCardSchema | typeof miniProgramShortLinkCardSchema
 >;
-export type WechatProfileCardComponentOptions = zod.infer<
-  typeof wechatProfileCardSchema
->;
-
 export type CardComponentOptions =
-  | MiniProgramCardComponentOptions
   | NormalCardComponentOptions
   | PageCardComponentOptions
-  | WechatProfileCardComponentOptions;
+  | MiniProgramCardComponentOptions
+  | OfficialProfileCardComponentOptions
+  | ChannelProfileCardComponentOptions
+  | ArticleCardComponentOptions
+  | VideoCardComponentOptions;
 
 export const checkCard = (card: CardComponentOptions, location = ""): void => {
-  try {
-    cardSchema.parse(card);
-  } catch (error) {
-    console.error(`${location} 发现非法 card 数据:`, error);
+  const result = cardSchema.safeParse(card);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 card 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

@@ -60,9 +60,12 @@ export const checkAccount = (
   account: AccountComponentOptions,
   location = "",
 ): void => {
-  try {
-    accountSchema.parse(account);
-  } catch (error) {
-    console.error(`${location} 发现非法 account 数据:`, error);
+  const result = accountSchema.safeParse(account);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 account 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

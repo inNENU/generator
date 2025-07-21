@@ -36,9 +36,12 @@ export const checkLocation = (
   location: LocationComponentOptions,
   locationStr = "",
 ): void => {
-  try {
-    locationSchema.parse(location);
-  } catch (error) {
-    console.error(`非法 location 数据在 ${locationStr}:`, error);
+  const result = locationSchema.safeParse(location);
+
+  if (!result.success) {
+    console.error(
+      `非法 location 数据在 ${locationStr}:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

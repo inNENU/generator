@@ -51,21 +51,21 @@ export const internalImgSchema = zod
   .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
-  });
+  }) as unknown as zod.ZodString;
 
 export const internalDocsSchema = zod
   .templateLiteral(["$file/", zod.string(), docExtensionSchema])
   .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
-  });
+  }) as unknown as zod.ZodString;
 
 export const internalFileSchema = zod
   .templateLiteral(["$file/", zod.string()])
   .refine((link) => existsSync("./" + link.substring(1)), {
     error: "文件不存在",
     abort: true,
-  });
+  }) as unknown as zod.ZodString;
 
 export const httpsLinkSchema = zod.url({ protocol: /^https$/ });
 
@@ -106,6 +106,68 @@ export const locSchema = zod.templateLiteral([
 export const styleSchema = zod
   .union([zod.string(), zod.record(zod.string(), zod.string())])
   .optional();
+
+export const pathSchema = zod.strictObject({
+  /** 跳转的文件名称 */
+  path: zod.string().min(1, "路径不能为空"),
+});
+
+export const urlSchema = zod.strictObject({
+  /** 处理后的路径 */
+  url: zod.string().min(1, "页面路径不能为空"),
+});
+
+export const officialProfileSchema = zod.strictObject({
+  action: zod.literal("official"),
+  /** 用户名 */
+  username: zod.string(),
+});
+
+export const officialArticleSchema = zod.strictObject({
+  action: zod.literal("article"),
+  /** 文章链接 */
+  url: zod
+    .string()
+    .regex(/^https:\/\/mp.weixin.qq.com\/s\//, "文章链接格式不正确"),
+});
+
+export const channelProfileSchema = zod.strictObject({
+  action: zod.literal("channel"),
+  /** 用户 ID */
+  id: zod.string(),
+});
+
+export const channelVideoSchema = zod.strictObject({
+  action: zod.literal("video"),
+  /** 视频号 ID */
+  username: zod.string(),
+  /** 视频 ID */
+  id: zod.string(),
+});
+
+const miniProgramBaseSchema = zod.strictObject({
+  action: zod.literal("miniProgram"),
+  /** 需要传递给目标小程序的数据 */
+  extraData: zod.record(zod.string(), zod.unknown()).optional(),
+  /** 要打开的小程序版本 */
+  versionType: zod.enum(["develop", "trial", "release"]).optional(),
+});
+
+export const miniProgramFullSchema = zod.strictObject({
+  ...miniProgramBaseSchema.shape,
+  /** 要打开的小程序 appId */
+  appId: zod.string().min(1, "小程序 appId 不能为空"),
+  /** 打开的页面路径 */
+  path: zod.string().optional(),
+});
+
+export const miniProgramShortLinkSchema = zod.strictObject({
+  ...miniProgramBaseSchema.shape,
+  /** 小程序短链 */
+  shortLink: zod.string(),
+});
+
+export const justifySchema = zod.enum(["left", "right", "center", "justify"]);
 
 export type Env = zod.infer<typeof envSchema>;
 

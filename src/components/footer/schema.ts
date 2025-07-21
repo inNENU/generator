@@ -22,9 +22,12 @@ export const checkFooter = (
   footer: FooterComponentOptions,
   location = "",
 ): void => {
-  try {
-    footerSchema.parse(footer);
-  } catch (error) {
-    console.error(`${location} 发现非法 footer 数据:`, error);
+  const result = footerSchema.safeParse(footer);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 footer 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };

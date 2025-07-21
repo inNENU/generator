@@ -18,9 +18,12 @@ export const checkAction = (
   action: ActionComponentOptions,
   location = "",
 ): void => {
-  try {
-    actionSchema.parse(action);
-  } catch (error) {
-    console.error(`${location} 发现非法 action 数据:`, error);
+  const result = actionSchema.safeParse(action);
+
+  if (!result.success) {
+    console.error(
+      `${location} 发现非法 action 数据:`,
+      zod.prettifyError(result.error),
+    );
   }
 };
