@@ -3,18 +3,30 @@ import * as zod from "zod";
 import { httpsLinkSchema, imgSchema } from "./common.js";
 
 export const wechatAccountInfoSchema = zod.strictObject({
+  /** 微信公众号名称 */
   name: zod.string(),
+  /** 微信公众号描述 */
   desc: zod.string(),
+  /** 微信公众号 logo */
   logo: imgSchema,
-  path: zod.string(),
+  /** 微信公众号 ID */
+  id: zod.string(),
+  /** 微信公众号路径 */
+  path: zod.string().optional(),
 });
 
 export const qqAccountInfoSchema = zod.strictObject({
+  /** QQ 账号名称 */
   name: zod.string(),
+  /** QQ 账号描述 */
   desc: zod.string(),
+  /** QQ 账号 logo */
   logo: imgSchema,
+  /** QQ 号 */
   id: zod.number().min(10000).max(5000000000),
+  /** QQ 账号二维码 */
   qrcode: imgSchema.optional(),
+  /** QQ 账号 OpenID */
   openid: zod.string().length(32).optional(),
 });
 
