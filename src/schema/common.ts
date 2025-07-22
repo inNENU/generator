@@ -139,7 +139,9 @@ export type OfficialArticleOptions = zod.infer<typeof officialArticleSchema>;
 
 export const channelProfileSchema = zod.strictObject({
   action: zod.literal("channel"),
-  /** 用户 ID */
+  /** 视频号名称 */
+  username: zod.string(),
+  /** 视频号 ID */
   id: zod.string(),
 });
 export type ChannelProfileOptions = zod.infer<typeof channelProfileSchema>;
