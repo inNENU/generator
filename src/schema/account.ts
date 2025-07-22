@@ -13,6 +13,8 @@ export const wechatAccountInfoSchema = zod.strictObject({
   id: zod.string(),
   /** 微信公众号路径 */
   path: zod.string().optional(),
+  /** 是否允许跳转 */
+  allowed: zod.boolean().optional(),
 });
 
 export const qqAccountInfoSchema = zod.strictObject({
