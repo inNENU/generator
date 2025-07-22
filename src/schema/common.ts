@@ -5,7 +5,7 @@ import * as zod from "zod";
 zod.config(zod.locales.zhCN());
 
 export const envSchema = zod.enum(["web", "wx", "qq", "app"]);
-
+export type Env = zod.infer<typeof envSchema>;
 export const envListSchema = zod.array(envSchema).optional();
 
 export const imageModeSchema = zod.enum([
@@ -23,6 +23,7 @@ export const imageModeSchema = zod.enum([
   "bottom left",
   "bottom right",
 ]);
+export type ImageMode = zod.infer<typeof imageModeSchema>;
 
 export const imageExtensionSchema = zod.enum([
   ".png",
@@ -102,6 +103,7 @@ export const locSchema = zod.templateLiteral([
     )
     .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
 ]);
+export type Loc = zod.infer<typeof locSchema>;
 
 export const styleSchema = zod
   .union([zod.string(), zod.record(zod.string(), zod.string())])
@@ -111,17 +113,20 @@ export const pathSchema = zod.strictObject({
   /** 跳转的文件名称 */
   path: zod.string().min(1, "路径不能为空"),
 });
+export type PathOptions = zod.infer<typeof pathSchema>;
 
 export const urlSchema = zod.strictObject({
   /** 处理后的路径 */
   url: zod.string().min(1, "页面路径不能为空"),
 });
+export type UrlOptions = zod.infer<typeof urlSchema>;
 
 export const officialProfileSchema = zod.strictObject({
   action: zod.literal("official"),
   /** 用户名 */
   username: zod.string(),
 });
+export type OfficialProfileOptions = zod.infer<typeof officialProfileSchema>;
 
 export const officialArticleSchema = zod.strictObject({
   action: zod.literal("article"),
@@ -130,12 +135,14 @@ export const officialArticleSchema = zod.strictObject({
     .string()
     .regex(/^https:\/\/mp.weixin.qq.com\/s\//, "文章链接格式不正确"),
 });
+export type OfficialArticleOptions = zod.infer<typeof officialArticleSchema>;
 
 export const channelProfileSchema = zod.strictObject({
   action: zod.literal("channel"),
   /** 用户 ID */
   id: zod.string(),
 });
+export type ChannelProfileOptions = zod.infer<typeof channelProfileSchema>;
 
 export const channelVideoSchema = zod.strictObject({
   action: zod.literal("video"),
@@ -144,6 +151,7 @@ export const channelVideoSchema = zod.strictObject({
   /** 视频 ID */
   id: zod.string(),
 });
+export type ChannelVideoOptions = zod.infer<typeof channelVideoSchema>;
 
 const miniProgramBaseSchema = zod.strictObject({
   action: zod.literal("miniProgram"),
@@ -160,20 +168,16 @@ export const miniProgramFullSchema = zod.strictObject({
   /** 打开的页面路径 */
   path: zod.string().optional(),
 });
+export type MiniProgramFullOptions = zod.infer<typeof miniProgramFullSchema>;
 
 export const miniProgramShortLinkSchema = zod.strictObject({
   ...miniProgramBaseSchema.shape,
   /** 小程序短链 */
   shortLink: zod.string(),
 });
+export type MiniProgramShortLinkOptions = zod.infer<
+  typeof miniProgramShortLinkSchema
+>;
 
 export const justifySchema = zod.enum(["left", "right", "center", "justify"]);
-
-export type Env = zod.infer<typeof envSchema>;
-
-export type ImageMode = zod.infer<typeof imageModeSchema>;
-
-export interface BaseComponentOptions {
-  /** 显示的环境 */
-  env?: Env[];
-}
+export type Justify = zod.infer<typeof justifySchema>;
