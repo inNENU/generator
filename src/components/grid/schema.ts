@@ -2,6 +2,7 @@ import * as zod from "zod";
 
 import {
   channelProfileSchema,
+  channelVideoSchema,
   envListSchema,
   iconSchema,
   miniProgramFullSchema,
@@ -11,7 +12,7 @@ import {
   pathSchema,
   urlSchema,
 } from "../../schema/common.js";
-import { videoSchema } from "../schema.js";
+import {} from "../schema.js";
 
 const baseGridItemSchema = zod.object({
   /** 网格文字 */
@@ -49,7 +50,7 @@ const articleGridItemSchema = zod.strictObject({
 
 const videoGridItemSchema = zod.strictObject({
   ...baseGridItemSchema.shape,
-  ...videoSchema.shape,
+  ...channelVideoSchema.shape,
 });
 
 const miniProgramFullGridItemSchema = zod.strictObject({
