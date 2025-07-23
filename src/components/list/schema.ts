@@ -33,15 +33,39 @@ const listPathItemSchema = zod.strictObject({
   ...pathSchema.shape,
 });
 
-const listUrlItemSchema = zod.strictObject({
+const listPageItemSchema = zod.strictObject({
   ...baseListItemSchema.shape,
   ...urlSchema.shape,
+});
+
+const officialProfileListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...officialProfileSchema.shape,
+});
+
+const channelProfileListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...channelProfileSchema.shape,
+});
+
+const articleListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...officialArticleSchema.shape,
+});
+
+const videoListItemSchema = zod.strictObject({
+  ...baseListItemSchema.shape,
+  ...channelVideoSchema.shape,
 });
 
 const listItemSchema = zod.union([
   baseListItemSchema,
   listPathItemSchema,
-  listUrlItemSchema,
+  listPageItemSchema,
+  officialProfileListItemSchema,
+  channelProfileListItemSchema,
+  articleListItemSchema,
+  videoListItemSchema,
 ]);
 
 export const listSchema = zod.strictObject({
@@ -75,26 +99,6 @@ const navigatorListItemSchema = zod.strictObject({
   target: zod.enum(["self", "miniProgram"]).optional(),
   /** 跳转到的 url */
   url: zod.string().optional(),
-});
-
-const officialProfileListItemSchema = zod.strictObject({
-  ...baseListItemSchema.shape,
-  ...officialProfileSchema.shape,
-});
-
-const channelProfileListItemSchema = zod.strictObject({
-  ...baseListItemSchema.shape,
-  ...channelProfileSchema.shape,
-});
-
-const articleListItemSchema = zod.strictObject({
-  ...baseListItemSchema.shape,
-  ...officialArticleSchema.shape,
-});
-
-const videoListItemSchema = zod.strictObject({
-  ...baseListItemSchema.shape,
-  ...channelVideoSchema.shape,
 });
 
 const switchListItemSchema = zod.strictObject({
@@ -154,10 +158,6 @@ const buttonListItemSchema = zod.strictObject({
 const functionalListItemSchema = zod.union([
   listItemSchema,
   navigatorListItemSchema,
-  officialProfileListItemSchema,
-  channelProfileListItemSchema,
-  articleListItemSchema,
-  videoListItemSchema,
   switchListItemSchema,
   pickerListItemSchema,
   sliderListItemSchema,
@@ -178,7 +178,7 @@ export const functionalListSchema = zod.strictObject({
 
 export type BaseListComponentItemOptions = zod.infer<typeof baseListItemSchema>;
 export type ListPathComponentItemOptions = zod.infer<typeof listPathItemSchema>;
-export type ListUrlComponentItemOptions = zod.infer<typeof listUrlItemSchema>;
+export type ListPageComponentItemOptions = zod.infer<typeof listPageItemSchema>;
 export type ListComponentItemOptions = zod.infer<typeof listItemSchema>;
 export type ListComponentOptions = zod.infer<typeof listSchema>;
 

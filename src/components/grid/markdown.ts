@@ -26,7 +26,6 @@ ${
 ${items
   .map((item) => {
     if ("env" in item && item.env && !item.env.includes("web")) return null;
-    if ("appId" in item) return null;
 
     const { icon, text } = item;
     const resolvedIcon = getIconLink(icon);
@@ -61,10 +60,12 @@ ${gridItemContent}
       }
 
       return "";
-    } else if ("path" in item && item.path) {
+    }
+
+    if ("path" in item && item.path) {
       return `<RouteLink class="innenu-grid-item" to="${getHTMLPath(item.path)}">
-        ${gridItemContent}
-        </RouteLink>`;
+${gridItemContent}
+</RouteLink>`;
     }
 
     return `\

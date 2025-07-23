@@ -31,7 +31,6 @@ ${
 ${items
   .map((item) => {
     if (item.env && !item.env.includes("web")) return null;
-    if ("appId" in item) return null;
 
     const { icon, text, desc } = item;
 
@@ -65,21 +64,25 @@ ${descContent}\
 </div>
 `;
 
-    if ("type" in item) {
-      if (item.type === "official")
+    if ("action" in item) {
+      if (item.action === "official")
         return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
 ${listItemContent}
 </a>`;
 
-      if (item.type === "article") {
+      if (item.action === "article") {
         return `<a class="innenu-list-item" href="${item.url}" target="_blank">
 ${listItemContent}
 </a>`;
       }
-    } else if ("path" in item && item.path) {
+
+      return "";
+    }
+
+    if ("path" in item && item.path) {
       return `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
-        ${listItemContent}
-        </RouteLink>`;
+${listItemContent}
+</RouteLink>`;
     }
 
     return `\
