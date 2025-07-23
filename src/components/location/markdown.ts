@@ -4,10 +4,11 @@ import { _config } from "../../config.js";
 
 export const getLocationMarkdown = (
   location: LocationComponentOptions,
+  locationParam = "",
 ): string => {
   if (location.env && !location.env.includes("web")) return "";
 
-  checkLocation(location);
+  checkLocation(location, locationParam);
 
   const { header, points = [] } = location;
 

@@ -19,7 +19,9 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
 ${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
 ${content
-  .map((component) => {
+  .map((component, index) => {
+    const componentLocation = `${pagePath} page.content[${index}]`;
+
     if (component.env && !component.env.includes("web")) return "";
 
     switch (component.tag) {
@@ -114,7 +116,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
       }
 
       case "table": {
-        return getTableMarkdown(component);
+        return getTableMarkdown(component, componentLocation);
       }
 
       case "phone": {
@@ -159,7 +161,7 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
       }
 
       case "action": {
-        return getActionMarkdown(component);
+        return getActionMarkdown(component, componentLocation);
       }
 
       case "account": {

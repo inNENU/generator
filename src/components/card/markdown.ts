@@ -2,10 +2,13 @@ import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
 import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 
-export const getCardMarkdown = (card: CardComponentOptions): string => {
+export const getCardMarkdown = (
+  card: CardComponentOptions,
+  location = "",
+): string => {
   if (card.env && !card.env.includes("web")) return "";
 
-  checkCard(card);
+  checkCard(card, location);
 
   const logo = getIconLink(card.logo);
   const cover = card.cover ? getFileLink(card.cover) : null;

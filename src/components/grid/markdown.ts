@@ -2,10 +2,13 @@ import type { GridComponentOptions } from "./schema.js";
 import { checkGrid } from "./schema.js";
 import { getHTMLPath, getIconLink } from "../../utils.js";
 
-export const getGridMarkdown = (grid: GridComponentOptions): string => {
+export const getGridMarkdown = (
+  grid: GridComponentOptions,
+  location = "",
+): string => {
   if (grid.env && !grid.env.includes("web")) return "";
 
-  checkGrid(grid);
+  checkGrid(grid, location);
 
   const { header, footer, items = [] } = grid;
 

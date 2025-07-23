@@ -3,10 +3,13 @@ import { checkDoc } from "./schema.js";
 import { getDocIcon } from "./utils.js";
 import { getAssetIconLink, getFileLink } from "../../utils.js";
 
-export const getDocMarkdown = (doc: DocComponentOptions): string => {
+export const getDocMarkdown = (
+  doc: DocComponentOptions,
+  location = "",
+): string => {
   if (doc.env && !doc.env.includes("web")) return "";
 
-  checkDoc(doc);
+  checkDoc(doc, location);
 
   const processedUrl = getFileLink(doc.url);
   const url = processedUrl ?? doc.url;

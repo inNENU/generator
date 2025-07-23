@@ -20,15 +20,15 @@ import { getIconLink } from "../utils.js";
  * 生成页面 Markdown
  *
  * @param page 页面数据
- * @param pagePath 页面路径
+ * @param location 页面位置
  *
  * @returns Markdown 内容
  */
-export const getPageMarkdown = (page: PageConfig, pagePath = ""): string => {
-  if (!page) throw new Error(`${pagePath} doesn't contain anything`);
+export const getPageMarkdown = (page: PageConfig, location = ""): string => {
+  if (!page) throw new Error(`${location} doesn't contain anything`);
 
   if (!page.content)
-    throw new Error(`${pagePath}.content doesn't contain anything`);
+    throw new Error(`${location} page content doesn't contain anything`);
 
   try {
     const {
@@ -99,40 +99,53 @@ isOriginal: true
 
 `;
 
-    pageContents.forEach((component) => {
+    pageContents.forEach((component, index) => {
       const { env, tag } = component;
+      const componentLocation = `${location} page.content[${index}]`;
 
       if (!env || env.includes("web")) {
         // 处理图片
-        if (tag === "img") content += getImgMarkdown(component);
+        if (tag === "img")
+          content += getImgMarkdown(component, componentLocation);
         // 设置标题
-        else if (tag === "title") content += getTitleMarkdown(component);
+        else if (tag === "title")
+          content += getTitleMarkdown(component, componentLocation);
         // 设置文字
         else if (tag === "text" || tag === "p" || tag === "ul" || tag === "ol")
-          content += getTextMarkdown(component);
+          content += getTextMarkdown(component, componentLocation);
         // 设置列表组件
         else if (tag === "list" || tag === "functional-list")
-          content += getListMarkdown(component);
+          content += getListMarkdown(component, componentLocation);
         // 设置网格组件
-        else if (tag === "grid") content += getGridMarkdown(component);
+        else if (tag === "grid")
+          content += getGridMarkdown(component, componentLocation);
         // 检测文档
-        else if (tag === "doc") content += getDocMarkdown(component);
+        else if (tag === "doc")
+          content += getDocMarkdown(component, componentLocation);
         // 设置电话
-        else if (tag === "phone") content += getPhoneMarkdown(component);
+        else if (tag === "phone")
+          content += getPhoneMarkdown(component, componentLocation);
         // 检测音频
-        else if (tag === "card") content += getCardMarkdown(component);
+        else if (tag === "card")
+          content += getCardMarkdown(component, componentLocation);
         // 检测音频
-        else if (tag === "audio") content += getAudioMarkdown(component);
+        else if (tag === "audio")
+          content += getAudioMarkdown(component, componentLocation);
         // 检测视频
-        else if (tag === "video") content += getVideoMarkdown(component);
+        else if (tag === "video")
+          content += getVideoMarkdown(component, componentLocation);
         // 检测动作
-        else if (tag === "action") content += getActionMarkdown(component);
+        else if (tag === "action")
+          content += getActionMarkdown(component, componentLocation);
         // 检测账号
-        else if (tag === "account") content += getAccountMarkdown(component);
+        else if (tag === "account")
+          content += getAccountMarkdown(component, componentLocation);
         // 检测地点
-        else if (tag === "location") content += getLocationMarkdown(component);
+        else if (tag === "location")
+          content += getLocationMarkdown(component, componentLocation);
         // 表格
-        else if (tag === "table") content += getTableMarkdown(component);
+        else if (tag === "table")
+          content += getTableMarkdown(component, componentLocation);
       }
     });
 
@@ -149,7 +162,7 @@ ${
     return content;
   } catch (error) {
     throw new Error(
-      `为 ${pagePath} 生成 Markdown 失败: ${(error as Error).message}`,
+      `为 ${location} 生成 Markdown 失败: ${(error as Error).message}`,
     );
   }
 };

@@ -4,10 +4,11 @@ import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getAccountMarkdown = (
   account: AccountComponentOptions,
+  location = "",
 ): string => {
   if (account.env && !account.env.includes("web")) return "";
 
-  checkAccount(account);
+  checkAccount(account, location);
 
   // `$` alias resolve and file check
   const logo = getFileLink(account.logo);

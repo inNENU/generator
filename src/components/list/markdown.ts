@@ -2,14 +2,22 @@ import type {
   FunctionalListComponentOptions,
   ListComponentOptions,
 } from "./schema.js";
+import { checkFunctionalList, checkList } from "./schema.js";
 import { getHTMLPath, getIconLink } from "../../utils.js";
 
-export const getListMarkdown = ({
-  header,
-  footer,
-  items = [],
-}: ListComponentOptions | FunctionalListComponentOptions): string =>
-  `\
+export const getListMarkdown = (
+  list: ListComponentOptions | FunctionalListComponentOptions,
+  location = "",
+): string => {
+  if (list.tag === "list") {
+    checkList(list, location);
+  } else {
+    checkFunctionalList(list, location);
+  }
+
+  const { header, footer, items = [] } = list;
+
+  return `\
 ${
   header
     ? `\
@@ -95,3 +103,4 @@ ${footer}
 }\
 
 `;
+};

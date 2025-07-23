@@ -2,10 +2,13 @@ import type { TextComponentOptions } from "./schema.js";
 import { checkText } from "./schema.js";
 import { getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
 
-export const getTextMarkdown = (text: TextComponentOptions): string => {
+export const getTextMarkdown = (
+  text: TextComponentOptions,
+  location = "",
+): string => {
   if (text.env && !text.env.includes("web")) return "";
 
-  checkText(text);
+  checkText(text, location);
 
   // 处理段落
   if (typeof text.text === "string") text.text = [text.text];

@@ -1,10 +1,13 @@
 import type { PhoneComponentOptions } from "./schema.js";
 import { checkPhone } from "./schema.js";
 
-export const getPhoneMarkdown = (phone: PhoneComponentOptions): string => {
+export const getPhoneMarkdown = (
+  phone: PhoneComponentOptions,
+  location = "",
+): string => {
   if (phone.env && !phone.env.includes("web")) return "";
 
-  checkPhone(phone);
+  checkPhone(phone, location);
 
   const {
     header = "",

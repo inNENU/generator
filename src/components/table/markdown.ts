@@ -1,10 +1,13 @@
 import type { TableComponentOptions } from "./schema.js";
 import { checkTable } from "./schema.js";
 
-export const getTableMarkdown = (table: TableComponentOptions): string => {
+export const getTableMarkdown = (
+  table: TableComponentOptions,
+  location = "",
+): string => {
   if (table.env && !table.env.includes("web")) return "";
 
-  checkTable(table);
+  checkTable(table, location);
 
   const { caption, header, body } = table;
 
