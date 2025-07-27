@@ -4,7 +4,7 @@ import * as zod from "zod";
 
 zod.config(zod.locales.zhCN());
 
-export const envSchema = zod.enum(["web", "wx", "qq", "app"]);
+export const envSchema = zod.enum(["web", "wx", "app"]);
 export type Env = zod.infer<typeof envSchema>;
 export const envListSchema = zod.array(envSchema).optional();
 
