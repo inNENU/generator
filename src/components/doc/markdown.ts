@@ -20,7 +20,7 @@ export const getDocMarkdown = (
     getDocIcon(url),
   )}" alt="" />`;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const docName = `${name}.${url.split(".").pop()!}`;
+  const docName = `<span class="innenu-doc-name">${name}.${url.split(".").pop()!}</span>`;
 
   return `
 ${
