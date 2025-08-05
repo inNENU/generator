@@ -3,3 +3,5 @@ node_modules/
 typings.d.ts
 .npmrc
 samples/
+
+.DS_Store
