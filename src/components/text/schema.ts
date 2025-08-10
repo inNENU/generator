@@ -48,8 +48,8 @@ const hintTextComponentSchema = zod.strictObject({
    * 段落类型
    */
   type: zod.enum(
-    ["tip", "warning", "danger", "info", "note"],
-    "提示类型必须为 tip、warning、danger、info 或 note",
+    ["tip", "warning", "danger", "important", "info", "note"],
+    "提示类型必须为 tip、warning、danger、important、info 或 note",
   ),
 });
 
