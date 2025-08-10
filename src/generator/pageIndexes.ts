@@ -1,11 +1,11 @@
-import type {PageIndexes} from "../schema/index.js";
-import {  checkPageIndex } from "../schema/index.js";
+import type { PageIndexes } from "../schema/index.js";
+import { checkPageIndexes } from "../schema/index.js";
 
 export const getPageIndexesJSON = (
   data: PageIndexes,
   location: string,
 ): PageIndexes => {
-  checkPageIndex(data, location);
+  checkPageIndexes(data, location);
 
   return data;
 };

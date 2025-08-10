@@ -19,7 +19,7 @@ export const pageIndexesSchema = zod.array(pageIndexSchema);
 
 export type PageIndexes = zod.infer<typeof pageIndexesSchema>;
 
-export const checkPageIndex = (data: PageIndexes, location: string): void => {
+export const checkPageIndexes = (data: PageIndexes, location: string): void => {
   const result = pageIndexesSchema.safeParse(data);
 
   if (!result.success) {
