@@ -11,7 +11,7 @@ import {
   urlSchema,
 } from "../../schema/common.js";
 
-const baseListItemSchema = zod.object({
+const baseListItemSchema = zod.strictObject({
   /** 列表单元的显示文字 */
   text: zod.string().min(1, "列表文字不能为空"),
   /** 列表图标的本地路径或在线网址 */

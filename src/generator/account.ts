@@ -40,7 +40,7 @@ const decodeText = (text: string): string => {
       : encodedText;
 };
 
-export const getQQAccounts = (
+export const getQQAccountsJSON = (
   data: QQAccounts,
   location: string,
 ): QQAccounts => {
@@ -49,7 +49,7 @@ export const getQQAccounts = (
   return data;
 };
 
-export const getWechatAccounts = (
+export const getWechatAccountsJSON = (
   data: WechatAccounts,
   location: string,
 ): WechatAccounts => {

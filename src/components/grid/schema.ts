@@ -14,7 +14,7 @@ import {
 } from "../../schema/common.js";
 import {} from "../schema.js";
 
-const baseGridItemSchema = zod.object({
+const baseGridItemSchema = zod.strictObject({
   /** 网格文字 */
   text: zod.string().min(1, "网格文字不能为空"),
   /** 网格图标的在线路径或本地路径 */

@@ -7,7 +7,7 @@ import {
   styleSchema,
 } from "../../schema/common.js";
 
-export const carouselSchema = zod.object({
+export const carouselSchema = zod.strictObject({
   tag: zod.literal("carousel"),
   /** swiper 展示的图片的在线网址或本地路径 */
   images: zod.array(imgSchema).min(1, "至少需要一张图片"),

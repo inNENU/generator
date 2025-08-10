@@ -79,7 +79,7 @@ export const checkWechatAccounts = (
   }
 };
 
-export const wechatArticleSchema = zod.object({
+export const wechatArticleSchema = zod.strictObject({
   cover: httpsLinkSchema,
   title: zod.string(),
   url: httpsLinkSchema,
@@ -88,7 +88,7 @@ export const wechatArticleSchema = zod.object({
 
 export type WechatArticle = zod.infer<typeof wechatArticleSchema>;
 
-export const wechatAccountDataSchema = zod.object({
+export const wechatAccountDataSchema = zod.strictObject({
   /** 账户名称 */
   name: zod.string(),
   /** 账户全名 */
