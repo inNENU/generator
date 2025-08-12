@@ -20,7 +20,8 @@ export const getDocMarkdown = (
     getDocIcon(url),
   )}" alt="" />`;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const docName = `<span class="innenu-doc-name">${name}.${url.split(".").pop()!}</span>`;
+  const docName = `${name}.${url.split(".").pop()!}`;
+  const docNameContent = `<span class="innenu-doc-name">${docName}</span>`;
 
   return `
 ${
@@ -28,11 +29,14 @@ ${
     ? `
 <a class="innenu-doc" href="${url}" name="${docName}" target="_blank" rel="noopener noreferrer">
   ${docIcon}
-  ${docName}
+  ${docNameContent}
 </a>
 `
     : `
-<a class="innenu-doc" href="${url}" download="${name}">${docIcon}${docName}</a>
+<a class="innenu-doc" href="${url}" download="${name}">
+${docIcon}
+${docNameContent}
+</a>
 `
 }
 `;

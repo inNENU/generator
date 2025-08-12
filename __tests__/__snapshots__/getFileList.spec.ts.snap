@@ -59,6 +59,7 @@ exports[`getFileList 1`] = `
   "generator/index.ts",
   "generator/map.ts",
   "generator/music.ts",
+  "generator/pageIndexes.ts",
   "generator/svgIcons.ts",
   "generator/typings.ts",
   "helpers/accessToken.ts",
@@ -83,5 +84,6 @@ exports[`getFileList 1`] = `
   "schema/index.ts",
   "schema/map.ts",
   "schema/music.ts",
+  "schema/pageIndexes.ts",
 ]
 `;
