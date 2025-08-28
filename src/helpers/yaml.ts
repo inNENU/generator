@@ -34,6 +34,7 @@ export const convertYamlFilesToJson = <T = unknown, U = T>(
   targetFolder = sourceFolder,
   convertFunction: (data: T, filePath: string) => U = (data): U =>
     data as unknown as U,
+  processFunction?: (content: string) => string,
 ): void => {
   const fileList = getFileList(sourceFolder, "yml");
 
@@ -50,8 +51,10 @@ export const convertYamlFilesToJson = <T = unknown, U = T>(
 
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
 
+    const finalContent = processFunction?.(content) ?? content;
+
     const result = convertFunction(
-      load(content) as T,
+      load(finalContent) as T,
       upath.relative("./", filePath.replace(/\.yml$/u, "")),
     );
 
