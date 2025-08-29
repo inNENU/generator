@@ -62,10 +62,10 @@ export const internalFileSchema = zod
 
 export const httpsLinkSchema = zod.url({ protocol: /^https$/ });
 
-export const imgSchema = zod.union([internalImgSchema, httpsLinkSchema], {
+export const imgSchema = zod.union([httpsLinkSchema, internalImgSchema], {
   error: ({ input }) => `图片 ${String(input)} 不满足指定格式`,
 });
-export const fileSchema = zod.union([internalFileSchema, httpsLinkSchema], {
+export const fileSchema = zod.union([httpsLinkSchema, internalFileSchema], {
   error: ({ input }) => `文件 ${String(input)} 不满足指定格式`,
 });
 
