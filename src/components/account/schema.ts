@@ -30,8 +30,6 @@ export const accountSchema = zod.strictObject({
   desc: zod.string().optional(),
   /** 账户 QQ 号 */
   qq: qqSchema.optional(),
-  /** 账户 QQ openid */
-  qqid: qqidSchema.optional(),
   /** 账户 QQ 二维码 */
   qqcode: internalImgSchema.optional(),
   /** 微信公众号 ID */

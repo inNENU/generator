@@ -149,6 +149,8 @@ const buttonListItemSchema = zod.strictObject({
   color: zod.string().optional(),
   /** 按钮对应的函数名称 */
   handler: zod.string().optional(),
+  /** 开放类别 */
+  openType: zod.enum(["contact", "share"]).optional(),
   /** 联系人/客服的 openid */
   openId: zod.string().optional(),
   /** 打开群资料卡片的群号 */
