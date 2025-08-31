@@ -50,13 +50,15 @@ export const convertYamlFilesToJson = <T = unknown, U = T>(
       mkdirSync(targetFolderPath, { recursive: true });
 
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
-
-    const finalContent = processFunction?.(content, filePath) ?? content;
-
-    const result = convertFunction(
-      load(finalContent) as T,
-      upath.relative("./", filePath.replace(/\.yml$/u, "")),
+    const yamlRelativePath = upath.relative(
+      "./",
+      filePath.replace(/\.yml$/u, ""),
     );
+
+    const finalContent =
+      processFunction?.(content, yamlRelativePath) ?? content;
+
+    const result = convertFunction(load(finalContent) as T, yamlRelativePath);
 
     if (result)
       writeFileSync(targetFilename, JSON.stringify(result), {
