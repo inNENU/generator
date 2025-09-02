@@ -64,14 +64,6 @@ export const qqAccountInfoSchema = zod
         description: "QQ 账号二维码",
       })
       .optional(),
-    /** QQ 账号 OpenID */
-    openid: zod
-      .string()
-      .length(32)
-      .meta({
-        description: "QQ 账号 OpenID",
-      })
-      .optional(),
   })
   .meta({
     id: "qq-account-info",

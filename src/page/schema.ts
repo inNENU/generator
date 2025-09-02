@@ -94,7 +94,7 @@ export const pageConfigSchema = zod
     /** 页面作者 */
     author: zod.union([zod.array(zod.string()), zod.string()]).optional(),
     /** 页面最后更新时间 */
-    time: zod.date().optional(),
+    time: zod.iso.datetime().optional(),
     /** 页面标识 */
     id: zod.string().optional(),
     /** 是否是灰色背景 */

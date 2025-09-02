@@ -2,6 +2,6 @@ dist/
 node_modules/
 typings.d.ts
 .npmrc
-samples/
+schemas/
 
 .DS_Store
