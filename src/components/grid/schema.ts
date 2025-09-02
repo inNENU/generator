@@ -16,9 +16,13 @@ import {} from "../schema.js";
 
 const baseGridItemSchema = zod.strictObject({
   /** 网格文字 */
-  text: zod.string().min(1, "网格文字不能为空"),
+  text: zod.string().min(1, "网格文字不能为空").meta({
+    description: "网格文字",
+  }),
   /** 网格图标的在线路径或本地路径 */
-  icon: iconSchema,
+  icon: iconSchema.meta({
+    description: "网格图标的在线路径或本地路径",
+  }),
   /** 环境列表 */
   env: envListSchema,
 });
@@ -74,17 +78,34 @@ const gridItemSchema = zod.union([
   miniProgramShortLinkGridItemSchema,
 ]);
 
-export const gridSchema = zod.strictObject({
-  tag: zod.literal("grid"),
-  /** 网格标题 */
-  header: zod.string().optional(),
-  /** 网格项目列表 */
-  items: zod.array(gridItemSchema).min(1, "至少需要一个网格项目"),
-  /** 网格页脚 */
-  footer: zod.string().optional(),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const gridSchema = zod
+  .strictObject({
+    tag: zod.literal("grid"),
+    /** 网格标题 */
+    header: zod
+      .string()
+      .meta({
+        description: "网格标题",
+      })
+      .optional(),
+    /** 网格项目列表 */
+    items: zod.array(gridItemSchema).min(1, "至少需要一个网格项目").meta({
+      description: "网格项目列表",
+    }),
+    /** 网格页脚 */
+    footer: zod
+      .string()
+      .meta({
+        description: "网格页脚",
+      })
+      .optional(),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "grid-component",
+    description: "网格组件",
+  });
 
 export type BaseGridComponentItemOptions = zod.infer<typeof baseGridItemSchema>;
 export type NormalGridComponentItemOptions = zod.infer<

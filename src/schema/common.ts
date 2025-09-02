@@ -6,7 +6,9 @@ zod.config(zod.locales.zhCN());
 
 export const envSchema = zod.enum(["web", "wx", "app"]);
 export type Env = zod.infer<typeof envSchema>;
-export const envListSchema = zod.array(envSchema).optional();
+export const envListSchema = zod.array(envSchema).optional().meta({
+  description: "环境列表",
+});
 
 export const imageModeSchema = zod.enum([
   "widthFix",
@@ -62,12 +64,20 @@ export const internalFileSchema = zod
 
 export const httpsLinkSchema = zod.url({ protocol: /^https$/ });
 
-export const imgSchema = zod.union([httpsLinkSchema, internalImgSchema], {
-  error: ({ input }) => `图片 ${String(input)} 不满足指定格式`,
-});
-export const fileSchema = zod.union([httpsLinkSchema, internalFileSchema], {
-  error: ({ input }) => `文件 ${String(input)} 不满足指定格式`,
-});
+export const imgSchema = zod
+  .union([httpsLinkSchema, internalImgSchema], {
+    error: ({ input }) => `图片 ${String(input)} 不满足指定格式`,
+  })
+  .meta({
+    description: "图片地址",
+  });
+export const fileSchema = zod
+  .union([httpsLinkSchema, internalFileSchema], {
+    error: ({ input }) => `文件 ${String(input)} 不满足指定格式`,
+  })
+  .meta({
+    description: "文件地址",
+  });
 
 export const internalIconSchema = zod
   .string()
@@ -80,30 +90,36 @@ export const internalIconSchema = zod
     abort: true,
   });
 
-export const iconSchema = zod.union([internalIconSchema, imgSchema]);
+export const iconSchema = zod.union([internalIconSchema, imgSchema]).meta({
+  description: "图标",
+});
 
-export const locSchema = zod.templateLiteral(
-  [
-    zod
-      .number()
-      .refine(
-        (value) => value >= -180 && value <= 180,
-        "纬度必须在 -180 到 180 之间",
-      )
-      .refine((value) => !Number.isInteger(value * 1e4), "纬度至少 5 位小数"),
-    ",",
-    zod
-      .number()
-      .refine(
-        (value) => value >= -180 && value <= 180,
-        "经度必须在 -180 到 180 之间",
-      )
-      .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
-  ],
-  {
-    error: ({ input }) => `位置 ${String(input)} 不满足指定格式`,
-  },
-);
+export const locSchema = zod
+  .templateLiteral(
+    [
+      zod
+        .number()
+        .refine(
+          (value) => value >= -180 && value <= 180,
+          "纬度必须在 -180 到 180 之间",
+        )
+        .refine((value) => !Number.isInteger(value * 1e4), "纬度至少 5 位小数"),
+      ",",
+      zod
+        .number()
+        .refine(
+          (value) => value >= -180 && value <= 180,
+          "经度必须在 -180 到 180 之间",
+        )
+        .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
+    ],
+    {
+      error: ({ input }) => `位置 ${String(input)} 不满足指定格式`,
+    },
+  )
+  .meta({
+    description: "位置坐标",
+  });
 export type Loc = zod.infer<typeof locSchema>;
 
 export const styleSchema = zod

@@ -21,31 +21,40 @@ import {
 } from "../components/schema.js";
 import { iconSchema } from "../schema/common.js";
 
-export const componentSchema = zod.union([
-  accountSchema,
-  actionSchema,
-  audioSchema,
-  cardSchema,
-  carouselSchema,
-  docSchema,
-  footerSchema,
-  functionalListSchema,
-  gridSchema,
-  imageSchema,
-  listSchema,
-  locationSchema,
-  phoneSchema,
-  tableSchema,
-  textComponentSchema,
-  titleSchema,
-  videoSchema,
-]);
+export const componentSchema = zod
+  .union([
+    accountSchema,
+    actionSchema,
+    audioSchema,
+    cardSchema,
+    carouselSchema,
+    docSchema,
+    footerSchema,
+    functionalListSchema,
+    gridSchema,
+    imageSchema,
+    listSchema,
+    locationSchema,
+    phoneSchema,
+    tableSchema,
+    textComponentSchema,
+    titleSchema,
+    videoSchema,
+  ])
+  .meta({
+    id: "component",
+    description: "页面组件",
+  });
 
 export type ComponentOptions = zod.infer<typeof componentSchema>;
 
 export const pageContentSchema = zod
   .array(componentSchema)
-  .min(1, "页面内容不能为空");
+  .min(1, "页面内容不能为空")
+  .meta({
+    id: "page-content",
+    description: "页面内容",
+  });
 
 export const checkPageContent = (
   content: ComponentOptions[],
@@ -64,109 +73,123 @@ export const checkPageContent = (
 export const pageTitleSchema = zod
   .string()
   .min(1, "页面标题不能为空")
-  .max(30, "页面标题不能过长");
+  .max(30, "页面标题不能过长")
+  .meta({
+    id: "page-title",
+    description: "页面标题",
+  });
 
-export const pageConfigSchema = zod.strictObject({
-  /** 页面标题 */
-  title: pageTitleSchema,
-  /** 页面图标 */
-  icon: iconSchema.optional(),
-  /** 是否被 AI 忽略 */
-  aiIgnore: zod.boolean().optional(),
-  /** 页面标签 */
-  tags: zod.array(zod.string()).optional(),
-  /** 页面描述 */
-  desc: zod.string().optional(),
-  /** 页面作者 */
-  author: zod.union([zod.array(zod.string()), zod.string()]).optional(),
-  /** 页面最后更新时间 */
-  time: zod.date().optional(),
-  /** 页面标识 */
-  id: zod.string().optional(),
-  /** 是否是灰色背景 */
-  grey: zod.boolean().optional(),
-  /** 页面内容 */
-  content: pageContentSchema,
-  /**
-   * 页面引用来源
-   */
-  cite: zod.union([zod.array(zod.string()), zod.string()]).optional(),
-  /**
-   * 页面内容是否已过时
-   *
-   * @default false
-   */
-  outdated: zod.boolean().optional(),
-  /**
-   * 是否可以使用小程序的界面分享
-   *
-   * @default false
-   */
-  shareable: zod.boolean().optional(),
-  /**
-   * 是否可以下载二维码
-   *
-   * @description Can download when shareable is true
-   */
-  qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
-  /**
-   * 是否在分享弹出菜单中显示联系客服
-   *
-   * @default true
-   */
-  contact: zod.boolean().optional(),
-});
+export const pageConfigSchema = zod
+  .strictObject({
+    /** 页面标题 */
+    title: pageTitleSchema,
+    /** 页面图标 */
+    icon: iconSchema.optional(),
+    /** 是否被 AI 忽略 */
+    aiIgnore: zod.boolean().optional(),
+    /** 页面标签 */
+    tags: zod.array(zod.string()).optional(),
+    /** 页面描述 */
+    desc: zod.string().optional(),
+    /** 页面作者 */
+    author: zod.union([zod.array(zod.string()), zod.string()]).optional(),
+    /** 页面最后更新时间 */
+    time: zod.date().optional(),
+    /** 页面标识 */
+    id: zod.string().optional(),
+    /** 是否是灰色背景 */
+    grey: zod.boolean().optional(),
+    /** 页面内容 */
+    content: pageContentSchema,
+    /**
+     * 页面引用来源
+     */
+    cite: zod.union([zod.array(zod.string()), zod.string()]).optional(),
+    /**
+     * 页面内容是否已过时
+     *
+     * @default false
+     */
+    outdated: zod.boolean().optional(),
+    /**
+     * 是否可以使用小程序的界面分享
+     *
+     * @default false
+     */
+    shareable: zod.boolean().optional(),
+    /**
+     * 是否可以下载二维码
+     *
+     * @description Can download when shareable is true
+     */
+    qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
+    /**
+     * 是否在分享弹出菜单中显示联系客服
+     *
+     * @default true
+     */
+    contact: zod.boolean().optional(),
+  })
+  .meta({
+    id: "page-config",
+    description: "页面配置",
+  });
 
-export const pageDataSchema = zod.strictObject({
-  /** 页面标题 */
-  title: pageTitleSchema,
-  /** 页面图标 */
-  icon: iconSchema,
-  /** 页面描述 */
-  desc: zod.string().optional(),
-  /** 页面作者 */
-  author: zod.string().optional(),
-  /** 页面最后更新时间 */
-  time: zod.string().optional(),
-  /** 页面标识 */
-  id: zod.string().min(1, "页面ID不能为空"),
-  /** 是否是灰色背景 */
-  grey: zod.boolean().optional(),
-  /** 页面内容 */
-  content: pageContentSchema,
-  /** 页面图片 */
-  images: zod.array(zod.string()).optional(),
-  /**
-   * 页面引用来源
-   */
-  cite: zod.array(zod.string()).optional(),
-  /**
-   * 页面内容是否已过时
-   *
-   * @default false
-   */
-  outdated: zod.boolean().optional(),
-  /**
-   * 是否可以使用小程序的界面分享
-   *
-   * @default false
-   */
-  shareable: zod.boolean().optional(),
-  /**
-   * 是否可以下载二维码
-   *
-   * @description Can download when shareable is true
-   */
-  qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
-  /**
-   * 是否在分享弹出菜单中显示联系客服
-   *
-   * @default true
-   */
-  contact: zod.boolean().optional(),
-  /** 是否隐藏导航栏 */
-  hidden: zod.boolean().optional(),
-});
+export const pageDataSchema = zod
+  .strictObject({
+    /** 页面标题 */
+    title: pageTitleSchema,
+    /** 页面图标 */
+    icon: iconSchema,
+    /** 页面描述 */
+    desc: zod.string().optional(),
+    /** 页面作者 */
+    author: zod.string().optional(),
+    /** 页面最后更新时间 */
+    time: zod.string().optional(),
+    /** 页面标识 */
+    id: zod.string().min(1, "页面ID不能为空"),
+    /** 是否是灰色背景 */
+    grey: zod.boolean().optional(),
+    /** 页面内容 */
+    content: pageContentSchema,
+    /** 页面图片 */
+    images: zod.array(zod.string()).optional(),
+    /**
+     * 页面引用来源
+     */
+    cite: zod.array(zod.string()).optional(),
+    /**
+     * 页面内容是否已过时
+     *
+     * @default false
+     */
+    outdated: zod.boolean().optional(),
+    /**
+     * 是否可以使用小程序的界面分享
+     *
+     * @default false
+     */
+    shareable: zod.boolean().optional(),
+    /**
+     * 是否可以下载二维码
+     *
+     * @description Can download when shareable is true
+     */
+    qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
+    /**
+     * 是否在分享弹出菜单中显示联系客服
+     *
+     * @default true
+     */
+    contact: zod.boolean().optional(),
+    /** 是否隐藏导航栏 */
+    hidden: zod.boolean().optional(),
+  })
+  .meta({
+    id: "page-data",
+    description: "页面数据",
+  });
 
 export type PageConfig = zod.infer<typeof pageConfigSchema>;
 export type PageData = zod.infer<typeof pageDataSchema>;

@@ -29,49 +29,140 @@ export const postCodeSchema = zod.union(
   "邮政编码格式不正确",
 );
 
-export const phoneSchema = zod.strictObject({
-  tag: zod.literal("phone"),
-  /** 标题 */
-  header: zod.string().optional(),
-  /** 联系人电话号码 */
-  num: phoneNumberSchema,
-  /** 联系人的名 */
-  fName: zod.string().min(1, "姓名不能为空"),
-  /** 联系人的姓 */
-  lName: zod.string().optional(),
-  /** 联系人所在公司 */
-  org: zod.string().optional(),
-  /** 联系人的备注 */
-  remark: zod.string().optional(),
-  /** 联系人的工作电话 */
-  workNum: phoneNumberSchema.optional(),
-  /** 联系人的昵称 */
-  nick: zod.string().optional(),
-  /** 联系人头像图片路径(仅限本地路径) */
-  avatar: zod.string().startsWith("/").optional(),
-  /** 联系人的微信号 */
-  wechat: zod.string().optional(),
-  /** 联系人的地址省份 */
-  province: zod.string().optional(),
-  /** 联系人的地址城市 */
-  city: zod.string().optional(),
-  /** 联系人的地址街道 */
-  street: zod.string().optional(),
-  /** 联系人的地址邮政编码 */
-  postCode: postCodeSchema.optional(),
-  /** 联系人的职位 */
-  title: zod.string().optional(),
-  /** 联系人的公司电话 */
-  hostNum: phoneNumberSchema.optional(),
-  /** 联系人的网站 */
-  site: zod.url({ protocol: /^https?$/ }).optional(),
-  /** 联系人的电子邮件 */
-  mail: zod.email().optional(),
-  /** 联系人的住宅电话 */
-  homeNum: phoneNumberSchema.optional(),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const phoneSchema = zod
+  .strictObject({
+    tag: zod.literal("phone"),
+    /** 标题 */
+    header: zod
+      .string()
+      .meta({
+        description: "标题",
+      })
+      .optional(),
+    /** 联系人电话号码 */
+    num: phoneNumberSchema.meta({
+      description: "联系人电话号码",
+    }),
+    /** 联系人的名 */
+    fName: zod.string().min(1, "姓名不能为空").meta({
+      description: "联系人的名",
+    }),
+    /** 联系人的姓 */
+    lName: zod
+      .string()
+      .meta({
+        description: "联系人的姓",
+      })
+      .optional(),
+    /** 联系人所在公司 */
+    org: zod
+      .string()
+      .meta({
+        description: "联系人所在公司",
+      })
+      .optional(),
+    /** 联系人的备注 */
+    remark: zod
+      .string()
+      .meta({
+        description: "联系人的备注",
+      })
+      .optional(),
+    /** 联系人的工作电话 */
+    workNum: phoneNumberSchema
+      .meta({
+        description: "联系人的工作电话",
+      })
+      .optional(),
+    /** 联系人的昵称 */
+    nick: zod
+      .string()
+      .meta({
+        description: "联系人的昵称",
+      })
+      .optional(),
+    /** 联系人头像图片路径(仅限本地路径) */
+    avatar: zod
+      .string()
+      .startsWith("/")
+      .meta({
+        description: "联系人头像图片路径(仅限本地路径)",
+      })
+      .optional(),
+    /** 联系人的微信号 */
+    wechat: zod
+      .string()
+      .meta({
+        description: "联系人的微信号",
+      })
+      .optional(),
+    /** 联系人的地址省份 */
+    province: zod
+      .string()
+      .meta({
+        description: "联系人的地址省份",
+      })
+      .optional(),
+    /** 联系人的地址城市 */
+    city: zod
+      .string()
+      .meta({
+        description: "联系人的地址城市",
+      })
+      .optional(),
+    /** 联系人的地址街道 */
+    street: zod
+      .string()
+      .meta({
+        description: "联系人的地址街道",
+      })
+      .optional(),
+    /** 联系人的地址邮政编码 */
+    postCode: postCodeSchema
+      .meta({
+        description: "联系人的地址邮政编码",
+      })
+      .optional(),
+    /** 联系人的职位 */
+    title: zod
+      .string()
+      .meta({
+        description: "联系人的职位",
+      })
+      .optional(),
+    /** 联系人的公司电话 */
+    hostNum: phoneNumberSchema
+      .meta({
+        description: "联系人的公司电话",
+      })
+      .optional(),
+    /** 联系人的网站 */
+    site: zod
+      .url({ protocol: /^https?$/ })
+      .meta({
+        description: "联系人的网站",
+      })
+      .optional(),
+    /** 联系人的电子邮件 */
+    mail: zod
+      .email()
+      .meta({
+        description: "联系人的电子邮件",
+      })
+      .optional(),
+    /** 联系人的住宅电话 */
+    homeNum: phoneNumberSchema
+      .meta({
+        description: "联系人的住宅电话",
+      })
+      .optional(),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "phone-component",
+    description: "电话组件",
+  });
 
 export type PhoneComponentOptions = zod.infer<typeof phoneSchema>;
 

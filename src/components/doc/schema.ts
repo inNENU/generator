@@ -2,21 +2,35 @@ import * as zod from "zod";
 
 import { envListSchema, fileSchema } from "../../schema/common.js";
 
-export const docSchema = zod.strictObject({
-  tag: zod.literal("doc"),
-  /** 文档名称 */
-  name: zod.string().min(1, "文档名称不能为空"),
-  /** 文档地址 */
-  url: fileSchema,
-  /**
-   * 文档是否可下载
-   *
-   * @default true
-   */
-  downloadable: zod.literal(false).optional(),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const docSchema = zod
+  .strictObject({
+    tag: zod.literal("doc"),
+    /** 文档名称 */
+    name: zod.string().min(1, "文档名称不能为空").meta({
+      description: "文档名称",
+    }),
+    /** 文档地址 */
+    url: fileSchema.meta({
+      description: "文档地址",
+    }),
+    /**
+     * 文档是否可下载
+     *
+     * @default true
+     */
+    downloadable: zod
+      .literal(false)
+      .meta({
+        description: "文档是否可下载",
+      })
+      .optional(),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "doc-component",
+    description: "文档组件",
+  });
 
 export type DocComponentOptions = zod.infer<typeof docSchema>;
 

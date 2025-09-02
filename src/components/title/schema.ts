@@ -2,15 +2,26 @@ import * as zod from "zod";
 
 import { envListSchema, styleSchema } from "../../schema/common.js";
 
-export const titleSchema = zod.strictObject({
-  tag: zod.literal("title"),
-  /** 标题文字 */
-  text: zod.string().min(1, "标题文字不能为空"),
-  /** 标题 css 样式 */
-  style: styleSchema.optional(),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const titleSchema = zod
+  .strictObject({
+    tag: zod.literal("title"),
+    /** 标题文字 */
+    text: zod.string().min(1, "标题文字不能为空").meta({
+      description: "标题文字",
+    }),
+    /** 标题 css 样式 */
+    style: styleSchema
+      .meta({
+        description: "标题 css 样式",
+      })
+      .optional(),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "title-component",
+    description: "标题组件",
+  });
 
 export type TitleComponentOptions = zod.infer<typeof titleSchema>;
 

@@ -17,9 +17,19 @@ const baseTextComponentSchema = zod.strictObject({
   /** 文字标签 */
   tag: zod.enum(["text", "p", "ol", "ul"]),
   /** 段落标题 */
-  header: zod.union([zod.string(), zod.literal(false)]).optional(),
+  header: zod
+    .union([zod.string(), zod.literal(false)])
+    .meta({
+      description: "段落标题",
+    })
+    .optional(),
   /** 段落文字 */
-  text: zod.union([zod.string(), zod.array(zod.string())]).optional(),
+  text: zod
+    .union([zod.string(), zod.array(zod.string())])
+    .meta({
+      description: "段落文字",
+    })
+    .optional(),
   /** 段落文字样式 */
   style: styleSchema,
   /**
@@ -27,7 +37,12 @@ const baseTextComponentSchema = zod.strictObject({
    *
    * @default "left"
    */
-  align: zod.enum(["left", "right", "center", "justify"]).optional(),
+  align: zod
+    .enum(["left", "right", "center", "justify"])
+    .meta({
+      description: "段落对齐方式",
+    })
+    .optional(),
   /** 环境列表 */
   env: envListSchema,
 });
@@ -93,18 +108,23 @@ const videoTextComponentSchema = zod.strictObject({
   ...channelVideoSchema.shape,
 });
 
-export const textComponentSchema = zod.union([
-  plainTextComponentSchema,
-  hintTextComponentSchema,
-  pathTextComponentSchema,
-  pageTextComponentSchema,
-  officialProfileTextComponentSchema,
-  channelProfileTextComponentSchema,
-  articleTextComponentSchema,
-  videoTextComponentSchema,
-  miniProgramShortLinkTextComponentSchema,
-  miniProgramFullTextComponentSchema,
-]);
+export const textComponentSchema = zod
+  .union([
+    plainTextComponentSchema,
+    hintTextComponentSchema,
+    pathTextComponentSchema,
+    pageTextComponentSchema,
+    officialProfileTextComponentSchema,
+    channelProfileTextComponentSchema,
+    articleTextComponentSchema,
+    videoTextComponentSchema,
+    miniProgramShortLinkTextComponentSchema,
+    miniProgramFullTextComponentSchema,
+  ])
+  .meta({
+    id: "text-component",
+    description: "文本组件",
+  });
 
 export type BaseTextComponentOptions = zod.infer<
   typeof baseTextComponentSchema

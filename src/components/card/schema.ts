@@ -17,15 +17,35 @@ import {
 const baseCardSchema = zod.strictObject({
   tag: zod.literal("card"),
   /** 卡片标题 */
-  title: zod.string().min(1, "卡片标题不能为空"),
+  title: zod.string().min(1, "卡片标题不能为空").meta({
+    description: "卡片标题",
+  }),
   /** 卡片描述 */
-  desc: zod.string().optional(),
+  desc: zod
+    .string()
+    .meta({
+      description: "卡片描述",
+    })
+    .optional(),
   /** 封面图片在线地址 */
-  cover: imgSchema.optional(),
+  cover: imgSchema
+    .meta({
+      description: "封面图片在线地址",
+    })
+    .optional(),
   /** 卡片 Logo 地址 */
-  logo: iconSchema.optional(),
+  logo: iconSchema
+    .meta({
+      description: "卡片 Logo 地址",
+    })
+    .optional(),
   /** 卡片 Logo 名称 */
-  name: zod.string().optional(),
+  name: zod
+    .string()
+    .meta({
+      description: "卡片 Logo 名称",
+    })
+    .optional(),
   /** 环境列表 */
   env: envListSchema,
 });
@@ -70,16 +90,21 @@ export const miniProgramShortLinkCardSchema = zod.strictObject({
   ...miniProgramShortLinkSchema.shape,
 });
 
-export const cardSchema = zod.union([
-  pathCardSchema,
-  urlCardSchema,
-  officialProfileCardSchema,
-  channelProfileCardSchema,
-  articleCardSchema,
-  videoCardSchema,
-  miniProgramFullCardSchema,
-  miniProgramShortLinkCardSchema,
-]);
+export const cardSchema = zod
+  .union([
+    pathCardSchema,
+    urlCardSchema,
+    officialProfileCardSchema,
+    channelProfileCardSchema,
+    articleCardSchema,
+    videoCardSchema,
+    miniProgramFullCardSchema,
+    miniProgramShortLinkCardSchema,
+  ])
+  .meta({
+    id: "card-component",
+    description: "卡片组件",
+  });
 
 export type NormalCardComponentOptions = zod.infer<typeof pathCardSchema>;
 export type PageCardComponentOptions = zod.infer<typeof urlCardSchema>;

@@ -2,18 +2,32 @@ import * as zod from "zod";
 
 import { envListSchema } from "../../schema/common.js";
 
-export const tableSchema = zod.strictObject({
-  /** 文字标签 */
-  tag: zod.literal("table"),
-  /** 表格标题 */
-  caption: zod.string().optional(),
-  /** 表头 */
-  header: zod.array(zod.string()).min(1, "表头不能为空"),
-  /** 表格主体 */
-  body: zod.array(zod.array(zod.string())).min(1, "表格内容不能为空"),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const tableSchema = zod
+  .strictObject({
+    /** 文字标签 */
+    tag: zod.literal("table"),
+    /** 表格标题 */
+    caption: zod
+      .string()
+      .meta({
+        description: "表格标题",
+      })
+      .optional(),
+    /** 表头 */
+    header: zod.array(zod.string()).min(1, "表头不能为空").meta({
+      description: "表头",
+    }),
+    /** 表格主体 */
+    body: zod.array(zod.array(zod.string())).min(1, "表格内容不能为空").meta({
+      description: "表格主体",
+    }),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "table-component",
+    description: "表格组件",
+  });
 
 export type TableComponentOptions = zod.infer<typeof tableSchema>;
 

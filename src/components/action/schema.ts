@@ -2,15 +2,27 @@ import * as zod from "zod";
 
 import { envListSchema } from "../../schema/common.js";
 
-export const actionSchema = zod.strictObject({
-  tag: zod.literal("action"),
-  /** 标题 */
-  header: zod.string().optional(),
-  /** 动作内容 */
-  content: zod.string().min(1, "动作内容不能为空"),
-  /** 环境列表 */
-  env: envListSchema,
-});
+export const actionSchema = zod
+  .strictObject({
+    tag: zod.literal("action"),
+    /** 标题 */
+    header: zod
+      .string()
+      .meta({
+        description: "标题",
+      })
+      .optional(),
+    /** 动作内容 */
+    content: zod.string().min(1, "动作内容不能为空").meta({
+      description: "动作内容",
+    }),
+    /** 环境列表 */
+    env: envListSchema,
+  })
+  .meta({
+    id: "action-component",
+    description: "动作组件",
+  });
 
 export type ActionComponentOptions = zod.infer<typeof actionSchema>;
 
