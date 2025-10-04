@@ -63,7 +63,7 @@
     "rollup-plugin-dts": "6.2.3",
     "rollup-plugin-esbuild": "6.2.1",
     "tsx": "^4.20.5",
-    "typescript": "5.9.2",
+    "typescript": "5.9.3",
     "vitest": "3.2.4"
   },
   "packageManager": "pnpm@10.15.0"
