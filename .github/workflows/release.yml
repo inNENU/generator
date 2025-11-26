@@ -1,19 +1,15 @@
-name: Test
+name: Publish Package
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  id-token: write
 
 jobs:
-  linter-and-unit:
-    name: Linter and Unit test
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,16 +27,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build project
+      - name: Build package
         run: pnpm build
 
-      - name: Linter test
+      - name: Publish to npm
         run: |
-          pnpm lint
-
-      - name: Unit test
-        run: pnpm test
-
-      - name: Upload coverage
-        if: github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v5
+          pnpm publish --provenance --no-git-checks
