@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import { load } from "js-yaml";
+import { JSON_SCHEMA, load } from "js-yaml";
 import upath from "upath";
 
 import { getFileList } from "./helpers/index.js";
@@ -24,7 +24,7 @@ export const generateKnowledgeContent = (
 
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
 
-    const data = load(content) as PageConfig;
+    const data = load(content, { schema: JSON_SCHEMA }) as PageConfig;
 
     if (data.aiIgnore) return;
 

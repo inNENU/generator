@@ -31,6 +31,7 @@
   "scripts": {
     "build": "rollup -c rollup.config.ts --configPlugin esbuild",
     "clean": "rimraf dist typings.d.ts",
+    "generate-schema": "tsx scripts/generate-schema.ts",
     "lint": "eslint . --fix && pnpm lint:prettier --write",
     "lint:check": "eslint . && pnpm lint:prettier",
     "lint:prettier": "prettier --check .",
@@ -44,25 +45,26 @@
   },
   "dependencies": {
     "ali-oss": "^6.23.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "upath": "^2.0.1",
-    "zod": "^4.1.4"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/ali-oss": "6.16.11",
+    "@types/ali-oss": "6.16.13",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "24.3.0",
-    "eslint": "9.34.0",
+    "@types/node": "24.10.1",
+    "eslint": "9.39.1",
     "eslint-config-mister-hope": "0.9.6",
     "husky": "9.1.7",
-    "nano-staged": "0.8.0",
+    "nano-staged": "0.9.0",
     "prettier": "3.6.2",
-    "rimraf": "6.0.1",
-    "rollup": "4.50.0",
+    "rimraf": "6.1.2",
+    "rollup": "4.53.3",
     "rollup-plugin-dts": "6.2.3",
     "rollup-plugin-esbuild": "6.2.1",
-    "typescript": "5.9.2",
-    "vitest": "3.2.4"
+    "tsx": "^4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "4.0.14"
   },
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.23.0"
 }

@@ -82,53 +82,87 @@ export const pageTitleSchema = zod
 export const pageConfigSchema = zod
   .strictObject({
     /** 页面标题 */
-    title: pageTitleSchema,
+    title: pageTitleSchema.meta({
+      description: "页面标题",
+    }),
     /** 页面图标 */
-    icon: iconSchema.optional(),
+    icon: iconSchema.optional().meta({
+      description: "页面图标",
+    }),
     /** 是否被 AI 忽略 */
-    aiIgnore: zod.boolean().optional(),
+    aiIgnore: zod.boolean().optional().meta({
+      description: "是否被 AI 忽略",
+    }),
     /** 页面标签 */
-    tags: zod.array(zod.string()).optional(),
+    tags: zod.array(zod.string()).optional().meta({
+      description: "页面标签",
+    }),
     /** 页面描述 */
-    desc: zod.string().optional(),
+    desc: zod.string().optional().meta({
+      description: "页面描述",
+    }),
     /** 页面作者 */
-    author: zod.union([zod.array(zod.string()), zod.string()]).optional(),
+    author: zod
+      .union([zod.array(zod.string()), zod.string()])
+      .optional()
+      .meta({
+        description: "页面作者",
+      }),
     /** 页面最后更新时间 */
-    time: zod.date().optional(),
+    time: zod.iso.datetime().optional().meta({
+      description: "页面最后更新时间",
+    }),
     /** 页面标识 */
-    id: zod.string().optional(),
+    id: zod.string().optional().meta({
+      description: "页面标识",
+    }),
     /** 是否是灰色背景 */
-    grey: zod.boolean().optional(),
+    grey: zod.boolean().optional().meta({
+      description: "是否是灰色背景",
+    }),
     /** 页面内容 */
     content: pageContentSchema,
     /**
      * 页面引用来源
      */
-    cite: zod.union([zod.array(zod.string()), zod.string()]).optional(),
+    cite: zod
+      .union([zod.array(zod.string()), zod.string()])
+      .optional()
+      .meta({
+        description: "页面引用来源",
+      }),
     /**
      * 页面内容是否已过时
      *
      * @default false
      */
-    outdated: zod.boolean().optional(),
+    outdated: zod.boolean().optional().meta({
+      description: "页面内容是否已过时",
+    }),
     /**
      * 是否可以使用小程序的界面分享
      *
      * @default false
      */
-    shareable: zod.boolean().optional(),
+    shareable: zod.boolean().optional().meta({
+      description: "是否可以使用小程序的界面分享",
+    }),
     /**
      * 是否可以下载二维码
      *
      * @description Can download when shareable is true
      */
-    qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
+    qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
+      description: "是否可以下载二维码",
+    }),
     /**
      * 是否在分享弹出菜单中显示联系客服
      *
      * @default true
      */
-    contact: zod.boolean().optional(),
+    contact: zod.boolean().optional().meta({
+      description: "是否在分享弹出菜单中显示联系客服",
+    }),
   })
   .meta({
     id: "page-config",
@@ -138,53 +172,81 @@ export const pageConfigSchema = zod
 export const pageDataSchema = zod
   .strictObject({
     /** 页面标题 */
-    title: pageTitleSchema,
+    title: pageTitleSchema.meta({
+      description: "页面标题",
+    }),
     /** 页面图标 */
-    icon: iconSchema,
+    icon: iconSchema.optional().meta({
+      description: "页面图标",
+    }),
     /** 页面描述 */
-    desc: zod.string().optional(),
+    desc: zod.string().optional().meta({
+      description: "页面描述",
+    }),
     /** 页面作者 */
-    author: zod.string().optional(),
+    author: zod.string().optional().meta({
+      description: "页面作者",
+    }),
     /** 页面最后更新时间 */
-    time: zod.string().optional(),
+    time: zod.string().optional().meta({
+      description: "页面最后更新时间",
+    }),
     /** 页面标识 */
-    id: zod.string().min(1, "页面ID不能为空"),
+    id: zod.string().min(1, "页面ID不能为空").meta({
+      description: "页面标识",
+    }),
     /** 是否是灰色背景 */
-    grey: zod.boolean().optional(),
+    grey: zod.boolean().optional().meta({
+      description: "是否是灰色背景",
+    }),
     /** 页面内容 */
     content: pageContentSchema,
     /** 页面图片 */
-    images: zod.array(zod.string()).optional(),
+    images: zod.array(zod.string()).optional().meta({
+      description: "页面图片",
+    }),
     /**
      * 页面引用来源
      */
-    cite: zod.array(zod.string()).optional(),
+    cite: zod.array(zod.string()).optional().meta({
+      description: "页面引用来源",
+    }),
     /**
      * 页面内容是否已过时
      *
      * @default false
      */
-    outdated: zod.boolean().optional(),
+    outdated: zod.boolean().optional().meta({
+      description: "页面内容是否已过时",
+    }),
     /**
      * 是否可以使用小程序的界面分享
      *
      * @default false
      */
-    shareable: zod.boolean().optional(),
+    shareable: zod.boolean().optional().meta({
+      description: "是否可以使用小程序的界面分享",
+    }),
     /**
      * 是否可以下载二维码
      *
      * @description Can download when shareable is true
      */
-    qrcode: zod.union([zod.string(), zod.boolean()]).optional(),
+    qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
+      description: "是否可以下载二维码",
+    }),
     /**
      * 是否在分享弹出菜单中显示联系客服
      *
      * @default true
      */
-    contact: zod.boolean().optional(),
+    contact: zod.boolean().optional().meta({
+      description: "是否在分享弹出菜单中显示联系客服",
+    }),
     /** 是否隐藏导航栏 */
-    hidden: zod.boolean().optional(),
+    hidden: zod.boolean().optional().meta({
+      description: "是否隐藏导航栏",
+    }),
   })
   .meta({
     id: "page-data",

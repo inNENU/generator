@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import { load } from "js-yaml";
+import { JSON_SCHEMA, load } from "js-yaml";
 import upath from "upath";
 
 import { getFileList } from "./getFileList.js";
@@ -58,7 +58,10 @@ export const convertYamlFilesToJson = <T = unknown, U = T>(
     const finalContent =
       processFunction?.(content, yamlRelativePath) ?? content;
 
-    const result = convertFunction(load(finalContent) as T, yamlRelativePath);
+    const result = convertFunction(
+      load(finalContent, { schema: JSON_SCHEMA }) as T,
+      yamlRelativePath,
+    );
 
     if (result)
       writeFileSync(targetFilename, JSON.stringify(result), {

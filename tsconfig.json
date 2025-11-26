@@ -35,5 +35,10 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext"
   },
-  "include": ["./__tests__/**/*.ts", "./src/**/*.ts", "eslint.config.js"]
+  "include": [
+    "./__tests__/**/*.ts",
+    "./src/**/*.ts",
+    "./scripts/**/*.ts",
+    "eslint.config.js"
+  ]
 }

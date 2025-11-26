@@ -187,13 +187,15 @@ export const getPageJSON = (
         );
         pageData.time = timeText;
       } else {
-        const timeText = `${time.getFullYear()} 年 ${
-          time.getMonth() + 1
-        } 月 ${time.getDate()} 日${
-          (time.getHours() !== 0 && time.getHours() !== 8) ||
-          time.getMinutes() ||
-          time.getSeconds()
-            ? ` ${time.toTimeString().split(" ")[0]}`
+        const date = new Date(Date.parse(time));
+
+        const timeText = `${date.getFullYear()} 年 ${
+          date.getMonth() + 1
+        } 月 ${date.getDate()} 日${
+          (date.getHours() !== 0 && date.getHours() !== 8) ||
+          date.getMinutes() ||
+          date.getSeconds()
+            ? ` ${date.toTimeString().split(" ")[0]}`
             : ""
         }`;
 

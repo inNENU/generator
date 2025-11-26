@@ -70,7 +70,7 @@ author: ${getYamlValue(author)}
 
     if (time)
       content += `\
-date: ${time.toISOString()}
+date: ${time}
 `;
 
     if (tags?.length)
