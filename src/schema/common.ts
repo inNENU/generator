@@ -174,7 +174,7 @@ export const officialArticleSchema = zod
     /** 文章链接 */
     url: zod
       .string()
-      .regex(/^https:\/\/mp.weixin.qq.com\/s\//, {
+      .regex(/^https:\/\/mp\.weixin\.qq\.com\/s\//, {
         error: ({ input }) => `文章链接 ${String(input)} 格式不正确`,
       })
       .meta({ description: "文章链接" }),
