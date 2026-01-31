@@ -50,7 +50,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/ali-oss": "6.23.1",
+    "@types/ali-oss": "6.23.2",
     "@types/js-yaml": "4.0.9",
     "@types/node": "24.10.9",
     "eslint": "9.39.2",
