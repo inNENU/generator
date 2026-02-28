@@ -52,7 +52,7 @@
   "devDependencies": {
     "@types/ali-oss": "6.23.3",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "24.10.13",
+    "@types/node": "24.11.0",
     "eslint": "9.39.3",
     "eslint-config-mister-hope": "0.9.6",
     "husky": "9.1.7",
