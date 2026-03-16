@@ -3,10 +3,7 @@ import { checkDoc } from "./schema.js";
 import { getDocIcon } from "./utils.js";
 import { getAssetIconLink, getFileLink } from "../../utils.js";
 
-export const getDocMarkdown = (
-  doc: DocComponentOptions,
-  location = "",
-): string => {
+export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string => {
   if (doc.env && !doc.env.includes("web")) return "";
 
   checkDoc(doc, location);
@@ -25,7 +22,7 @@ export const getDocMarkdown = (
 
   return `
 ${
-  /\.(pdf|jpe?g|png|bmp|svg)$/.exec(url)
+  /\.(pdf|jpe?g|png|bmp|svg)$/.test(url)
     ? `
 <a class="innenu-doc" href="${url}" name="${docName}" target="_blank" rel="noopener noreferrer">
   ${docIcon}

@@ -1,10 +1,6 @@
 import * as zod from "zod";
 
-import {
-  envListSchema,
-  internalImgSchema,
-  locSchema,
-} from "../../schema/common.js";
+import { envListSchema, internalImgSchema, locSchema } from "../../schema/common.js";
 
 export const qqSchema = zod
   .number()
@@ -94,22 +90,14 @@ export const accountSchema = zod
 
 export type AccountComponentOptions = zod.infer<typeof accountSchema>;
 
-export interface AccountComponentData
-  extends Omit<AccountComponentOptions, "logo" | "qqcode"> {
+export interface AccountComponentData extends Omit<AccountComponentOptions, "logo" | "qqcode"> {
   logo: string;
   qqcode?: string;
 }
 
-export const checkAccount = (
-  account: AccountComponentOptions,
-  location = "",
-): void => {
+export const checkAccount = (account: AccountComponentOptions, location = ""): void => {
   const result = accountSchema.safeParse(account);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 account 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 account 数据:`, zod.prettifyError(result.error));
 };

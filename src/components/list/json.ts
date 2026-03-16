@@ -1,9 +1,6 @@
 import { existsSync } from "node:fs";
 
-import type {
-  FunctionalListComponentOptions,
-  ListComponentOptions,
-} from "./schema.js";
+import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { resolvePath } from "../../utils.js";
 
 export const getListJSON = (
@@ -13,7 +10,7 @@ export const getListJSON = (
 ): ListComponentOptions | FunctionalListComponentOptions => {
   if (list.tag === "list") {
     // 处理列表项的路径
-    if (Array.isArray(list.items))
+    if (Array.isArray(list.items)) {
       list.items.forEach((listItem) => {
         // 处理路径
         if ("path" in listItem && listItem.path) {
@@ -38,36 +35,36 @@ export const getListJSON = (
           }
         }
       });
-  } else {
-    // 处理功能列表项的路径
-    if (Array.isArray(list.items))
-      list.items.forEach((listItem) => {
-        if ("type" in listItem && listItem.type === "navigator")
-          listItem.openType ??= "navigate";
+    }
+  }
+  // 处理功能列表项的路径
+  else if (Array.isArray(list.items)) {
+    list.items.forEach((listItem) => {
+      if ("type" in listItem && listItem.type === "navigator") listItem.openType ??= "navigate";
 
-        // 处理路径（仅对 navigator 类型或基础类型的列表项）
-        if ("path" in listItem && listItem.path && !("appId" in listItem)) {
-          if (listItem.path.startsWith("/")) {
-            const path = resolvePath(listItem.path);
+      // 处理路径（仅对 navigator 类型或基础类型的列表项）
+      if ("path" in listItem && listItem.path && !("appId" in listItem)) {
+        if (listItem.path.startsWith("/")) {
+          const path = resolvePath(listItem.path);
 
-            if (!existsSync(`./pages/${path}.yml`))
-              console.error(`路径 ${path} 在 ${location} 中不存在`);
+          if (!existsSync(`./pages/${path}.yml`))
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
-            listItem.path = path;
-          } else {
-            const paths = pageId.split("/");
+          listItem.path = path;
+        } else {
+          const paths = pageId.split("/");
 
-            paths.pop();
+          paths.pop();
 
-            const path = resolvePath(`${paths.join("/")}/${listItem.path}`);
+          const path = resolvePath(`${paths.join("/")}/${listItem.path}`);
 
-            if (!existsSync(`./pages/${path}.yml`))
-              console.error(`路径 ${path} 在 ${location} 中不存在`);
+          if (!existsSync(`./pages/${path}.yml`))
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
 
-            listItem.path = path;
-          }
+          listItem.path = path;
         }
-      });
+      }
+    });
   }
 
   return list;

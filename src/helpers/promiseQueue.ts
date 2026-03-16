@@ -1,13 +1,13 @@
 export interface Task {
   /** 函数本身 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  func: (next: () => void, ...args: any) => void;
+  // oxlint-disable-next-line typescript/no-explicit-any
+  func: (next: () => void, ...args: any[]) => void;
   /** 函数的运行上下文 */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any;
   /** 函数的参数 */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  args: any;
+  args: any[];
 }
 
 /**
@@ -39,7 +39,8 @@ export class Queue {
             this.running -= 1;
             this.next();
           },
-          ...[].slice.call(args, 0),
+          // oxlint-disable-next-line typescript/no-unsafe-assignment
+          ...Array.prototype.slice.call(args, 0),
         ]);
       };
 
@@ -54,16 +55,16 @@ export class Queue {
    * @param ctx 函数运行上下文
    * @param args 函数参数
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-type-parameters
-  public add<T, A extends any[]>(
-    func: (next: () => void, ...args: A) => void,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public add<T, Arguments extends any[]>(
+    func: (next: () => void, ...args: Arguments) => void,
     ctx?: T,
-    ...args: A
+    ...args: Arguments
   ): void {
     this.funcQueue.push({
       func,
       ctx,
-      args: [].slice.call(args, 0),
+      args: Array.prototype.slice.call(args, 0),
     });
 
     // 开始第一个队列
@@ -78,35 +79,31 @@ export class Queue {
 
 /**
  * 一个队列，在上一个函数执行完毕后执行 `next()`  才会开始执行下一个函数。
+ *
+ * @param promiseList 需要执行的函数列表，每个函数都必须返回一个 Promise
+ * @param capacity 允许同时并行的任务数
+ *
+ * @returns 当所有函数执行完毕时返回的 Promise
  */
-export const createPromiseQueue = (
+export const createPromiseQueue = async (
   promiseList: (() => Promise<void>)[],
   capacity = 1,
-): Promise<void> =>
-  new Promise((resolve) => {
-    /** 回调队列 */
-    const queue: (() => Promise<void>)[] = promiseList;
+): Promise<void> => {
+  /** 回调队列 */
+  const queue: (() => Promise<void>)[] = promiseList;
 
-    let running = 0;
-
-    /** 执行下一个函数 */
-    const next = (): void => {
-      /** 即将执行的任务 */
+  const runWorker = async (): Promise<void> => {
+    while (queue.length > 0) {
       const task = queue.shift();
 
-      if (task) {
-        running += 1;
-        void task().then(() => {
-          running -= 1;
-          next();
-        });
-      } else if (running === 0) resolve();
-    };
-
-    let counter = 0;
-
-    while (counter < capacity) {
-      counter += 1;
-      next();
+      // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
+      if (task) await task();
     }
-  });
+  };
+
+  const workers: Promise<void>[] = [];
+
+  for (let i = 0; i < capacity; i += 1) workers.push(runWorker());
+
+  await Promise.all(workers);
+};

@@ -2,6 +2,7 @@
  * 获得文档图标
  *
  * @param url 文档地址
+ * @returns 文档对应的图标名称
  */
 export const getDocIcon = (url: string): string => {
   if (!url) return "";
@@ -16,10 +17,7 @@ export const getDocIcon = (url: string): string => {
         ? "xls"
         : docType === "jpg" || docType === "jpeg" || docType === "jfif"
           ? "jpg"
-          : docType === "mp4" ||
-              docType === "mov" ||
-              docType === "avi" ||
-              docType === "rmvb"
+          : docType === "mp4" || docType === "mov" || docType === "avi" || docType === "rmvb"
             ? "video"
             : docType === "pdf"
               ? "pdf"

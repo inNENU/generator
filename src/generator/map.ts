@@ -14,10 +14,7 @@ import type {
 } from "../schema/index.js";
 import { checkMapPageConfig, checkMarkerConfig } from "../schema/index.js";
 
-export const getMapPageJSON = (
-  data: MapPageConfig,
-  filePath: string,
-): MapPageData => {
+export const getMapPageJSON = (data: MapPageConfig, filePath: string): MapPageData => {
   checkMapPageConfig(data, filePath);
 
   return getPageJSON(data, filePath);
@@ -27,6 +24,9 @@ export const getMapPageJSON = (
  * 处理 marker
  *
  * @param marker 待处理的 Marker
+ * @param folder marker 所在的文件夹
+ * @param category marker 所属的分类
+ * @param id marker 的 ID
  *
  * @returns 处理后的marker
  */
@@ -45,15 +45,9 @@ export const getMarkerJSON = (
 
   if (marker.path) {
     const path = upath.join(category, marker.path);
-    const filePath = upath.join(
-      _config.mapFolder,
-      folder,
-      category,
-      `${marker.path}.yml`,
-    );
+    const filePath = upath.join(_config.mapFolder, folder, category, `${marker.path}.yml`);
 
-    if (!existsSync(filePath))
-      console.error(`路径 ${filePath} 在 ${path} 中不存在!`);
+    if (!existsSync(filePath)) console.error(`路径 ${filePath} 在 ${path} 中不存在!`);
 
     markerData.path = path;
   }
@@ -61,10 +55,7 @@ export const getMarkerJSON = (
   return markerData;
 };
 
-export const getMarkersJSON = (
-  data: MarkersConfig,
-  folder: string,
-): MarkersData => {
+export const getMarkersJSON = (data: MarkersConfig, folder: string): MarkersData => {
   const categories = Object.keys(data);
 
   const categoryConfig = [
@@ -79,11 +70,15 @@ export const getMarkersJSON = (
   const markers = { all: [] } as Record<string, MarkerData[]>;
 
   categories.forEach((category) => {
-    markers[category] = data[category].content.map((marker) =>
-      getMarkerJSON(marker, folder, category, id++),
-    );
+    markers[category] = data[category].content.map((marker) => {
+      const markerId = id;
 
-    markers.all = markers.all.concat(markers[category]);
+      id += 1;
+
+      return getMarkerJSON(marker, folder, category, markerId);
+    });
+
+    markers.all = [...markers.all, ...markers[category]];
   });
 
   return { category: categoryConfig, marker: markers };

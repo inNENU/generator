@@ -1,10 +1,7 @@
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
 
-export const getActionMarkdown = (
-  action: ActionComponentOptions,
-  location = "",
-): string => {
+export const getActionMarkdown = (action: ActionComponentOptions, location = ""): string => {
   if (action.env && !action.env.includes("web")) return "";
 
   checkAction(action, location);

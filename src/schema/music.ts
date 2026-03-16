@@ -42,18 +42,11 @@ export type MusicInfo = zod.infer<typeof musicInfoSchema>;
 
 export type MusicList = zod.infer<typeof musicListSchema>;
 
-export const checkMusicList = (
-  data: MusicList,
-  location: string,
-): MusicList => {
+export const checkMusicList = (data: MusicList, location: string): MusicList => {
   const result = musicListSchema.safeParse(data);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法音乐数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法音乐数据:`, zod.prettifyError(result.error));
 
   return data;
 };

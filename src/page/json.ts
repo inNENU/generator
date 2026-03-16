@@ -1,13 +1,9 @@
+// oxlint-disable import/max-dependencies
 import { readFileSync, writeFileSync } from "node:fs";
 
 import upath from "upath";
 
-import type {
-  CheckPageConfigOptions,
-  ComponentOptions,
-  PageConfig,
-  PageData,
-} from "./schema.js";
+import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { getAccountJSON } from "../components/account/json.js";
 import { getActionJSON } from "../components/action/json.js";
 import { getAudioJSON } from "../components/audio/json.js";
@@ -41,72 +37,85 @@ export const getPageContent = (
       const position = `${pagePath} page.content[${index}]`;
 
       switch (tag) {
-        case "title":
+        case "title": {
           return getTitleJSON(element);
+        }
 
         case "text":
         case "p":
         case "ul":
-        case "ol":
+        case "ol": {
           return getTextJSON(element, id, position);
+        }
 
-        case "img":
+        case "img": {
           return getImgJSON(element);
+        }
 
         case "list":
-        case "functional-list":
+        case "functional-list": {
           return getListJSON(element, id, position);
+        }
 
-        case "doc":
+        case "doc": {
           return getDocJSON(element);
+        }
 
-        case "grid":
+        case "grid": {
           return getGridJSON(element, id, position);
+        }
 
-        case "footer":
+        case "footer": {
           return getFooterJSON(element);
+        }
 
-        case "phone":
+        case "phone": {
           return getPhoneJSON(element);
+        }
 
-        case "carousel":
+        case "carousel": {
           return getCarouselJSON(element);
+        }
 
-        case "account":
+        case "account": {
           return getAccountJSON(element);
+        }
 
-        case "card":
+        case "card": {
           return getCardJSON(element, id, position);
+        }
 
-        case "action":
+        case "action": {
           return getActionJSON(element);
+        }
 
-        case "audio":
+        case "audio": {
           return getAudioJSON(element);
+        }
 
-        case "video":
+        case "video": {
           return getVideoJSON(element);
+        }
 
-        case "location":
+        case "location": {
           return getLocationJSON(element, position);
+        }
 
-        case "table":
+        case "table": {
           return getTableJSON(element);
+        }
 
-        default:
+        default: {
           console.error(
-            `${pagePath} page.content[${index}] 存在非法 tag ${
-              tag as unknown as string
-            }`,
+            `${pagePath} page.content[${index}] 存在非法 tag ${tag as unknown as string}`,
           );
 
           return element;
+        }
       }
     });
-  } catch (error) {
-    throw new Error(
-      `${pagePath} page.content 处理失败: ${(error as Error).message}`,
-    );
+  } catch (err) {
+    throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
   }
 };
 
@@ -126,9 +135,12 @@ export interface GetPageJSONOptions extends CheckPageConfigOptions {
  *
  * @param page 页面数据
  * @param pagePath 页面路径
+ * @param diffFiles 变更文件列表，用于判断是否需要更新 time 字段
+ * @param options 处理选项
  *
  * @returns 处理之后的page
  */
+// oxlint-disable-next-line complexity
 export const getPageJSON = (
   page: PageConfig,
   pagePath = "",
@@ -142,22 +154,19 @@ export const getPageJSON = (
 
     if (!page.content) throw new Error(`${pagePath}.content 不存在内容`);
 
-    if (!Array.isArray(page.content))
-      throw new Error(`${pagePath}.content 应为数组`);
+    if (!Array.isArray(page.content)) throw new Error(`${pagePath}.content 应为数组`);
 
     const { id = pagePath, author, cite, content, time, ...others } = page;
     const images: string[] = [];
     const pageData: PageData = {
       ...others,
       id,
-      ...(author
-        ? { author: Array.isArray(author) ? author.join("、") : author }
-        : {}),
+      ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
       cite: typeof cite === "string" ? [cite] : (cite ?? []),
       content: getPageContent(content, pagePath, { id }),
     };
 
-    if (!pageData.cite?.length) delete page.cite;
+    if (!pageData.cite?.length) delete pageData.cite;
     if (images.length) pageData.images = images;
 
     if (time) {
@@ -167,12 +176,8 @@ export const getPageJSON = (
       if (diffFiles.includes(pageYAMLPath)) {
         const date = new Date();
 
-        const timeText = `${date.getFullYear()} 年 ${
-          date.getMonth() + 1
-        } 月 ${date.getDate()} 日${
-          (date.getHours() !== 0 && date.getHours() !== 8) ||
-          date.getMinutes() ||
-          date.getSeconds()
+        const timeText = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
+          (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
             ? ` ${date.toTimeString().split(" ")[0]}`
             : ""
         }`;
@@ -189,12 +194,8 @@ export const getPageJSON = (
       } else {
         const date = new Date(Date.parse(time));
 
-        const timeText = `${date.getFullYear()} 年 ${
-          date.getMonth() + 1
-        } 月 ${date.getDate()} 日${
-          (date.getHours() !== 0 && date.getHours() !== 8) ||
-          date.getMinutes() ||
-          date.getSeconds()
+        const timeText = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
+          (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
             ? ` ${date.toTimeString().split(" ")[0]}`
             : ""
         }`;
@@ -205,14 +206,13 @@ export const getPageJSON = (
 
     if (options.removeFields?.length) {
       options.removeFields.forEach((field) => {
-        if (field in pageData) {
-          delete pageData[field as keyof PageData];
-        }
+        // oxlint-disable-next-line typescript/no-dynamic-delete
+        if (field in pageData) delete pageData[field as keyof PageData];
       });
     }
 
     return pageData;
-  } catch (error) {
-    throw new Error(`${pagePath} 页面处理失败: ${(error as Error).message}`);
+  } catch (err) {
+    throw new Error(`${pagePath} 页面处理失败: ${(err as Error).message}`, { cause: err });
   }
 };

@@ -25,22 +25,14 @@ export const titleSchema = zod
 
 export type TitleComponentOptions = zod.infer<typeof titleSchema>;
 
-export interface TitleComponentData
-  extends Omit<TitleComponentOptions, "style"> {
+export interface TitleComponentData extends Omit<TitleComponentOptions, "style"> {
   /** 处理后的样式 */
   style?: string;
 }
 
-export const checkTitle = (
-  title: TitleComponentOptions,
-  location = "",
-): void => {
+export const checkTitle = (title: TitleComponentOptions, location = ""): void => {
   const result = titleSchema.safeParse(title);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 title 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 title 数据:`, zod.prettifyError(result.error));
 };

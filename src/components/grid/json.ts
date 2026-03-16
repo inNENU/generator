@@ -8,10 +8,10 @@ export const getGridJSON = (
   pageId: string,
   location = "",
 ): GridComponentOptions => {
-  if (Array.isArray(grid.items))
+  if (Array.isArray(grid.items)) {
     grid.items.forEach((gridItem) => {
       // 处理路径
-      if ("path" in gridItem && !("appId" in gridItem))
+      if ("path" in gridItem && !("appId" in gridItem)) {
         if (gridItem.path.startsWith("/")) {
           const path = resolvePath(gridItem.path);
 
@@ -31,7 +31,9 @@ export const getGridJSON = (
 
           gridItem.path = path;
         }
+      }
     });
+  }
 
   return grid;
 };

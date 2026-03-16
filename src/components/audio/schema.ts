@@ -62,16 +62,9 @@ export const audioSchema = zod
 
 export type AudioComponentOptions = zod.infer<typeof audioSchema>;
 
-export const checkAudio = (
-  audio: AudioComponentOptions,
-  location = "",
-): void => {
+export const checkAudio = (audio: AudioComponentOptions, location = ""): void => {
   const result = audioSchema.safeParse(audio);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 audio 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 audio 数据:`, zod.prettifyError(result.error));
 };

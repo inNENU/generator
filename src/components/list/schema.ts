@@ -119,14 +119,7 @@ const navigatorListItemSchema = zod.strictObject({
   type: zod.literal("navigator"),
   /** 小程序提供的开放能力 */
   openType: zod
-    .enum([
-      "navigate",
-      "redirect",
-      "switchTab",
-      "reLaunch",
-      "navigateBack",
-      "exit",
-    ])
+    .enum(["navigate", "redirect", "switchTab", "reLaunch", "navigateBack", "exit"])
     .meta({
       description: "小程序提供的开放能力",
     })
@@ -296,12 +289,9 @@ export const functionalListSchema = zod
       })
       .optional(),
     /** 列表内容 */
-    items: zod
-      .array(functionalListItemSchema)
-      .min(1, "至少需要一个列表项")
-      .meta({
-        description: "列表内容",
-      }),
+    items: zod.array(functionalListItemSchema).min(1, "至少需要一个列表项").meta({
+      description: "列表内容",
+    }),
     /** 列表页脚 */
     footer: zod
       .string()
@@ -323,50 +313,26 @@ export type ListPageComponentItemOptions = zod.infer<typeof listPageItemSchema>;
 export type ListComponentItemOptions = zod.infer<typeof listItemSchema>;
 export type ListComponentOptions = zod.infer<typeof listSchema>;
 
-export type NavigatorListComponentItemOptions = zod.infer<
-  typeof navigatorListItemSchema
->;
+export type NavigatorListComponentItemOptions = zod.infer<typeof navigatorListItemSchema>;
 export type OfficialProfileListComponentItemOptions = zod.infer<
   typeof officialProfileListItemSchema
 >;
-export type ChannelProfileListComponentItemOptions = zod.infer<
-  typeof channelProfileListItemSchema
->;
-export type ArticleListComponentItemOptions = zod.infer<
-  typeof articleListItemSchema
->;
-export type VideoListComponentItemOptions = zod.infer<
-  typeof videoListItemSchema
->;
-export type SwitchListComponentItemOptions = zod.infer<
-  typeof switchListItemSchema
->;
-export type SliderListComponentItemOptions = zod.infer<
-  typeof sliderListItemSchema
->;
-export type PickerListComponentItemOptions = zod.infer<
-  typeof pickerListItemSchema
->;
-export type ButtonListComponentItemOptions = zod.infer<
-  typeof buttonListItemSchema
->;
+export type ChannelProfileListComponentItemOptions = zod.infer<typeof channelProfileListItemSchema>;
+export type ArticleListComponentItemOptions = zod.infer<typeof articleListItemSchema>;
+export type VideoListComponentItemOptions = zod.infer<typeof videoListItemSchema>;
+export type SwitchListComponentItemOptions = zod.infer<typeof switchListItemSchema>;
+export type SliderListComponentItemOptions = zod.infer<typeof sliderListItemSchema>;
+export type PickerListComponentItemOptions = zod.infer<typeof pickerListItemSchema>;
+export type ButtonListComponentItemOptions = zod.infer<typeof buttonListItemSchema>;
 
-export type FunctionalListComponentItemOptions = zod.infer<
-  typeof functionalListItemSchema
->;
-export type FunctionalListComponentOptions = zod.infer<
-  typeof functionalListSchema
->;
+export type FunctionalListComponentItemOptions = zod.infer<typeof functionalListItemSchema>;
+export type FunctionalListComponentOptions = zod.infer<typeof functionalListSchema>;
 
 export const checkList = (list: ListComponentOptions, location = ""): void => {
   const result = listSchema.safeParse(list);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 list 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 list 数据:`, zod.prettifyError(result.error));
 };
 
 export const checkFunctionalList = (
@@ -375,10 +341,6 @@ export const checkFunctionalList = (
 ): void => {
   const result = functionalListSchema.safeParse(functionalList);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 functional list 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 functional list 数据:`, zod.prettifyError(result.error));
 };
