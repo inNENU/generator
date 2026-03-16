@@ -27,10 +27,8 @@ const getFiles = (base: string, ext: string, dir = ""): string[] => {
   return [
     ...fileList
       .filter((filename) => !ext || filename.endsWith(ext))
-      .map((filePath) => upath.relative("./", upath.resolve(dir, filePath))),
-    ...dirList.flatMap((dirname) =>
-      getFiles(base, ext, upath.relative("./", upath.resolve(dir, dirname))),
-    ),
+      .map((filePath) => upath.join(dir, filePath)),
+    ...dirList.flatMap((dirname) => getFiles(base, ext, upath.join(dir, dirname))),
   ];
 };
 

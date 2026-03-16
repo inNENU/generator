@@ -1,17 +1,22 @@
 import { readFile, readdir } from "node:fs/promises";
 
 const testJSON = async (path: string): Promise<void> => {
-  try {
-    const content = await readFile(path, { encoding: "utf-8" });
+  let content: string;
 
-    try {
-      JSON.parse(content);
-    } catch {
-      throw new Error(`${path} 不是一个正确的 JSON 文件`);
-    }
+  try {
+    content = await readFile(path, { encoding: "utf-8" });
   } catch (err) {
     console.error(`读取文件 ${path} 失败:`, err);
     throw err;
+  }
+
+  try {
+    JSON.parse(content);
+  } catch {
+    const error = new Error(`${path} 不是一个正确的 JSON 文件`);
+
+    console.error(error.message);
+    throw error;
   }
 };
 
