@@ -17,9 +17,9 @@ export const generateSvgIcons = (
   fileList.forEach((filePath) => {
     const results = filePath.split("/");
 
-    if (results.length > 2) {
+    if (results.length > 2) 
       console.error("不支持深层嵌套图标生成!");
-    }
+    
 
     const sourceFilename = upath.resolve(sourceFolder, filePath);
     const svgContent = readFileSync(sourceFilename, {

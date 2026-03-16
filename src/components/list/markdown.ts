@@ -9,11 +9,11 @@ export const getListMarkdown = (
   list: ListComponentOptions | FunctionalListComponentOptions,
   location = "",
 ): string => {
-  if (list.tag === "list") {
+  if (list.tag === "list") 
     checkList(list, location);
-  } else {
+   else 
     checkFunctionalList(list, location);
-  }
+  
 
   const { header, footer, items = [] } = list;
 
@@ -44,7 +44,7 @@ ${items
 
     const textContent = `\
 <div class="innenu-list-text">
-${text.replace(/\n/g, "<br />")}
+${text.replaceAll('\n', "<br />")}
 </div>
 `;
 
@@ -66,9 +66,9 @@ ${descContent}\
 
     if ("action" in item) {
       if (item.action === "official")
-        return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
+        {return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
 ${listItemContent}
-</a>`;
+</a>`;}
 
       if (item.action === "article") {
         return `<a class="innenu-list-item" href="${item.url}" target="_blank">

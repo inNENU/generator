@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["innenu", "upath", "wechat"]
+  "oxc.unusedDisableDirectives": "deny",
+  "cSpell.words": ["innenu", "upath", "wechat"],
 }

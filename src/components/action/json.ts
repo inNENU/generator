@@ -7,9 +7,9 @@ export const getActionJSON = (
   // Convert alias here to avoid complicated logic in mini app
   const processedContent = getFileLink(action.content);
 
-  if (processedContent !== null) {
+  if (processedContent !== null) 
     action.content = processedContent;
-  }
+  
 
   return action;
 };

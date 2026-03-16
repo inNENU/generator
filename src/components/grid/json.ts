@@ -9,10 +9,10 @@ export const getGridJSON = (
   location = "",
 ): GridComponentOptions => {
   if (Array.isArray(grid.items))
-    grid.items.forEach((gridItem) => {
+    {grid.items.forEach((gridItem) => {
       // 处理路径
       if ("path" in gridItem && !("appId" in gridItem))
-        if (gridItem.path.startsWith("/")) {
+        {if (gridItem.path.startsWith("/")) {
           const path = resolvePath(gridItem.path);
 
           if (!existsSync(`./pages/${path}.yml`))
@@ -30,8 +30,8 @@ export const getGridJSON = (
             console.error(`路径 ${path} 在 ${location} 中不存在`);
 
           gridItem.path = path;
-        }
-    });
+        }}
+    });}
 
   return grid;
 };

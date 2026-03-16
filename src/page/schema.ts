@@ -288,9 +288,9 @@ export const checkPageConfig = (
     );
   }
 
-  if (options.iconRequired && !config.icon) {
+  if (options.iconRequired && !config.icon) 
     console.error(`${location} 页面缺少图标`);
-  }
+  
 
   if (!config.aiIgnore) {
     if (options.allowedTags?.length) {
@@ -300,9 +300,9 @@ export const checkPageConfig = (
       });
     }
 
-    if (options.tagRequired && !config.tags?.length) {
+    if (options.tagRequired && !config.tags?.length) 
       console.error(`${location} 应包含标签`);
-    }
+    
   }
 };
 

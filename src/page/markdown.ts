@@ -1,3 +1,4 @@
+// oxlint-disable import/max-dependencies
 import type { PageConfig } from "./schema.js";
 import { getAccountMarkdown } from "../components/account/markdown.js";
 import { getActionMarkdown } from "../components/action/markdown.js";
@@ -27,20 +28,10 @@ import { getIconLink } from "../utils.js";
 export const getPageMarkdown = (page: PageConfig, location = ""): string => {
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
-  if (!page.content)
-    throw new Error(`${location} page content doesn't contain anything`);
+  if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
 
   try {
-    const {
-      title,
-      icon,
-      author,
-      desc,
-      cite,
-      tags,
-      content: pageContents,
-      time,
-    } = page;
+    const { title, icon, author, desc, cite, tags, content: pageContents, time } = page;
 
     let content = "";
 
@@ -52,64 +43,68 @@ title: ${getYamlValue(title)}
     if (icon) {
       const iconLink = getIconLink(icon);
 
-      if (iconLink)
+      if (iconLink) {
         content += `\
 icon: ${iconLink}
 `;
+      }
     }
 
-    if (Array.isArray(author))
+    if (Array.isArray(author)) {
       content += `\
 author:
-${author.map((author) => `  - ${getYamlValue(author)}`).join("\n")}
+${author.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
 `;
-    else if (author)
+    } else if (author) {
       content += `\
 author: ${getYamlValue(author)}
 `;
+    }
 
-    if (time)
+    if (time) {
       content += `\
 date: ${time}
 `;
+    }
 
-    if (tags?.length)
+    if (tags?.length) {
       content += `\
 tags:
 ${tags.map((tag) => `  - ${getYamlValue(tag)}`).join("\n")}
 `;
+    }
 
-    if (cite)
+    if (cite) {
       content += Array.isArray(cite)
         ? `\
 cite:
-${cite.map((c) => `  - ${getYamlValue(c)}`).join("\n")}
+${cite.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
 `
         : `\
 cite:
   - ${getYamlValue(cite)}
 `;
-    else
+    } else {
       content += `\
 isOriginal: true
 `;
+    }
 
     content += `\
 ---
 
 `;
 
+    // oxlint-disable-next-line complexity
     pageContents.forEach((component, index) => {
       const { env, tag } = component;
       const componentLocation = `${location} page.content[${index}]`;
 
       if (!env || env.includes("web")) {
         // 处理图片
-        if (tag === "img")
-          content += getImgMarkdown(component, componentLocation);
+        if (tag === "img") content += getImgMarkdown(component, componentLocation);
         // 设置标题
-        else if (tag === "title")
-          content += getTitleMarkdown(component, componentLocation);
+        else if (tag === "title") content += getTitleMarkdown(component, componentLocation);
         // 设置文字
         else if (tag === "text" || tag === "p" || tag === "ul" || tag === "ol")
           content += getTextMarkdown(component, componentLocation);
@@ -117,52 +112,38 @@ isOriginal: true
         else if (tag === "list" || tag === "functional-list")
           content += getListMarkdown(component, componentLocation);
         // 设置网格组件
-        else if (tag === "grid")
-          content += getGridMarkdown(component, componentLocation);
+        else if (tag === "grid") content += getGridMarkdown(component, componentLocation);
         // 检测文档
-        else if (tag === "doc")
-          content += getDocMarkdown(component, componentLocation);
+        else if (tag === "doc") content += getDocMarkdown(component, componentLocation);
         // 设置电话
-        else if (tag === "phone")
-          content += getPhoneMarkdown(component, componentLocation);
+        else if (tag === "phone") content += getPhoneMarkdown(component, componentLocation);
         // 检测音频
-        else if (tag === "card")
-          content += getCardMarkdown(component, componentLocation);
+        else if (tag === "card") content += getCardMarkdown(component, componentLocation);
         // 检测音频
-        else if (tag === "audio")
-          content += getAudioMarkdown(component, componentLocation);
+        else if (tag === "audio") content += getAudioMarkdown(component, componentLocation);
         // 检测视频
-        else if (tag === "video")
-          content += getVideoMarkdown(component, componentLocation);
+        else if (tag === "video") content += getVideoMarkdown(component, componentLocation);
         // 检测动作
-        else if (tag === "action")
-          content += getActionMarkdown(component, componentLocation);
+        else if (tag === "action") content += getActionMarkdown(component, componentLocation);
         // 检测账号
-        else if (tag === "account")
-          content += getAccountMarkdown(component, componentLocation);
+        else if (tag === "account") content += getAccountMarkdown(component, componentLocation);
         // 检测地点
-        else if (tag === "location")
-          content += getLocationMarkdown(component, componentLocation);
+        else if (tag === "location") content += getLocationMarkdown(component, componentLocation);
         // 表格
-        else if (tag === "table")
-          content += getTableMarkdown(component, componentLocation);
+        else if (tag === "table") content += getTableMarkdown(component, componentLocation);
       }
     });
 
-    if (desc ?? cite)
-      content += `\
-${
-  desc
-    ?.split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n>\n") ?? ""
-}\
-`;
+    if (desc ?? cite) {
+      content +=
+        desc
+          ?.split("\n")
+          .map((line) => `> ${line}`)
+          .join("\n>\n") ?? "";
+    }
 
     return content;
-  } catch (error) {
-    throw new Error(
-      `为 ${location} 生成 Markdown 失败: ${(error as Error).message}`,
-    );
+  } catch (err) {
+    throw new Error(`为 ${location} 生成 Markdown 失败: ${(err as Error).message}`, { cause: err });
   }
 };

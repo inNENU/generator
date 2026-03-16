@@ -12,7 +12,7 @@ import {
   pathSchema,
   urlSchema,
 } from "../../schema/common.js";
-import {} from "../schema.js";
+
 
 const baseGridItemSchema = zod.strictObject({
   /** 网格文字 */

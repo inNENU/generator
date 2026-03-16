@@ -34,15 +34,14 @@ const getFiles = (
       .filter((filename) => !ext || filename.endsWith(ext))
       .map((filePath) => upath.relative("./", upath.resolve(dir, filePath))),
     ...dirList
-      .map((dirname) =>
+      .flatMap((dirname) =>
         getFiles(
           cwd,
           base,
           ext,
           upath.relative("./", upath.resolve(dir, dirname)),
         ),
-      )
-      .flat(),
+      ),
   ];
 };
 

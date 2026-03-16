@@ -38,7 +38,7 @@ ${items
 
     const textContent = `\
 <div class="innenu-grid-text">
-${text.replace(/\n/g, "<br />")}
+${text.replaceAll('\n', "<br />")}
 </div>
 `;
 
@@ -49,9 +49,9 @@ ${textContent}\
 
     if ("action" in item) {
       if (item.action === "official")
-        return `<a class="innenu-grid-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
+        {return `<a class="innenu-grid-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
 ${gridItemContent}
-</a>`;
+</a>`;}
 
       if (item.action === "article") {
         return `<a class="innenu-grid-item" href="${item.url}" target="_blank">

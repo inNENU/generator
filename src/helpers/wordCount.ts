@@ -5,6 +5,9 @@ import { getFileList } from "./getFileList.js";
 
 /**
  * Extract Latin words from content
+ *
+ * @param content - The content to extract Latin words from
+ * @returns An array of Latin words found in the content, or null if none are found
  */
 const getLatinWords = (content: string): RegExpMatchArray | null =>
   // \u00C0-\u024F are Latin Supplement letters, maybe used in language like french
@@ -13,12 +16,17 @@ const getLatinWords = (content: string): RegExpMatchArray | null =>
 
 /**
  * Extract Chinese Characters from content
+ *
+ * @param content - The content to extract Chinese characters from
+ * @returns An array of Chinese characters found in the content, or null if none are found
  */
-const getChinese = (content: string): RegExpMatchArray | null =>
-  content.match(/[\u4E00-\u9FD5]/gu);
+const getChinese = (content: string): RegExpMatchArray | null => content.match(/[\u4E00-\u9FD5]/gu);
 
 /**
  * Get word number of given string
+ *
+ * @param content - The content to count words from
+ * @returns Number of words in the content, counting both Latin words and Chinese characters
  */
 export const getWordNumber = (content: string): number =>
   (getLatinWords(content)?.reduce<number>(
@@ -31,8 +39,9 @@ export const getJSONValue = (content: unknown): string => {
   if (typeof content === "number") return content.toString();
   if (typeof content === "string") return content;
   if (typeof content === "object") {
-    if (Array.isArray(content)) return content.map(getJSONValue).join(" ");
-    else if (content) {
+    if (Array.isArray(content)) {
+      return content.map((item) => getJSONValue(item)).join(" ");
+    } else if (content) {
       let result = "";
 
       for (const key in content)

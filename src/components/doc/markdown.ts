@@ -25,7 +25,7 @@ export const getDocMarkdown = (
 
   return `
 ${
-  /\.(pdf|jpe?g|png|bmp|svg)$/.exec(url)
+  /\.(pdf|jpe?g|png|bmp|svg)$/.test(url)
     ? `
 <a class="innenu-doc" href="${url}" name="${docName}" target="_blank" rel="noopener noreferrer">
   ${docIcon}

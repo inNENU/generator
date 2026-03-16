@@ -53,9 +53,9 @@ ${
 
   if ("action" in card) {
     if (card.action === "official")
-      return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${card.username}" target="_blank">
+      {return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${card.username}" target="_blank">
 ${cardContent}
-</a>`;
+</a>`;}
 
     if (card.action === "article") {
       return `<a class="innenu-card" href="${card.url}" target="_blank">

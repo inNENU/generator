@@ -56,21 +56,21 @@ export const docExtensionSchema = zod
 
 export const internalImgSchema = zod
   .templateLiteral(["$img/", zod.string(), imageExtensionSchema])
-  .refine((link) => existsSync("./" + link.substring(1)), {
+  .refine((link) => existsSync("./" + link.slice(1)), {
     error: ({ input }) => `图片 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalDocsSchema = zod
   .templateLiteral(["$file/", zod.string(), docExtensionSchema])
-  .refine((link) => existsSync("./" + link.substring(1)), {
+  .refine((link) => existsSync("./" + link.slice(1)), {
     error: ({ input }) => `文档 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalFileSchema = zod
   .templateLiteral(["$file/", zod.string()])
-  .refine((link) => existsSync("./" + link.substring(1)), {
+  .refine((link) => existsSync("./" + link.slice(1)), {
     error: ({ input }) => `文件 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;

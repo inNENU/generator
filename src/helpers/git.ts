@@ -30,15 +30,18 @@ export const getLastChangedFiles = (): ChangedFilesInfo => {
     const [status, filePath] = line.split("\t");
 
     switch (status) {
-      case "A":
+      case "A": {
         added.push(filePath);
         break;
-      case "M":
+      }
+      case "M": {
         modified.push(filePath);
         break;
-      case "D":
+      }
+      case "D": {
         deleted.push(filePath);
         break;
+      }
     }
   });
 

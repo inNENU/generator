@@ -13,10 +13,10 @@ export const getTableMarkdown = (
 
   return `\
 ${caption ? `### ${caption}\n\n` : ""}\
-| ${header.map((item) => item.replace(/\|/g, "\\|")).join(" | ")} |
+| ${header.map((item) => item.replaceAll('|', String.raw`\|`)).join(" | ")} |
 | ${header.map(() => ":-:").join(" | ")} |
 | ${body
-    .map((item) => item.map((item) => item.replace(/\|/g, "\\|")).join(" | "))
+    .map((item) => item.map((item) => item.replaceAll('|', String.raw`\|`)).join(" | "))
     .join(" |\n| ")} |
 
 `;

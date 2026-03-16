@@ -35,25 +35,25 @@ export const checkFile = (link?: string, location = ""): void => {
     const localPath = link.replace(/^\$/, "./").split("?")[0];
 
     if (!existsSync(localPath))
-      console.error(
+      {console.error(
         `${link.startsWith("$img") ? "Image" : "File"} ${localPath} not exist${location ? ` in ${location}` : ""}.`,
-      );
+      );}
   }
 };
 
 export const getFileLink = (link?: string): string | null => {
   if (typeof link !== "string") return null;
 
-  if (link.startsWith("$")) {
+  if (link.startsWith("$")) 
     return link.replace(/^\$/, `${_config.assets}/`);
-  }
+  
 
   return link;
 };
 
 export const checkIcon = (icon?: string, location = ""): void => {
   if (icon) {
-    if (icon.startsWith("$")) checkFile(icon, location);
+    if (icon.startsWith("$")) {checkFile(icon, location);}
     else if (!/^https?:\/\//.test(icon) && !icon.includes(".")) {
       const iconPath = `./data/icon/${icon}.svg`;
 
@@ -68,9 +68,9 @@ export const getIconLink = (icon?: string): string | null => {
 
   if (icon.startsWith("$")) return getFileLink(icon);
 
-  if (!/^https?:\/\//.test(icon) && !icon.includes(".")) {
+  if (!/^https?:\/\//.test(icon) && !icon.includes(".")) 
     return `${_config.icon}/${icon}.svg`;
-  }
+  
 
   return icon;
 };

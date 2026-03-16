@@ -1,11 +1,10 @@
+// oxlint-disable node/no-process-env
 import OSS from "ali-oss";
 
 let client: OSS;
 
 const headers = {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   "x-oss-storage-class": "Standard",
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   "x-oss-object-acl": "private",
 };
 
@@ -30,15 +29,13 @@ export const uploadOSSFiles = async (
 
     for (const filePath of filePaths) {
       const [localPath, onlinePath] =
-        typeof filePath === "string"
-          ? [filePath, filePath]
-          : [filePath.local, filePath.online];
+        typeof filePath === "string" ? [filePath, filePath] : [filePath.local, filePath.online];
 
       console.debug(`上传文件 ${localPath}`);
+      // oxlint-disable-next-line no-await-in-loop
       const result = await client.put(onlinePath, localPath, { headers });
 
-      if (result.res.status !== 200)
-        console.error(`上传 ${localPath} 失败:`, result.res.status);
+      if (result.res.status !== 200) console.error(`上传 ${localPath} 失败:`, result.res.status);
     }
   } catch (err) {
     console.error("上传文件到 OSS 失败:", err);
@@ -55,8 +52,7 @@ export const removeOSSFiles = async (filePaths: string[]): Promise<void> => {
 
     const result = await client.deleteMulti(filePaths);
 
-    if (result.res.status !== 200)
-      console.error(`删除失败:`, result.res.status);
+    if (result.res.status !== 200) console.error(`删除失败:`, result.res.status);
   } catch (err) {
     console.error(`删除失败:`, err);
   }

@@ -6,7 +6,8 @@ const testJSON = (path: string): Promise<void> =>
       if (err) {
         console.error(`读取文件 ${path} 失败:`, err);
 
-        return reject(err);
+        reject(err);
+        return;
       }
       try {
         JSON.parse(content);
@@ -24,19 +25,21 @@ export const checkJSON = (path: string): Promise<void> =>
       if (err) {
         console.error(`读取目录 ${path} 失败:`, err);
 
-        return reject(err);
+        reject(err);
+        return;
       }
 
       const checkProcess: Promise<void>[] = [];
 
       files.forEach((file) => {
         // 是文件
-        if (file.isDirectory())
-          checkProcess.push(checkJSON(`${path}/${file.name}`));
+        if (file.isDirectory()) checkProcess.push(checkJSON(`${path}/${file.name}`));
         else if (file.name.split(".").pop() === "json")
           checkProcess.push(testJSON(`${path}/${file.name}`));
       });
 
-      void Promise.all(checkProcess).then(() => resolve());
+      void Promise.all(checkProcess).then(() => {
+        resolve();
+      });
     });
   });
