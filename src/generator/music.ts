@@ -35,7 +35,7 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
           /** 正确的时间 */
           const time = Number((Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3));
 
-          lyricData.push({ time, text: result[2] });
+          lyricData.push({ time, text: result[2] ?? "" });
         }
       }
     });
