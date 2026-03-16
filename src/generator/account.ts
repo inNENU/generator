@@ -8,14 +8,6 @@ import { checkQQAccounts, checkWechatAccountData, checkWechatAccounts } from "..
 
 const decodeText = (text: string): string => {
   const encodedText = text
-    // Normalize literal \x.. sequences that may appear in fetched content
-    .replaceAll("\\x0d", " ")
-    .replaceAll("\\x0D", " ")
-    .replaceAll("\\x0a", " ")
-    .replaceAll("\\x0A", " ")
-    .replaceAll("\\x26", "&")
-    .replaceAll("\\x26", "&")
-    // Also handle \u....-style sequences represented literally in the text
     .replaceAll(String.raw`\u000D`, " ")
     .replaceAll(String.raw`\u000A`, " ")
     .replaceAll(String.raw`\u0026`, "&")

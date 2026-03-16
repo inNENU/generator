@@ -98,7 +98,6 @@ export interface AccountComponentData extends Omit<AccountComponentOptions, "log
 export const checkAccount = (account: AccountComponentOptions, location = ""): void => {
   const result = accountSchema.safeParse(account);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 account 数据:`, zod.prettifyError(result.error));
-  }
 };

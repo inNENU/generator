@@ -150,7 +150,6 @@ export interface CarouselComponentData extends Omit<CarouselComponentOptions, "s
 export const checkCarousel = (carousel: CarouselComponentOptions, location = ""): void => {
   const result = carouselSchema.safeParse(carousel);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 carousel 数据:`, zod.prettifyError(result.error));
-  }
 };

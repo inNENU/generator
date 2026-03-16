@@ -163,7 +163,6 @@ export interface TextComponentData extends Omit<TextComponentOptions, "style" | 
 export const checkText = (text: TextComponentOptions, location = ""): void => {
   const result = textComponentSchema.safeParse(text);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 text 数据:`, zod.prettifyError(result.error));
-  }
 };

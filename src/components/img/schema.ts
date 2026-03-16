@@ -74,7 +74,6 @@ export type ImageComponentOptions = zod.infer<typeof imageSchema>;
 export const checkImage = (image: ImageComponentOptions, location = ""): void => {
   const result = imageSchema.safeParse(image);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 image 数据:`, zod.prettifyError(result.error));
-  }
 };

@@ -56,9 +56,8 @@ export const pageContentSchema = zod.array(componentSchema).min(1, "页面内容
 export const checkPageContent = (content: ComponentOptions[], location: string): void => {
   const result = pageContentSchema.safeParse(content);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法页面内容:`, zod.prettifyError(result.error));
-  }
 };
 
 export const pageTitleSchema = zod
@@ -272,9 +271,8 @@ export const checkPageConfig = (
 ): void => {
   const result = pageConfigSchema.safeParse(config);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法页面配置:`, zod.prettifyError(result.error));
-  }
 
   if (options.iconRequired && !config.icon) console.error(`${location} 页面缺少图标`);
 
@@ -293,7 +291,6 @@ export const checkPageConfig = (
 export const checkPageData = (data: PageData, location = ""): void => {
   const result = pageDataSchema.safeParse(data);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法页面数据:`, zod.prettifyError(result.error));
-  }
 };

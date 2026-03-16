@@ -18,9 +18,6 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -67,6 +64,9 @@
   "nano-staged": {
     "**/*": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,ts}": "oxlint --fix --deny-warnings --report-unused-disable-directives"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   },
   "packageManager": "pnpm@10.32.1"
 }

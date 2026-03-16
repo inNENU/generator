@@ -41,7 +41,6 @@ export type PageIndexes = zod.infer<typeof pageIndexesSchema>;
 export const checkPageIndexes = (data: PageIndexes, location: string): void => {
   const result = pageIndexesSchema.safeParse(data);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法页面索引数据:`, zod.prettifyError(result.error));
-  }
 };

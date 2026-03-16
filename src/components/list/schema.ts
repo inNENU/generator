@@ -331,9 +331,8 @@ export type FunctionalListComponentOptions = zod.infer<typeof functionalListSche
 export const checkList = (list: ListComponentOptions, location = ""): void => {
   const result = listSchema.safeParse(list);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 list 数据:`, zod.prettifyError(result.error));
-  }
 };
 
 export const checkFunctionalList = (
@@ -342,7 +341,6 @@ export const checkFunctionalList = (
 ): void => {
   const result = functionalListSchema.safeParse(functionalList);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 functional list 数据:`, zod.prettifyError(result.error));
-  }
 };

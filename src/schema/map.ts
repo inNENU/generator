@@ -140,39 +140,34 @@ export type MarkersData = zod.infer<typeof markersDataSchema>;
 export const checkMapPageConfig = (config: MapPageConfig, location = ""): void => {
   const result = mapPageConfigSchema.safeParse(config);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法地图页面配置:`, zod.prettifyError(result.error));
-  }
 };
 
 export const checkMapPageData = (data: MapPageData, location = ""): void => {
   const result = mapPageDataSchema.safeParse(data);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法地图页面数据:`, zod.prettifyError(result.error));
-  }
 };
 
 export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => {
   const result = markerConfigSchema.safeParse(marker);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
-  }
 };
 
 export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void => {
   const result = markersConfigSchema.safeParse(markers);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
-  }
 };
 
 export const checkMarkersData = (data: MarkersData, location = ""): void => {
   const result = markersDataSchema.safeParse(data);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法标记点数据:`, zod.prettifyError(result.error));
-  }
 };

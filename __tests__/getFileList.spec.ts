@@ -65,9 +65,7 @@ describe("getFileList nested directories", () => {
       const files = getFileList(".", undefined, testDir);
 
       // Paths should all be relative, not absolute
-      for (const file of files) {
-        expect(file).not.toMatch(/^\//);
-      }
+      for (const file of files) expect(file).not.toMatch(/^\//);
 
       // Nested paths must include the directory prefix
       expect(files).toContain("sub/file.txt");

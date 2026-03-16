@@ -123,7 +123,6 @@ export type GridComponentOptions = zod.infer<typeof gridSchema>;
 export const checkGrid = (grid: GridComponentOptions, location = ""): void => {
   const result = gridSchema.safeParse(grid);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 grid 数据:`, zod.prettifyError(result.error));
-  }
 };

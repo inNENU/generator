@@ -185,7 +185,6 @@ export interface PhoneComponentData extends Omit<
 export const checkPhone = (phone: PhoneComponentOptions, location = ""): void => {
   const result = phoneSchema.safeParse(phone);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 phone 数据:`, zod.prettifyError(result.error));
-  }
 };

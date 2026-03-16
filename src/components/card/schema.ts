@@ -127,7 +127,6 @@ export type CardComponentOptions =
 export const checkCard = (card: CardComponentOptions, location = ""): void => {
   const result = cardSchema.safeParse(card);
 
-  if (!result.success) {
+  if (!result.success)
     console.error(`${location} 发现非法 card 数据:`, zod.prettifyError(result.error));
-  }
 };
