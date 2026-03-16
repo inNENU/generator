@@ -166,7 +166,7 @@ export const getPageJSON = (
       content: getPageContent(content, pagePath, { id }),
     };
 
-    if (!pageData.cite?.length) delete page.cite;
+    if (!pageData.cite?.length) delete pageData.cite;
     if (images.length) pageData.images = images;
 
     if (time) {

@@ -110,16 +110,10 @@ export const videoSchema = zod
 export type Danmu = zod.infer<typeof danmuSchema>;
 export type VideoComponentOptions = zod.infer<typeof videoSchema>;
 
-export const checkVideo = (
-  video: VideoComponentOptions,
-  location = "",
-): void => {
+export const checkVideo = (video: VideoComponentOptions, location = ""): void => {
   const result = videoSchema.safeParse(video);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 video 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 video 数据:`, zod.prettifyError(result.error));
   }
 };

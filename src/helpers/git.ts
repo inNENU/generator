@@ -14,9 +14,7 @@ export const getCurrentChangedFiles = (): string[] =>
 
 export const getLastChangedFiles = (): ChangedFilesInfo => {
   // Execute the git diff-tree command
-  const result = execSync(`git diff-tree --no-commit-id --name-status -r HEAD`)
-    .toString()
-    .trim();
+  const result = execSync(`git diff-tree --no-commit-id --name-status -r HEAD`).toString().trim();
 
   const lines = result.split("\n");
 
@@ -40,6 +38,9 @@ export const getLastChangedFiles = (): ChangedFilesInfo => {
       }
       case "D": {
         deleted.push(filePath);
+        break;
+      }
+      default: {
         break;
       }
     }

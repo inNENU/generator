@@ -7,10 +7,7 @@ import { getFileList } from "../helpers/getFileList.js";
 import type { MusicList } from "../schema/index.js";
 import { checkMusicList } from "../schema/index.js";
 
-export const getMusicListJSON = (
-  data: MusicList,
-  location: string,
-): MusicList => {
+export const getMusicListJSON = (data: MusicList, location: string): MusicList => {
   checkMusicList(data, location);
 
   return data;
@@ -36,11 +33,9 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
 
         if (timeResult) {
           /** 正确的时间 */
-          const time = Number(
-            (Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3),
-          );
+          const time = Number((Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3));
 
-          lyricData.push({ time, text: result[2] });
+          lyricData.push({ time, text: result[2] ?? "" });
         }
       }
     });

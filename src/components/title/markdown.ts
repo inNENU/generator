@@ -2,10 +2,7 @@ import type { TitleComponentOptions } from "./schema.js";
 import { checkTitle } from "./schema.js";
 import { convertStyle } from "../../utils.js";
 
-export const getTitleMarkdown = (
-  component: TitleComponentOptions,
-  location = "",
-): string => {
+export const getTitleMarkdown = (component: TitleComponentOptions, location = ""): string => {
   if (component.env && !component.env.includes("web")) return "";
 
   checkTitle(component, location);

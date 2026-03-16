@@ -14,13 +14,7 @@ export const _config: Config = {
   pageFolder: "page",
 };
 
-export const config = ({
-  assets,
-  icon,
-  mapFolder,
-  mapKey,
-  pageFolder,
-}: Config): void => {
+export const config = ({ assets, icon, mapFolder, mapKey, pageFolder }: Config): void => {
   Object.assign(_config, {
     assets: assets.replace(/\/$/, ""),
     icon: icon.replace(/\/$/, ""),

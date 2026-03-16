@@ -126,36 +126,21 @@ export const textComponentSchema = zod
     description: "文本组件",
   });
 
-export type BaseTextComponentOptions = zod.infer<
-  typeof baseTextComponentSchema
->;
-export type PlainTextComponentOptions = zod.infer<
-  typeof plainTextComponentSchema
->;
-export type HintTextComponentOptions = zod.infer<
-  typeof hintTextComponentSchema
->;
-export type PathTextComponentOptions = zod.infer<
-  typeof pathTextComponentSchema
->;
-export type PageTextComponentOptions = zod.infer<
-  typeof pageTextComponentSchema
->;
+export type BaseTextComponentOptions = zod.infer<typeof baseTextComponentSchema>;
+export type PlainTextComponentOptions = zod.infer<typeof plainTextComponentSchema>;
+export type HintTextComponentOptions = zod.infer<typeof hintTextComponentSchema>;
+export type PathTextComponentOptions = zod.infer<typeof pathTextComponentSchema>;
+export type PageTextComponentOptions = zod.infer<typeof pageTextComponentSchema>;
 export type OfficialProfileTextComponentOptions = zod.infer<
   typeof officialProfileTextComponentSchema
 >;
 export type ChannelProfileTextComponentOptions = zod.infer<
   typeof channelProfileTextComponentSchema
 >;
-export type ArticleTextComponentOptions = zod.infer<
-  typeof articleTextComponentSchema
->;
-export type VideoTextComponentOptions = zod.infer<
-  typeof videoTextComponentSchema
->;
+export type ArticleTextComponentOptions = zod.infer<typeof articleTextComponentSchema>;
+export type VideoTextComponentOptions = zod.infer<typeof videoTextComponentSchema>;
 export type MiniProgramTextComponentOptions = zod.infer<
-  | typeof miniProgramShortLinkTextComponentSchema
-  | typeof miniProgramFullTextComponentSchema
+  typeof miniProgramShortLinkTextComponentSchema | typeof miniProgramFullTextComponentSchema
 >;
 export type TextComponentOptions =
   | PlainTextComponentOptions
@@ -168,8 +153,7 @@ export type TextComponentOptions =
   | VideoTextComponentOptions
   | MiniProgramTextComponentOptions;
 
-export interface TextComponentData
-  extends Omit<TextComponentOptions, "style" | "text"> {
+export interface TextComponentData extends Omit<TextComponentOptions, "style" | "text"> {
   /** 段落文字 */
   text: string[];
   /** 段落样式 */
@@ -180,9 +164,6 @@ export const checkText = (text: TextComponentOptions, location = ""): void => {
   const result = textComponentSchema.safeParse(text);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 text 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 text 数据:`, zod.prettifyError(result.error));
   }
 };

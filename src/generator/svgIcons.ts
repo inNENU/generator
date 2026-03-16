@@ -4,10 +4,7 @@ import upath from "upath";
 
 import { convertSVGToBase64DataURI, getFileList } from "../helpers/index.js";
 
-export const generateSvgIcons = (
-  sourceFolder: string,
-  targetFolder: string,
-): void => {
+export const generateSvgIcons = (sourceFolder: string, targetFolder: string): void => {
   const fileList = getFileList(sourceFolder, "svg");
 
   const iconStore: Record<string, Record<string, string>> = {};
@@ -17,9 +14,7 @@ export const generateSvgIcons = (
   fileList.forEach((filePath) => {
     const results = filePath.split("/");
 
-    if (results.length > 2) 
-      console.error("不支持深层嵌套图标生成!");
-    
+    if (results.length > 2) console.error("不支持深层嵌套图标生成!");
 
     const sourceFilename = upath.resolve(sourceFolder, filePath);
     const svgContent = readFileSync(sourceFilename, {
@@ -34,10 +29,7 @@ export const generateSvgIcons = (
 
       iconStore[category][iconName] = convertSVGToBase64DataURI(svgContent);
     } else {
-      const targetFilename = upath.resolve(
-        targetFolder,
-        filePath.replace(/\.svg$/u, ""),
-      );
+      const targetFilename = upath.resolve(targetFolder, filePath.replace(/\.svg$/u, ""));
 
       writeFileSync(targetFilename, convertSVGToBase64DataURI(svgContent), {
         encoding: "utf-8",

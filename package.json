@@ -13,8 +13,7 @@
     "url": "git@github.com:inNENU/generator.git"
   },
   "files": [
-    "dist",
-    "typings.d.ts"
+    "dist"
   ],
   "type": "module",
   "main": "./dist/index.js",
@@ -28,12 +27,12 @@
       "default": "./dist/index.js"
     },
     "./typings": {
-      "types": "./typings.d.ts"
+      "types": "./dist/typings.d.ts"
     }
   },
   "scripts": {
     "build": "tsdown",
-    "clean": "rimraf dist typings.d.ts",
+    "clean": "rimraf dist",
     "generate-schema": "unrun scripts/generate-schema.ts",
     "lint": "oxlint --fix --deny-warnings --report-unused-disable-directives && oxfmt",
     "lint:check": "oxlint --deny-warnings --report-unused-disable-directives && oxfmt --check",

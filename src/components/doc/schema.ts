@@ -45,9 +45,6 @@ export const checkDoc = (doc: DocComponentOptions, location = ""): void => {
   const result = docSchema.safeParse(doc);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 doc 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 doc 数据:`, zod.prettifyError(result.error));
   }
 };

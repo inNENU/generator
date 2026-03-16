@@ -108,12 +108,8 @@ export const cardSchema = zod
 
 export type NormalCardComponentOptions = zod.infer<typeof pathCardSchema>;
 export type PageCardComponentOptions = zod.infer<typeof urlCardSchema>;
-export type OfficialProfileCardComponentOptions = zod.infer<
-  typeof officialProfileCardSchema
->;
-export type ChannelProfileCardComponentOptions = zod.infer<
-  typeof channelProfileCardSchema
->;
+export type OfficialProfileCardComponentOptions = zod.infer<typeof officialProfileCardSchema>;
+export type ChannelProfileCardComponentOptions = zod.infer<typeof channelProfileCardSchema>;
 export type ArticleCardComponentOptions = zod.infer<typeof articleCardSchema>;
 export type VideoCardComponentOptions = zod.infer<typeof videoCardSchema>;
 export type MiniProgramCardComponentOptions = zod.infer<
@@ -132,9 +128,6 @@ export const checkCard = (card: CardComponentOptions, location = ""): void => {
   const result = cardSchema.safeParse(card);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 card 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 card 数据:`, zod.prettifyError(result.error));
   }
 };

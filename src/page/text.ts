@@ -1,5 +1,6 @@
 // oxlint-disable max-statements
 // oxlint-disable max-lines-per-function
+// oxlint-disable no-shadow
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getTableMarkdown } from "../components/table/markdown.js";
 import { _config } from "../config.js";
