@@ -51,7 +51,7 @@ export const getWechatAccountDataJSON = (
   return data;
 };
 
-export const updateAccountFile = (folder: string, path: string): Promise<void> => {
+export const updateAccountFile = async (folder: string, path: string): Promise<void> => {
   const filePath = upath.join(folder, path);
 
   let data = readFileSync(filePath, "utf-8");
@@ -61,52 +61,46 @@ export const updateAccountFile = (folder: string, path: string): Promise<void> =
     .map((item) => /- url: (.*)$/.exec(item)?.[1] ?? "")
     .filter((item) => item.length);
 
-  return createPromiseQueue(
-    results.map(
-      (item) => () =>
-        fetch(item)
-          .then((res) => res.text())
-          .then((content) => {
-            const supportedOGP = content.includes("<meta property");
+  await createPromiseQueue(
+    results.map((item) => async (): Promise<void> => {
+      try {
+        const res = await fetch(item);
+        const content = await res.text();
 
-            const cover = supportedOGP
-              ? /<meta property="og:image" content="(.*?)" \/>/.exec(content)?.[1]
-              : /msg_cdn_url = "(.*)"/.exec(content)?.[1];
-            const title = supportedOGP
-              ? /<meta property="og:title" content="(.*?)" \/>/.exec(content)?.[1]
-              : /msg_title = '(.*)'/.exec(content)?.[1];
-            const desc = supportedOGP
-              ? /<meta property="og:description" content="(.*?)" \/>/.exec(content)?.[1]
-              : /msg_desc = htmlDecode\("(.*)"\)/.exec(content)?.[1];
+        const supportedOGP = content.includes("<meta property");
 
-            if (
-              typeof cover !== "string" ||
-              typeof title !== "string" ||
-              typeof desc !== "string"
-            ) {
-              throw new TypeError(
-                `Parsing failed: ${JSON.stringify({ supportedOGP, cover, title, desc })}`,
-              );
-            }
+        const cover = supportedOGP
+          ? /<meta property="og:image" content="(.*?)" \/>/.exec(content)?.[1]
+          : /msg_cdn_url = "(.*)"/.exec(content)?.[1];
+        const title = supportedOGP
+          ? /<meta property="og:title" content="(.*?)" \/>/.exec(content)?.[1]
+          : /msg_title = '(.*)'/.exec(content)?.[1];
+        const desc = supportedOGP
+          ? /<meta property="og:description" content="(.*?)" \/>/.exec(content)?.[1]
+          : /msg_desc = htmlDecode\("(.*)"\)/.exec(content)?.[1];
 
-            data = data.replace(
-              `- url: ${item}`,
-              `- cover: ${cover}\n    title: ${decodeText(title)}\n${
-                desc ? `    desc: ${decodeText(desc)}\n` : ""
-              }    url: ${item}`,
-            );
-          })
-          .then(() => {
-            console.log(`账号 ${item} 已获取`);
-          })
-          .catch((err: unknown) => {
-            console.error(`获取账户 ${item} 失败:`, err);
-          }),
-    ),
+        if (typeof cover !== "string" || typeof title !== "string" || typeof desc !== "string") {
+          throw new TypeError(
+            `Parsing failed: ${JSON.stringify({ supportedOGP, cover, title, desc })}`,
+          );
+        }
+
+        data = data.replace(
+          `- url: ${item}`,
+          `- cover: ${cover}\n    title: ${decodeText(title)}\n${
+            desc ? `    desc: ${decodeText(desc)}\n` : ""
+          }    url: ${item}`,
+        );
+
+        console.log(`账号 ${item} 已获取`);
+      } catch (err: unknown) {
+        console.error(`获取账户 ${item} 失败:`, err);
+      }
+    }),
     3,
-  ).then(() => {
-    writeFileSync(filePath, data, "utf-8");
-  });
+  );
+
+  writeFileSync(filePath, data, "utf-8");
 };
 
 export const updateAccountFiles = async (folder: string): Promise<void> => {

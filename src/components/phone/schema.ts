@@ -166,11 +166,10 @@ export const phoneSchema = zod
 
 export type PhoneComponentOptions = zod.infer<typeof phoneSchema>;
 
-export interface PhoneComponentData
-  extends Omit<
-    PhoneComponentOptions,
-    "num" | "workNum" | "homeNum" | "hostNum" | "postCode"
-  > {
+export interface PhoneComponentData extends Omit<
+  PhoneComponentOptions,
+  "num" | "workNum" | "homeNum" | "hostNum" | "postCode"
+> {
   /** 联系人电话号码 */
   num: string;
   /** 联系人工作电话 */
@@ -183,16 +182,10 @@ export interface PhoneComponentData
   postCode?: string;
 }
 
-export const checkPhone = (
-  phone: PhoneComponentOptions,
-  location = "",
-): void => {
+export const checkPhone = (phone: PhoneComponentOptions, location = ""): void => {
   const result = phoneSchema.safeParse(phone);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 phone 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 phone 数据:`, zod.prettifyError(result.error));
   }
 };

@@ -26,13 +26,9 @@ ${
     .slice(0, 4)
     .map(
       ({ loc, name = "位置", detail = "详情" }) =>
-        `coord:${loc};title:${encodeURIComponent(
-          name,
-        )};addr:${encodeURIComponent(detail)}`,
+        `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
     )
-    .join(
-      "|",
-    )}&key=${_config.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
+    .join("|")}&key=${_config.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
 
 `;
 };

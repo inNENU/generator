@@ -85,36 +85,25 @@ export class Queue {
  *
  * @returns 当所有函数执行完毕时返回的 Promise
  */
-export const createPromiseQueue = (
+export const createPromiseQueue = async (
   promiseList: (() => Promise<void>)[],
   capacity = 1,
-): Promise<void> =>
-  new Promise((resolve) => {
-    /** 回调队列 */
-    const queue: (() => Promise<void>)[] = promiseList;
+): Promise<void> => {
+  /** 回调队列 */
+  const queue: (() => Promise<void>)[] = promiseList;
 
-    let running = 0;
-
-    /** 执行下一个函数 */
-    const next = (): void => {
-      /** 即将执行的任务 */
+  const runWorker = async (): Promise<void> => {
+    while (queue.length > 0) {
       const task = queue.shift();
 
-      if (task) {
-        running += 1;
-        void task().then(() => {
-          running -= 1;
-          next();
-        });
-      } else if (running === 0) {
-        resolve();
-      }
-    };
-
-    let counter = 0;
-
-    while (counter < capacity) {
-      counter += 1;
-      next();
+      // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
+      if (task) await task();
     }
-  });
+  };
+
+  const workers: Promise<void>[] = [];
+
+  for (let i = 0; i < capacity; i += 1) workers.push(runWorker());
+
+  await Promise.all(workers);
+};

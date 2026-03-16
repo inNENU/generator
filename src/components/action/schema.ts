@@ -26,16 +26,10 @@ export const actionSchema = zod
 
 export type ActionComponentOptions = zod.infer<typeof actionSchema>;
 
-export const checkAction = (
-  action: ActionComponentOptions,
-  location = "",
-): void => {
+export const checkAction = (action: ActionComponentOptions, location = ""): void => {
   const result = actionSchema.safeParse(action);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 action 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 action 数据:`, zod.prettifyError(result.error));
   }
 };

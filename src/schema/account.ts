@@ -99,10 +99,7 @@ export const checkQQAccounts = (data: QQAccounts, location: string): void => {
   const result = qqAccountsSchema.safeParse(data);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 QQ 账号数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 QQ 账号数据:`, zod.prettifyError(result.error));
   }
 };
 
@@ -127,17 +124,11 @@ export const wechatAccountsSchema = zod.array(wechatAccountGroupSchema).meta({
 
 export type WechatAccounts = zod.infer<typeof wechatAccountsSchema>;
 
-export const checkWechatAccounts = (
-  data: WechatAccounts,
-  location: string,
-): void => {
+export const checkWechatAccounts = (data: WechatAccounts, location: string): void => {
   const result = wechatAccountsSchema.safeParse(data);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法微信公众号数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));
   }
 };
 
@@ -212,16 +203,10 @@ export const wechatAccountDataSchema = zod
 
 export type WechatAccountData = zod.infer<typeof wechatAccountDataSchema>;
 
-export const checkWechatAccountData = (
-  data: WechatAccountData,
-  location: string,
-): void => {
+export const checkWechatAccountData = (data: WechatAccountData, location: string): void => {
   const result = wechatAccountDataSchema.safeParse(data);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法微信公众号数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));
   }
 };

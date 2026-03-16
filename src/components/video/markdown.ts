@@ -2,10 +2,7 @@ import type { VideoComponentOptions } from "./schema.js";
 import { checkVideo } from "./schema.js";
 import { getFileLink } from "../../utils.js";
 
-export const getVideoMarkdown = (
-  video: VideoComponentOptions,
-  location = "",
-): string => {
+export const getVideoMarkdown = (video: VideoComponentOptions, location = ""): string => {
   if (video.env && !video.env.includes("web")) return "";
 
   checkVideo(video, location);

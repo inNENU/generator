@@ -1,11 +1,6 @@
 import * as zod from "zod";
 
-import {
-  envListSchema,
-  imageModeSchema,
-  imgSchema,
-  styleSchema,
-} from "../../schema/common.js";
+import { envListSchema, imageModeSchema, imgSchema, styleSchema } from "../../schema/common.js";
 
 export const carouselSchema = zod
   .strictObject({
@@ -147,22 +142,15 @@ export const carouselSchema = zod
 
 export type CarouselComponentOptions = zod.infer<typeof carouselSchema>;
 
-export interface CarouselComponentData
-  extends Omit<CarouselComponentOptions, "style"> {
+export interface CarouselComponentData extends Omit<CarouselComponentOptions, "style"> {
   /** 处理后的样式 */
   style?: string;
 }
 
-export const checkCarousel = (
-  carousel: CarouselComponentOptions,
-  location = "",
-): void => {
+export const checkCarousel = (carousel: CarouselComponentOptions, location = ""): void => {
   const result = carouselSchema.safeParse(carousel);
 
   if (!result.success) {
-    console.error(
-      `${location} 发现非法 carousel 数据:`,
-      zod.prettifyError(result.error),
-    );
+    console.error(`${location} 发现非法 carousel 数据:`, zod.prettifyError(result.error));
   }
 };

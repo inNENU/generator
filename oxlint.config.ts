@@ -14,6 +14,7 @@ export default defineConfig({
   },
   ignorePatterns: defaultIgnorePatterns,
   rules: {
+    curly: "off",
     "no-console": "off",
     "import/no-namespace": "off",
     "typescript/strict-boolean-expressions": "off",

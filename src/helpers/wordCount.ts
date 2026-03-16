@@ -44,7 +44,7 @@ export const getJSONValue = (content: unknown): string => {
     } else if (content) {
       let result = "";
 
-      for (const key in content)
+      for (const key of Object.keys(content as Record<string, unknown>))
         result += ` ${getJSONValue((content as Record<string, unknown>)[key])}`;
 
       return result;

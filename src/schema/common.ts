@@ -36,12 +36,9 @@ export const imageModeSchema = zod
 export type ImageMode = zod.infer<typeof imageModeSchema>;
 
 export const imageExtensionSchema = zod
-  .enum(
-    [".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".bmp", ".ico"],
-    {
-      error: ({ input }) => `输入 ${String(input)}不满足指定图片后缀`,
-    },
-  )
+  .enum([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".bmp", ".ico"], {
+    error: ({ input }) => `输入 ${String(input)}不满足指定图片后缀`,
+  })
   .meta({
     description: "图片文件扩展名",
   });
@@ -56,21 +53,21 @@ export const docExtensionSchema = zod
 
 export const internalImgSchema = zod
   .templateLiteral(["$img/", zod.string(), imageExtensionSchema])
-  .refine((link) => existsSync("./" + link.slice(1)), {
+  .refine((link) => existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `图片 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalDocsSchema = zod
   .templateLiteral(["$file/", zod.string(), docExtensionSchema])
-  .refine((link) => existsSync("./" + link.slice(1)), {
+  .refine((link) => existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `文档 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalFileSchema = zod
   .templateLiteral(["$file/", zod.string()])
-  .refine((link) => existsSync("./" + link.slice(1)), {
+  .refine((link) => existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `文件 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
@@ -94,8 +91,7 @@ export const fileSchema = zod
 export const internalIconSchema = zod
   .string()
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, {
-    error: ({ input }) =>
-      `图标 ${String(input)} 只能包含小写字母、数字和连字符`,
+    error: ({ input }) => `图标 ${String(input)} 只能包含小写字母、数字和连字符`,
   })
   .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
     error: ({ input }) => `图标文件 ${String(input)} 不存在`,
@@ -111,18 +107,12 @@ export const locSchema = zod
     [
       zod
         .number()
-        .refine(
-          (value) => value >= -180 && value <= 180,
-          "纬度必须在 -180 到 180 之间",
-        )
+        .refine((value) => value >= -180 && value <= 180, "纬度必须在 -180 到 180 之间")
         .refine((value) => !Number.isInteger(value * 1e4), "纬度至少 5 位小数"),
       ",",
       zod
         .number()
-        .refine(
-          (value) => value >= -180 && value <= 180,
-          "经度必须在 -180 到 180 之间",
-        )
+        .refine((value) => value >= -180 && value <= 180, "经度必须在 -180 到 180 之间")
         .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
     ],
     {
@@ -244,9 +234,7 @@ export const miniProgramShortLinkSchema = zod
   })
   .meta({ description: "小程序短链配置" });
 
-export type MiniProgramShortLinkOptions = zod.infer<
-  typeof miniProgramShortLinkSchema
->;
+export type MiniProgramShortLinkOptions = zod.infer<typeof miniProgramShortLinkSchema>;
 
 export const justifySchema = zod
   .enum(["left", "right", "center", "justify"], {
