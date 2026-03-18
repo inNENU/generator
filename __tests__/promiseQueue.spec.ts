@@ -116,25 +116,11 @@ describe(Queue, () => {
 });
 
 describe(createPromiseQueue, () => {
-  it("should execute all promises", async () => {
-    const results: number[] = [];
-
-    await createPromiseQueue([
-      (): Promise<void> => {
-        results.push(1);
-
-        return Promise.resolve();
-      },
-      (): Promise<void> => {
-        results.push(2);
-
-        return Promise.resolve();
-      },
-      (): Promise<void> => {
-        results.push(3);
-
-        return Promise.resolve();
-      },
+  it("should execute all promises and return results", async () => {
+    const results = await createPromiseQueue<number>([
+      (): Promise<number> => Promise.resolve(1),
+      (): Promise<number> => Promise.resolve(2),
+      (): Promise<number> => Promise.resolve(3),
     ]);
 
     expect(results).toEqual([1, 2, 3]);
@@ -209,22 +195,45 @@ describe(createPromiseQueue, () => {
   });
 
   it("should resolve immediately for empty list", async () => {
-    const result = createPromiseQueue([]);
+    const result = createPromiseQueue<never>([]);
 
-    await expect(result).resolves.toBeUndefined();
+    await expect(result).resolves.toEqual([]);
   });
 
   it("should handle single task", async () => {
-    let executed = false;
-
-    await createPromiseQueue([
-      (): Promise<void> => {
-        executed = true;
-
-        return Promise.resolve();
-      },
+    const result = await createPromiseQueue<boolean>([
+      (): Promise<boolean> => Promise.resolve(true),
     ]);
 
-    expect(executed).toBe(true);
+    expect(result).toEqual([true]);
+  });
+
+  it("should return results in order regardless of completion order", async () => {
+    const results = await createPromiseQueue(
+      [
+        (): Promise<number> =>
+          new Promise<number>((resolve) => {
+            setTimeout(() => {
+              resolve(1);
+            }, 30);
+          }),
+        (): Promise<number> =>
+          new Promise<number>((resolve) => {
+            setTimeout(() => {
+              resolve(2);
+            }, 10);
+          }),
+        (): Promise<number> =>
+          new Promise<number>((resolve) => {
+            setTimeout(() => {
+              resolve(3);
+            }, 20);
+          }),
+      ],
+      3,
+    );
+
+    // Results should be in original order, not completion order
+    expect(results).toEqual([1, 2, 3]);
   });
 });

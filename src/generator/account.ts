@@ -64,8 +64,8 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
     .map((item) => /- url: (.*)$/.exec(item)?.[1] ?? "")
     .filter((item) => item.length);
 
-  await createPromiseQueue(
-    results.map((item) => async (): Promise<void> => {
+  const replacements = await createPromiseQueue(
+    results.map((item) => async (): Promise<{ original: string; replacement: string }> => {
       try {
         const res = await fetch(item);
         const content = await res.text();
@@ -88,20 +88,23 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
           );
         }
 
-        data = data.replace(
-          `- url: ${item}`,
-          `- cover: ${cover}\n    title: ${decodeText(title)}\n${
+        console.log(`账号 ${item} 已获取`);
+
+        return {
+          original: `- url: ${item}`,
+          replacement: `- cover: ${cover}\n    title: ${decodeText(title)}\n${
             desc ? `    desc: ${decodeText(desc)}\n` : ""
           }    url: ${item}`,
-        );
-
-        console.log(`账号 ${item} 已获取`);
+        };
       } catch (err: unknown) {
         console.error(`获取账户 ${item} 失败:`, err);
+        return { original: `- url: ${item}`, replacement: `- url: ${item}` };
       }
     }),
     3,
   );
+
+  for (const { original, replacement } of replacements) data = data.replace(original, replacement);
 
   writeFileSync(filePath, data, "utf-8");
 };

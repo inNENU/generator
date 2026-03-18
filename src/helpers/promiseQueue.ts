@@ -83,21 +83,29 @@ export class Queue {
  * @param promiseList 需要执行的函数列表，每个函数都必须返回一个 Promise
  * @param capacity 允许同时并行的任务数
  *
- * @returns 当所有函数执行完毕时返回的 Promise
+ * @returns 当所有函数执行完毕时返回的 Promise，包含所有函数的结果
  */
-export const createPromiseQueue = async (
-  promiseList: (() => Promise<void>)[],
+export const createPromiseQueue = async <T>(
+  promiseList: (() => Promise<T>)[],
   capacity = 1,
-): Promise<void> => {
-  /** 回调队列 */
-  const queue: (() => Promise<void>)[] = promiseList;
+): Promise<T[]> => {
+  /** 预分配结果数组 */
+  const results: T[] = Array.from({ length: promiseList.length });
+
+  /** 带索引的任务队列 */
+  const queue: { index: number; task: () => Promise<T> }[] = promiseList.map((task, index) => ({
+    index,
+    task,
+  }));
 
   const runWorker = async (): Promise<void> => {
     while (queue.length > 0) {
-      const task = queue.shift();
+      const item = queue.shift();
 
-      // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
-      if (task) await task();
+      if (item) {
+        // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
+        results[item.index] = await item.task();
+      }
     }
   };
 
@@ -106,4 +114,6 @@ export const createPromiseQueue = async (
   for (let i = 0; i < capacity; i += 1) workers.push(runWorker());
 
   await Promise.all(workers);
+
+  return results;
 };
