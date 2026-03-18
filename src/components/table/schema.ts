@@ -31,16 +31,9 @@ export const tableSchema = zod
 
 export type TableComponentOptions = zod.infer<typeof tableSchema>;
 
-export const checkTable = (
-  table: TableComponentOptions,
-  location = "",
-): void => {
+export const checkTable = (table: TableComponentOptions, location = ""): void => {
   const result = tableSchema.safeParse(table);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 table 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 table 数据:`, zod.prettifyError(result.error));
 };

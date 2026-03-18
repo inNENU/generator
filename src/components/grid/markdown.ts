@@ -2,10 +2,7 @@ import type { GridComponentOptions } from "./schema.js";
 import { checkGrid } from "./schema.js";
 import { getHTMLPath, getIconLink } from "../../utils.js";
 
-export const getGridMarkdown = (
-  grid: GridComponentOptions,
-  location = "",
-): string => {
+export const getGridMarkdown = (grid: GridComponentOptions, location = ""): string => {
   if (grid.env && !grid.env.includes("web")) return "";
 
   checkGrid(grid, location);
@@ -38,7 +35,7 @@ ${items
 
     const textContent = `\
 <div class="innenu-grid-text">
-${text.replace(/\n/g, "<br />")}
+${text.replaceAll("\n", "<br />")}
 </div>
 `;
 
@@ -48,10 +45,11 @@ ${textContent}\
 `;
 
     if ("action" in item) {
-      if (item.action === "official")
+      if (item.action === "official") {
         return `<a class="innenu-grid-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
 ${gridItemContent}
 </a>`;
+      }
 
       if (item.action === "article") {
         return `<a class="innenu-grid-item" href="${item.url}" target="_blank">
@@ -74,7 +72,7 @@ ${gridItemContent}
 </div>
 `;
   })
-  .filter((item): item is string => item !== null)
+  .filter((item): item is string => item != null)
   .join("\n")}
 
 </div>

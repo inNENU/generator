@@ -12,7 +12,6 @@ import {
   pathSchema,
   urlSchema,
 } from "../../schema/common.js";
-import {} from "../schema.js";
 
 const baseGridItemSchema = zod.strictObject({
   /** 网格文字 */
@@ -108,13 +107,10 @@ export const gridSchema = zod
   });
 
 export type BaseGridComponentItemOptions = zod.infer<typeof baseGridItemSchema>;
-export type NormalGridComponentItemOptions = zod.infer<
-  typeof normalGridItemSchema
->;
+export type NormalGridComponentItemOptions = zod.infer<typeof normalGridItemSchema>;
 export type PageGridComponentItemOptions = zod.infer<typeof pageGridItemSchema>;
 export type MiniProgramGridComponentItemOptions = zod.infer<
-  | typeof miniProgramFullGridItemSchema
-  | typeof miniProgramShortLinkGridItemSchema
+  typeof miniProgramFullGridItemSchema | typeof miniProgramShortLinkGridItemSchema
 >;
 
 export type GridComponentItemOptions =
@@ -127,10 +123,6 @@ export type GridComponentOptions = zod.infer<typeof gridSchema>;
 export const checkGrid = (grid: GridComponentOptions, location = ""): void => {
   const result = gridSchema.safeParse(grid);
 
-  if (!result.success) {
-    console.error(
-      `${location} 发现非法 grid 数据:`,
-      zod.prettifyError(result.error),
-    );
-  }
+  if (!result.success)
+    console.error(`${location} 发现非法 grid 数据:`, zod.prettifyError(result.error));
 };

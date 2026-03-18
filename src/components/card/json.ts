@@ -12,8 +12,7 @@ export const getCardJSON = (
     if (card.path.startsWith("/")) {
       const path = resolvePath(card.path);
 
-      if (!existsSync(`./pages/${path}.yml`))
-        console.error(`路径 ${path} 在 ${location} 中不存在`);
+      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       card.path = path;
     } else {
@@ -23,8 +22,7 @@ export const getCardJSON = (
 
       const path = resolvePath(`${paths.join("/")}/${card.path}`);
 
-      if (!existsSync(`./pages/${path}.yml`))
-        console.error(`路径 ${path} 在 ${location} 中不存在`);
+      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
 
       card.path = path;
     }

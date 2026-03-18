@@ -1,14 +1,19 @@
-/** SVG 转换 */
+/**
+ * SVG 转换
+ *
+ * @param content SVG 内容
+ * @returns 转换后的 Data URI
+ */
 export const convertSVGToDataURI = (content: string): string =>
   `data:image/svg+xml,${content
-    .replace(/"/gu, "'")
-    .replace(/</gu, "%3C")
-    .replace(/>/gu, "%3E")
-    .replace(/#/gu, "%23")}`;
+    .replaceAll('"', "'")
+    .replaceAll("<", "%3C")
+    .replaceAll(">", "%3E")
+    .replaceAll("#", "%23")}`;
 
 export const convertSVGToBase64DataURI = (content: string): string =>
   `data:image/svg+xml;base64,${Buffer.from(
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     unescape(encodeURIComponent(content)),
-    "utf8",
+    "utf-8",
   ).toString("base64")}`;

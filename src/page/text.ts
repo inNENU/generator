@@ -1,3 +1,6 @@
+// oxlint-disable max-statements
+// oxlint-disable max-lines-per-function
+// oxlint-disable no-shadow
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getTableMarkdown } from "../components/table/markdown.js";
 import { _config } from "../config.js";
@@ -8,8 +11,7 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
   try {
     if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
-    if (!page.content)
-      throw new Error(`${pagePath}.content doesn't contain anything`);
+    if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
 
     const { title, desc, cite, content } = page;
 
@@ -19,6 +21,7 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
 ${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
 ${content
+  // oxlint-disable-next-line complexity
   .map((component, index) => {
     const componentLocation = `${pagePath} page.content[${index}]`;
 
@@ -88,9 +91,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
           .slice(0, 4)
           .map(
             ({ loc, name = "位置", detail = "详情" }) =>
-              `coord:${loc};title:${encodeURIComponent(
-                name,
-              )};addr:${encodeURIComponent(detail)}`,
+              `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
           )
           .join("|")}&key=${_config.mapKey}&referer=inNENU)\n\n`;
       }
@@ -194,15 +195,14 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
         return `[视频${title ? `: ${title}` : ""}](${videoLink})\n\n`;
       }
 
-      default:
+      default: {
         return "";
+      }
     }
   })
   .join("")}
 `.trim();
-  } catch (error) {
-    throw new Error(
-      `${pagePath} page.content 处理失败: ${(error as Error).message}`,
-    );
+  } catch (err) {
+    throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
   }
 };

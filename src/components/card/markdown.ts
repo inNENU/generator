@@ -2,10 +2,7 @@ import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
 import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 
-export const getCardMarkdown = (
-  card: CardComponentOptions,
-  location = "",
-): string => {
+export const getCardMarkdown = (card: CardComponentOptions, location = ""): string => {
   if (card.env && !card.env.includes("web")) return "";
 
   checkCard(card, location);
@@ -52,10 +49,11 @@ ${
 `;
 
   if ("action" in card) {
-    if (card.action === "official")
+    if (card.action === "official") {
       return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${card.username}" target="_blank">
 ${cardContent}
 </a>`;
+    }
 
     if (card.action === "article") {
       return `<a class="innenu-card" href="${card.url}" target="_blank">

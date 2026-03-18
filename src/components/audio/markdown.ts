@@ -2,10 +2,7 @@ import type { AudioComponentOptions } from "./schema.js";
 import { checkAudio } from "./schema.js";
 import { getFileLink } from "../../utils.js";
 
-export const getAudioMarkdown = (
-  audio: AudioComponentOptions,
-  location = "",
-): string => {
+export const getAudioMarkdown = (audio: AudioComponentOptions, location = ""): string => {
   if (audio.env && !audio.env.includes("web")) return "";
 
   checkAudio(audio, location);

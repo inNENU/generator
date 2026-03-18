@@ -1,10 +1,8 @@
 import type { PhoneComponentOptions } from "./schema.js";
 import { checkPhone } from "./schema.js";
 
-export const getPhoneMarkdown = (
-  phone: PhoneComponentOptions,
-  location = "",
-): string => {
+// oxlint-disable-next-line complexity
+export const getPhoneMarkdown = (phone: PhoneComponentOptions, location = ""): string => {
   if (phone.env && !phone.env.includes("web")) return "";
 
   checkPhone(phone, location);
