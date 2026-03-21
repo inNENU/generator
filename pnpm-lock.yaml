@@ -40,8 +40,8 @@ importers:
         specifier: 0.9.0
         version: 0.9.0
       npm-check-updates:
-        specifier: 19.6.3
-        version: 19.6.3
+        specifier: 19.6.5
+        version: 19.6.5
       oxc-config-hope:
         specifier: 0.0.8
         version: 0.0.8(oxfmt@0.40.0)(oxlint-tsgolint@0.17.0)(oxlint@1.55.0(oxlint-tsgolint@0.17.0))
@@ -959,8 +959,8 @@ packages:
     resolution: {integrity: sha512-iwpZdvW6Umz12ICmu9IYPRxg0tOLGmU3Tq2tKetejCj3oZd7b2nUXwP3a7QA5M9glWy8wlPS1G3RwM/CdsUbdQ==}
     engines: {node: '>=8.0.0'}
 
-  npm-check-updates@19.6.3:
-    resolution: {integrity: sha512-VAt9Bp26eLaymZ0nZyh5n/by+YZIuegXlvWR0yv1zBqd984f8VnEnBbn+1lS3nN5LyEjn62BJ+yYgzNSpb6Gzg==}
+  npm-check-updates@19.6.5:
+    resolution: {integrity: sha512-XlBUMC30relXfEerrnX239W9iB30U6Woz0Hj42Sv6iSF4EGOvj2mS2r45sZ3RglH0VPBxXOWooMxObZ/SMZhrw==}
     engines: {node: '>=20.0.0', npm: '>=8.12.1'}
     hasBin: true
 
@@ -2027,7 +2027,7 @@ snapshots:
 
   node-hex@1.0.1: {}
 
-  npm-check-updates@19.6.3: {}
+  npm-check-updates@19.6.5: {}
 
   object-assign@4.1.1: {}
 
