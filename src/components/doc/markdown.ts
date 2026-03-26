@@ -1,7 +1,7 @@
+import { getAssetIconLink, getFileLink } from "../../utils.js";
 import type { DocComponentOptions } from "./schema.js";
 import { checkDoc } from "./schema.js";
 import { getDocIcon } from "./utils.js";
-import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string => {
   if (doc.env && !doc.env.includes("web")) return "";

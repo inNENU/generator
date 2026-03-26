@@ -1,6 +1,6 @@
+import { _config } from "../../config.js";
 import type { LocationComponentOptions } from "./schema.js";
 import { checkLocation } from "./schema.js";
-import { _config } from "../../config.js";
 
 export const getLocationMarkdown = (
   location: LocationComponentOptions,

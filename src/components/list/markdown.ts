@@ -1,6 +1,6 @@
+import { getHTMLPath, getIconLink } from "../../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { checkFunctionalList, checkList } from "./schema.js";
-import { getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getListMarkdown = (
   list: ListComponentOptions | FunctionalListComponentOptions,

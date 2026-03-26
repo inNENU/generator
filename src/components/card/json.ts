@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
-import type { CardComponentOptions } from "./schema.js";
 import { resolvePath } from "../../utils.js";
+import type { CardComponentOptions } from "./schema.js";
 
 export const getCardJSON = (
   card: CardComponentOptions,

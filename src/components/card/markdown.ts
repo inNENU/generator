@@ -1,6 +1,6 @@
+import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
-import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 
 export const getCardMarkdown = (card: CardComponentOptions, location = ""): string => {
   if (card.env && !card.env.includes("web")) return "";

@@ -3,7 +3,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import upath from "upath";
 
-import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { getAccountJSON } from "../components/account/json.js";
 import { getActionJSON } from "../components/action/json.js";
 import { getAudioJSON } from "../components/audio/json.js";
@@ -21,6 +20,7 @@ import { getTextJSON } from "../components/text/json.js";
 import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
 import { _config } from "../config.js";
+import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
 export const getPageContent = (

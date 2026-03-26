@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
-import type { TextComponentData, TextComponentOptions } from "./schema.js";
 import { convertStyle, resolvePath } from "../../utils.js";
+import type { TextComponentData, TextComponentOptions } from "./schema.js";
 
 export const getTextJSON = (
   text: TextComponentOptions,

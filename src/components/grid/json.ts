@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
-import type { GridComponentOptions } from "./schema.js";
 import { resolvePath } from "../../utils.js";
+import type { GridComponentOptions } from "./schema.js";
 
 export const getGridJSON = (
   grid: GridComponentOptions,

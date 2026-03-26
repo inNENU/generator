@@ -1,5 +1,4 @@
 // oxlint-disable import/max-dependencies
-import type { PageConfig } from "./schema.js";
 import { getAccountMarkdown } from "../components/account/markdown.js";
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getAudioMarkdown } from "../components/audio/markdown.js";
@@ -16,6 +15,7 @@ import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
 import { getYamlValue } from "../helpers/index.js";
 import { getIconLink } from "../utils.js";
+import type { PageConfig } from "./schema.js";
 
 /**
  * 生成页面 Markdown

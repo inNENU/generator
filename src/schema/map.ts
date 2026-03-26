@@ -1,7 +1,7 @@
 import * as zod from "zod";
 
-import { imgSchema, locSchema } from "./common.js";
 import { pageConfigSchema, pageDataSchema } from "../page/schema.js";
+import { imgSchema, locSchema } from "./common.js";
 
 export const mapPageConfigSchema = zod
   .strictObject({

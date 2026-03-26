@@ -2,9 +2,9 @@ import { existsSync } from "node:fs";
 
 import upath from "upath";
 
-import type { LocationComponentOptions } from "./schema.js";
 import { _config } from "../../config.js";
 import { resolvePath } from "../../utils.js";
+import type { LocationComponentOptions } from "./schema.js";
 
 export const getLocationJSON = (
   component: LocationComponentOptions,

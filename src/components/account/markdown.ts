@@ -1,6 +1,6 @@
+import { getAssetIconLink, getFileLink } from "../../utils.js";
 import type { AccountComponentOptions } from "./schema.js";
 import { checkAccount } from "./schema.js";
-import { getAssetIconLink, getFileLink } from "../../utils.js";
 
 export const getAccountMarkdown = (account: AccountComponentOptions, location = ""): string => {
   if (account.env && !account.env.includes("web")) return "";

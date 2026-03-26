@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 
-import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { resolvePath } from "../../utils.js";
+import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 
 export const getListJSON = (
   list: ListComponentOptions | FunctionalListComponentOptions,

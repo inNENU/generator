@@ -1,6 +1,6 @@
+import { getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
 import type { TextComponentOptions } from "./schema.js";
 import { checkText } from "./schema.js";
-import { getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
 
 export const getTextMarkdown = (text: TextComponentOptions, location = ""): string => {
   if (text.env && !text.env.includes("web")) return "";

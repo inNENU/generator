@@ -2,10 +2,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import upath from "upath";
 
-import type { LyricData } from "./typings.js";
 import { getFileList } from "../helpers/getFileList.js";
 import type { MusicList } from "../schema/index.js";
 import { checkMusicList } from "../schema/index.js";
+import type { LyricData } from "./typings.js";
 
 export const getMusicListJSON = (data: MusicList, location: string): MusicList => {
   checkMusicList(data, location);

@@ -1,5 +1,5 @@
-import type { ActionComponentOptions } from "./schema.js";
 import { getFileLink } from "../../utils.js";
+import type { ActionComponentOptions } from "./schema.js";
 
 export const getActionJSON = (action: ActionComponentOptions): ActionComponentOptions => {
   // Convert alias here to avoid complicated logic in mini app
