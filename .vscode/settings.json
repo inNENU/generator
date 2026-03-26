@@ -1,4 +1,5 @@
 {
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "oxc.unusedDisableDirectives": "deny",
   "cSpell.words": ["innenu", "upath", "wechat"]
 }
