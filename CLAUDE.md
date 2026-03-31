@@ -70,11 +70,11 @@ src/
 
 ## Commands
 
-- `pnpm build` - Build with tsdown (outputs to dist/)
-- `pnpm test` - Run vitest tests
-- `pnpm lint` - Run oxlint and oxfmt
-- `pnpm schema` - Generate schema files
-- `pnpm clean` - Clean dist folder
+- `pnpm run build` - Build with tsdown (outputs to dist/)
+- `pnpm run test` - Run vitest tests
+- `pnpm run lint` - Run oxlint and oxfmt
+- `pnpm run schema` - Generate schema files
+- `pnpm run clean` - Clean dist folder
 
 ## Tech Stack
 
