@@ -99,7 +99,7 @@ export const pageConfigSchema = zod
         description: "页面作者",
       }),
     /** 页面最后更新时间 */
-    time: zod.iso.datetime().optional().meta({
+    time: zod.union([zod.iso.datetime(), zod.iso.date()]).optional().meta({
       description: "页面最后更新时间",
     }),
     /** 页面标识 */

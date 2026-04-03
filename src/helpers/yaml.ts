@@ -22,7 +22,7 @@ export const checkYamlFiles = <T = unknown>(
     const content = readFileSync(upath.resolve(sourceFolder, filePath), {
       encoding: "utf-8",
     });
-    const json = load(content) as T;
+    const json = load(content, { schema: JSON_SCHEMA }) as T;
 
     checker(json, upath.relative("./", filePath.replace(/\.yml$/u, "")));
   });
@@ -81,7 +81,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
 
     const result = convertFunction(
-      load(content) as T,
+      load(content, { schema: JSON_SCHEMA }) as T,
       upath.relative("./", filePath.replace(/\.yml$/u, "")),
     );
 
@@ -117,7 +117,10 @@ export const getYamlMap = <T = unknown, Value = T>(
       return {
         type: "file",
         filename: item.filename,
-        value: convertFunction(load(content) as T, filename.replace(/\.yml$/u, "")),
+        value: convertFunction(
+          load(content, { schema: JSON_SCHEMA }) as T,
+          filename.replace(/\.yml$/u, ""),
+        ),
       };
     }
 
