@@ -29,5 +29,8 @@ export const checkAssets = (
       );
     });
 
-  console.log("未使用的资源:\n", [...assets].join("\n"));
+  console.log("未使用的资源:");
+  [...assets].forEach((asset) => {
+    console.log(asset);
+  });
 };
