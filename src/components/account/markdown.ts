@@ -58,7 +58,7 @@ ${
 ${
   site
     ? `\
-    <a class="innenu-account-action" href="${site}" target="_blank">
+    <a class="innenu-account-action no-external-link-icon" href="${site}" target="_blank">
       <img class="innenu-account-icon" src="${getAssetIconLink("web")}" alt="" no-view />
     </a>
 `
@@ -67,7 +67,7 @@ ${
 ${
   mail
     ? `\
-    <a class="innenu-account-action" href="mailto:${mail}">
+    <a class="innenu-account-action no-external-link-icon" href="mailto:${mail}">
       <img class="innenu-account-icon" src="${getAssetIconLink("mail")}" alt="" no-view />
     </a>
 `
