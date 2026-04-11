@@ -15,8 +15,8 @@ importers:
         specifier: ^4.1.1
         version: 4.1.1
       upath:
-        specifier: ^2.0.1
-        version: 2.0.1
+        specifier: ^3.0.0
+        version: 3.0.6
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -1354,9 +1354,9 @@ packages:
       synckit:
         optional: true
 
-  upath@2.0.1:
-    resolution: {integrity: sha512-1uEe95xksV1O0CYKXo8vQvN1JEbtJp7lb7C5U9HMsIp6IVwntkH/oNUzyVNQSd4S1sYk2FpSSW44FqMc8qee5w==}
-    engines: {node: '>=4'}
+  upath@3.0.6:
+    resolution: {integrity: sha512-kZvdlBwUVscisAJC7EufEhT1H2orxYEpInA6vrM46pUqFW42iOYkyo0KsKvkdMKows2xdFmYUUI1IXDwvB06Dg==}
+    engines: {node: '>=20'}
 
   urllib@2.44.0:
     resolution: {integrity: sha512-zRCJqdfYllRDA9bXUtx+vccyRqtJPKsw85f44zH7zPD28PIvjMqIgw9VwoTLV7xTBWZsbebUFVHU5ghQcWku2A==}
@@ -2532,7 +2532,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  upath@2.0.1: {}
+  upath@3.0.6: {}
 
   urllib@2.44.0:
     dependencies:
