@@ -1,7 +1,7 @@
 // oxlint-disable import/max-dependencies
 import { readFileSync, writeFileSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 import { getAccountJSON } from "../components/account/json.js";
 import { getActionJSON } from "../components/action/json.js";
@@ -170,7 +170,7 @@ export const getPageJSON = (
     if (images.length) pageData.images = images;
 
     if (time) {
-      const pageYAMLPath = upath.join(_config.pageFolder, `${pagePath}.yml`);
+      const pageYAMLPath = join(_config.pageFolder, `${pagePath}.yml`);
 
       // update time
       if (diffFiles.includes(pageYAMLPath)) {

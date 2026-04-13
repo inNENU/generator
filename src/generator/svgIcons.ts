@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import upath from "upath";
+import { resolve } from "upath";
 
 import { convertSVGToBase64DataURI, getFileList } from "../helpers/index.js";
 
@@ -16,7 +16,7 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
 
     if (results.length > 2) console.error("不支持深层嵌套图标生成!");
 
-    const sourceFilename = upath.resolve(sourceFolder, filePath);
+    const sourceFilename = resolve(sourceFolder, filePath);
     const svgContent = readFileSync(sourceFilename, {
       encoding: "utf-8",
     });
@@ -29,7 +29,7 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
 
       iconStore[category][iconName] = convertSVGToBase64DataURI(svgContent);
     } else {
-      const targetFilename = upath.resolve(targetFolder, filePath.replace(/\.svg$/u, ""));
+      const targetFilename = resolve(targetFolder, filePath.replace(/\.svg$/u, ""));
 
       writeFileSync(targetFilename, convertSVGToBase64DataURI(svgContent), {
         encoding: "utf-8",
@@ -38,7 +38,7 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
   });
 
   Object.entries(iconStore).forEach(([category, icons]) => {
-    const categoryFilename = upath.resolve(targetFolder, category);
+    const categoryFilename = resolve(targetFolder, category);
 
     writeFileSync(categoryFilename, JSON.stringify(icons), {
       encoding: "utf-8",

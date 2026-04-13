@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { JSON_SCHEMA, load } from "js-yaml";
-import upath from "upath";
+import { resolve, relative, dirname, join } from "upath";
 
 import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
@@ -19,12 +19,12 @@ export const checkYamlFiles = <T = unknown>(
   const fileList = getFileList(sourceFolder, "yml");
 
   fileList.forEach((filePath) => {
-    const content = readFileSync(upath.resolve(sourceFolder, filePath), {
+    const content = readFileSync(resolve(sourceFolder, filePath), {
       encoding: "utf-8",
     });
     const json = load(content, { schema: JSON_SCHEMA }) as T;
 
-    checker(json, upath.relative("./", filePath.replace(/\.yml$/u, "")));
+    checker(json, relative("./", filePath.replace(/\.yml$/u, "")));
   });
 };
 
@@ -37,14 +37,14 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   const fileList = getFileList(sourceFolder, "yml");
 
   fileList.forEach((filePath) => {
-    const sourceFilename = upath.resolve(sourceFolder, filePath);
-    const targetFilename = upath.resolve(targetFolder, filePath.replace(/\.yml$/u, ".json"));
-    const targetFolderPath = upath.dirname(targetFilename);
+    const sourceFilename = resolve(sourceFolder, filePath);
+    const targetFilename = resolve(targetFolder, filePath.replace(/\.yml$/u, ".json"));
+    const targetFolderPath = dirname(targetFilename);
 
     if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
-    const yamlRelativePath = upath.relative("./", filePath.replace(/\.yml$/u, ""));
+    const yamlRelativePath = relative("./", filePath.replace(/\.yml$/u, ""));
 
     const finalContent = processFunction?.(content, yamlRelativePath) ?? content;
 
@@ -69,12 +69,12 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
   const fileList = getFileList(sourceFolder, "yml");
 
   fileList.forEach((filePath) => {
-    const sourceFilename = upath.resolve(sourceFolder, filePath);
-    const targetFilename = upath.resolve(
+    const sourceFilename = resolve(sourceFolder, filePath);
+    const targetFilename = resolve(
       targetFolder,
       filePath.replace(/\.yml$/u, ".md").replace(/(\/|^)index.md$/, "$1README.md"),
     );
-    const targetFolderPath = upath.dirname(targetFilename);
+    const targetFolderPath = dirname(targetFilename);
 
     if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
@@ -82,7 +82,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
 
     const result = convertFunction(
       load(content, { schema: JSON_SCHEMA }) as T,
-      upath.relative("./", filePath.replace(/\.yml$/u, "")),
+      relative("./", filePath.replace(/\.yml$/u, "")),
     );
 
     writeFileSync(targetFilename, result, { encoding: "utf-8" });
@@ -111,7 +111,7 @@ export const getYamlMap = <T = unknown, Value = T>(
 
   const convertYaml = (base: string, item: FileMapItem): YamlMapItem<Value> => {
     if (item.type === "file") {
-      const filename = upath.join(base, item.filename);
+      const filename = join(base, item.filename);
       const content = readFileSync(filename, { encoding: "utf-8" });
 
       return {
@@ -124,12 +124,12 @@ export const getYamlMap = <T = unknown, Value = T>(
       };
     }
 
-    const dirname = upath.join(base, item.dirname);
+    const itemDirname = join(base, item.dirname);
 
     return {
       type: "dir",
       dirname: item.dirname,
-      content: item.content.map((block) => convertYaml(dirname, block)),
+      content: item.content.map((block) => convertYaml(itemDirname, block)),
     };
   };
 

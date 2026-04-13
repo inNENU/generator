@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
 import type { QQAccounts, WechatAccountData, WechatAccounts } from "../schema/index.js";
@@ -55,7 +55,7 @@ export const getWechatAccountDataJSON = (
 };
 
 export const updateAccountFile = async (folder: string, path: string): Promise<void> => {
-  const filePath = upath.join(folder, path);
+  const filePath = join(folder, path);
 
   let data = readFileSync(filePath, "utf-8");
 

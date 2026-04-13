@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 import { getFileList } from "./getFileList.js";
 
@@ -11,7 +11,7 @@ export const checkAssets = (
 ): void => {
   const assets = new Set(
     assetFolders
-      .flatMap((folder) => getFileList(folder).map((path) => upath.join(folder, path)))
+      .flatMap((folder) => getFileList(folder).map((path) => join(folder, path)))
       .filter((link) =>
         ignoreRules.every((rule) => (rule instanceof RegExp ? !rule.test(link) : rule !== link)),
       ),
@@ -20,7 +20,7 @@ export const checkAssets = (
   const assetRegExp = new RegExp(`\\$((?:${assetFolders.join("|")})/.*)$`, "gm");
 
   pageFolders
-    .flatMap((folder) => getFileList(folder, "yml").map((path) => upath.join(folder, path)))
+    .flatMap((folder) => getFileList(folder, "yml").map((path) => join(folder, path)))
     .forEach((path) => {
       [...readFileSync(path, { encoding: "utf-8" }).matchAll(assetRegExp)].forEach(
         ([, assetLink]) => {

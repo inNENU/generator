@@ -1,8 +1,6 @@
 #!/usr/bin/env tsx
-
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
 import type { ZodObject, ZodRecord, ZodUnion, ZodArray } from "zod";
 import { toJSONSchema } from "zod";
@@ -16,8 +14,7 @@ import {
   wechatAccountsSchema,
 } from "../src/schema/index.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = import.meta.dirname;
 
 // 输出目录
 const SCHEMA_DIR = join(__dirname, "..", "schemas");

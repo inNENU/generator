@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 import { getFileList } from "../helpers/getFileList.js";
 import type { MusicList } from "../schema/index.js";
@@ -21,7 +21,7 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
   lyricList.forEach((lyricPath) => {
     const lyricData: LyricData = [];
 
-    const lyricLines = readFileSync(upath.join(lyricFolder, lyricPath), {
+    const lyricLines = readFileSync(join(lyricFolder, lyricPath), {
       encoding: "utf-8",
     }).split("\n");
 
@@ -40,10 +40,7 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
       }
     });
 
-    writeFileSync(
-      upath.join(output, lyricPath.replace(/lrc$/u, "json")),
-      JSON.stringify(lyricData),
-    );
+    writeFileSync(join(output, lyricPath.replace(/lrc$/u, "json")), JSON.stringify(lyricData));
   });
 
   console.info("歌词已生成");

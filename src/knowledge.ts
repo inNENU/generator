@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { JSON_SCHEMA, load } from "js-yaml";
-import upath from "upath";
+import { resolve, relative, dirname } from "upath";
 
 import { getFileList } from "./helpers/index.js";
 import { getPageText } from "./page/text.js";
@@ -13,8 +13,8 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
   const fileList = getFileList(sourceFolder, "yml");
 
   fileList.forEach((filePath) => {
-    const filePathRelative = upath.relative("./", filePath.replace(/\.yml$/u, ""));
-    const sourceFilename = upath.resolve(sourceFolder, filePath);
+    const filePathRelative = relative("./", filePath.replace(/\.yml$/u, ""));
+    const sourceFilename = resolve(sourceFolder, filePath);
 
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
 
@@ -24,11 +24,11 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
 
     const text = getPageText(data, filePathRelative);
 
-    const targetFilename = upath.resolve(
+    const targetFilename = resolve(
       distFolder,
       filePath.replace(/\.yml$/u, ".md").replace(/(\/|^)index.md$/, "$1README.md"),
     );
-    const targetDirname = upath.dirname(targetFilename);
+    const targetDirname = dirname(targetFilename);
 
     if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
 

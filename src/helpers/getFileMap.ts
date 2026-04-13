@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 export interface FileInfo {
   type: "file";
@@ -19,7 +19,7 @@ export type FileMapItem = FileInfo | DirInfo;
 const getFileMapInfo = (folder: string, ext?: string): FileMapItem[] =>
   readdirSync(folder)
     .map((item) => {
-      const itemPath = upath.join(folder, item);
+      const itemPath = join(folder, item);
 
       const stat = statSync(itemPath);
 

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 
-import upath from "upath";
+import { join } from "upath";
 
 import { _config } from "../../config.js";
 import { resolvePath } from "../../utils.js";
@@ -14,7 +14,7 @@ export const getLocationJSON = (
     if (item.path) {
       const path = resolvePath(item.path);
 
-      if (!existsSync(upath.join(_config.mapFolder, `${path}.yml`)))
+      if (!existsSync(join(_config.mapFolder, `${path}.yml`)))
         console.error(`路径 ${path} 在 ${location} 中不存在`);
     }
   });

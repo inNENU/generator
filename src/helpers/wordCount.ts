@@ -29,7 +29,7 @@ const getChinese = (content: string): RegExpMatchArray | null => content.match(/
  * @returns Number of words in the content, counting both Latin words and Chinese characters
  */
 export const getWordNumber = (content: string): number =>
-  (getLatinWords(content)?.reduce<number>(
+  (getLatinWords(content)?.reduce(
     (accumulator, word) =>
       accumulator + (word.trim() === "" ? 0 : word.trim().split(/\s+/u).length),
     0,

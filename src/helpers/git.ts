@@ -47,8 +47,8 @@ export const getLastChangedFiles = (): ChangedFilesInfo => {
   });
 
   return {
-    added: added,
-    modified: modified,
-    deleted: deleted,
+    added,
+    modified,
+    deleted,
   };
 };
