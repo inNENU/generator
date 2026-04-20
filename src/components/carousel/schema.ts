@@ -5,7 +5,7 @@ import { envListSchema, imageModeSchema, imgSchema, styleSchema } from "../../sc
 export const carouselSchema = zod
   .strictObject({
     tag: zod.literal("carousel"),
-    /** swiper 展示的图片的在线网址或本地路径 */
+    /** Swiper 展示的图片的在线网址或本地路径 */
     images: zod.array(imgSchema).min(1, "至少需要一张图片").meta({
       description: "swiper 展示的图片的在线网址或本地路径",
     }),
@@ -20,14 +20,14 @@ export const carouselSchema = zod
         description: "轮播图是否填满屏幕宽度",
       })
       .optional(),
-    /** swiper 的类名 */
+    /** Swiper 的类名 */
     class: zod
       .string()
       .meta({
         description: "swiper 的类名",
       })
       .optional(),
-    /** swiper 的样式 */
+    /** Swiper 的样式 */
     style: styleSchema,
     /**
      * 面板指示点
@@ -43,7 +43,7 @@ export const carouselSchema = zod
     /**
      * 指示点颜色
      *
-     * @default '#ffffff88'
+     * @default "#ffffff88"
      */
     dotColor: zod
       .string()
@@ -54,7 +54,7 @@ export const carouselSchema = zod
     /**
      * 当前选中的指示点颜色
      *
-     * @default '#fff'
+     * @default "#fff"
      */
     dotActiveColor: zod
       .string()
@@ -119,7 +119,7 @@ export const carouselSchema = zod
         description: "是否是纵向滑动",
       })
       .optional(),
-    /** swiper 中图片的类名 */
+    /** Swiper 中图片的类名 */
     imgClass: zod
       .string()
       .meta({

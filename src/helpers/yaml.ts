@@ -12,6 +12,7 @@ export const getYamlValue = (content: string): string =>
     ? `"${content.replaceAll('"', String.raw`\"`)}"`
     : content;
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const checkYamlFiles = <T = unknown>(
   sourceFolder: string,
   checker: (data: T, filePath: string) => void,
@@ -61,6 +62,7 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   });
 };
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const convertYamlFilesToMarkdown = <T = unknown>(
   sourceFolder: string,
   convertFunction: (data: T, filePath: string) => string,

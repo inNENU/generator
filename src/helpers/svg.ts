@@ -13,7 +13,7 @@ export const convertSVGToDataURI = (content: string): string =>
 
 export const convertSVGToBase64DataURI = (content: string): string =>
   `data:image/svg+xml;base64,${Buffer.from(
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    // oxlint-disable-next-line typescript/no-deprecated
     unescape(encodeURIComponent(content)),
     "utf-8",
   ).toString("base64")}`;

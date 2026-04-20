@@ -51,7 +51,7 @@ export const imageSchema = zod
     /**
      * 是否支持长按弹出菜单
      *
-     * @description 仅限微信小程序
+     * 仅限微信小程序
      *
      * @default false
      */

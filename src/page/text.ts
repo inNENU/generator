@@ -71,7 +71,7 @@ ${content
 
       case "grid":
       case "list": {
-        const { header, items = [], footer } = component;
+        const { header, items, footer } = component;
 
         return `\
 ${header ? `#### ${header}\n\n` : ""}\
@@ -82,7 +82,7 @@ ${footer ? `> ${footer}\n\n` : ""}\
       }
 
       case "location": {
-        const { header, points = [] } = component;
+        const { header, points } = component;
 
         return `\
 ${header ? `#### ${header}位置\n\n` : ""}\
@@ -110,7 +110,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
       case "doc": {
         const { name, url } = component;
         const docUrl = getFileLink(url);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // oxlint-disable-next-line typescript/no-non-null-assertion
         const docName = `${name}.${url.split(".").pop()!}`;
 
         return `- [${docName}](${docUrl})\n\n`;

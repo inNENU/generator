@@ -10,7 +10,7 @@ export const getLocationMarkdown = (
 
   checkLocation(location, locationParam);
 
-  const { header, points = [] } = location;
+  const { header, points } = location;
 
   return `\
 ${

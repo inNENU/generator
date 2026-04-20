@@ -22,7 +22,6 @@ import type { PageConfig } from "./schema.js";
  *
  * @param page 页面数据
  * @param location 页面位置
- *
  * @returns Markdown 内容
  */
 export const getPageMarkdown = (page: PageConfig, location = ""): string => {

@@ -64,7 +64,7 @@ export const accountSchema = zod
         description: "账户 ID",
       })
       .optional(),
-    /** 位置  */
+    /** 位置 */
     loc: locSchema.optional(),
     /** 邮箱地址 */
     mail: zod

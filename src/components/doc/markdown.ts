@@ -16,7 +16,7 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
   const docIcon = `<img class="innenu-doc-icon" src="${getAssetIconLink(
     getDocIcon(url),
   )}" alt="" />`;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // oxlint-disable-next-line typescript/no-non-null-assertion
   const docName = `${name}.${url.split(".").pop()!}`;
   const docNameContent = `<span class="innenu-doc-name">${docName}</span>`;
 

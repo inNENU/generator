@@ -112,9 +112,7 @@ export const pageConfigSchema = zod
     }),
     /** 页面内容 */
     content: pageContentSchema,
-    /**
-     * 页面引用来源
-     */
+    /** 页面引用来源 */
     cite: zod
       .union([zod.array(zod.string()), zod.string()])
       .optional()
@@ -140,7 +138,7 @@ export const pageConfigSchema = zod
     /**
      * 是否可以下载二维码
      *
-     * @description Can download when shareable is true
+     * Can download when shareable is true
      */
     qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
       description: "是否可以下载二维码",
@@ -195,9 +193,7 @@ export const pageDataSchema = zod
     images: zod.array(zod.string()).optional().meta({
       description: "页面图片",
     }),
-    /**
-     * 页面引用来源
-     */
+    /** 页面引用来源 */
     cite: zod.array(zod.string()).optional().meta({
       description: "页面引用来源",
     }),
@@ -220,7 +216,7 @@ export const pageDataSchema = zod
     /**
      * 是否可以下载二维码
      *
-     * @description Can download when shareable is true
+     * Can download when shareable is true
      */
     qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
       description: "是否可以下载二维码",
@@ -257,7 +253,6 @@ export interface CheckPageConfigOptions {
    * 是否强制标签
    *
    * @default false
-   *
    */
   tagRequired?: boolean;
   /** 允许的标签 */

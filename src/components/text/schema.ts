@@ -52,16 +52,14 @@ const plainTextComponentSchema = zod.strictObject({
   /**
    * 段落类型
    *
-   * @default 'none'
+   * @default "none"
    */
   type: zod.literal("none").optional(),
 });
 
 const hintTextComponentSchema = zod.strictObject({
   ...baseTextComponentSchema.shape,
-  /**
-   * 段落类型
-   */
+  /** 段落类型 */
   type: zod.enum(
     ["tip", "warning", "danger", "important", "info", "note"],
     "提示类型必须为 tip、warning、danger、important、info 或 note",

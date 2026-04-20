@@ -137,7 +137,6 @@ export interface GetPageJSONOptions extends CheckPageConfigOptions {
  * @param pagePath 页面路径
  * @param diffFiles 变更文件列表，用于判断是否需要更新 time 字段
  * @param options 处理选项
- *
  * @returns 处理之后的page
  */
 // oxlint-disable-next-line complexity

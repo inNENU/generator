@@ -3,16 +3,14 @@ export interface Task {
   // oxlint-disable-next-line typescript/no-explicit-any
   func: (next: () => void, ...args: any[]) => void;
   /** 函数的运行上下文 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   ctx: any;
   /** 函数的参数 */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   args: any[];
 }
 
-/**
- * 一个队列，在上一个函数执行完毕后执行 `next()`  才会开始执行下一个函数。
- */
+/** 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。 */
 export class Queue {
   constructor(
     /** 允许同时并行的任务数 */
@@ -31,7 +29,7 @@ export class Queue {
     const task = this.funcQueue.shift();
 
     if (task) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      // oxlint-disable-next-line typescript/no-unsafe-assignment
       const { func, ctx, args } = task;
       const taskFunc = (): void => {
         func.apply(ctx, [
@@ -51,11 +49,12 @@ export class Queue {
 
   /**
    * 添加函数
+   *
    * @param func 函数
    * @param ctx 函数运行上下文
    * @param args 函数参数
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any, typescript/no-unnecessary-type-parameters
   public add<T, Arguments extends any[]>(
     func: (next: () => void, ...args: Arguments) => void,
     ctx?: T,
@@ -78,11 +77,10 @@ export class Queue {
 }
 
 /**
- * 一个队列，在上一个函数执行完毕后执行 `next()`  才会开始执行下一个函数。
+ * 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。
  *
  * @param promiseList 需要执行的函数列表，每个函数都必须返回一个 Promise
  * @param capacity 允许同时并行的任务数
- *
  * @returns 当所有函数执行完毕时返回的 Promise，包含所有函数的结果
  */
 export const createPromiseQueue = async <T>(

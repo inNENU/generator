@@ -24,10 +24,9 @@ export const getMapPageJSON = (data: MapPageConfig, filePath: string): MapPageDa
  * 处理 marker
  *
  * @param marker 待处理的 Marker
- * @param folder marker 所在的文件夹
- * @param category marker 所属的分类
- * @param id marker 的 ID
- *
+ * @param folder Marker 所在的文件夹
+ * @param category Marker 所属的分类
+ * @param id Marker 的 ID
  * @returns 处理后的marker
  */
 export const getMarkerJSON = (

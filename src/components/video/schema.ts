@@ -53,7 +53,7 @@ export const videoSchema = zod
     /**
      * 视频封面的图片网络资源地址
      *
-     * @description controls 为 false 时无效
+     * Controls 为 false 时无效
      */
     poster: imgSchema
       .meta({
@@ -82,7 +82,8 @@ export const videoSchema = zod
     /**
      * 是否显示弹幕按钮
      *
-     * @description 只在初始化有效
+     * 只在初始化有效
+     *
      * @default true
      */
     danmuBtn: zod

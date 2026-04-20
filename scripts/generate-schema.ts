@@ -52,9 +52,7 @@ const generateJsonSchema = (
   }
 };
 
-/**
- * 主函数
- */
+/** 主函数 */
 const main: () => void = () => {
   console.log("🚀 Generating JSON Schemas...\n");
 

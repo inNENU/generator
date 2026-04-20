@@ -7,7 +7,7 @@ export const getGridMarkdown = (grid: GridComponentOptions, location = ""): stri
 
   checkGrid(grid, location);
 
-  const { header, footer, items = [] } = grid;
+  const { header, footer, items } = grid;
 
   return `\
 ${

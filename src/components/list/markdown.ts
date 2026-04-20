@@ -9,7 +9,7 @@ export const getListMarkdown = (
   if (list.tag === "list") checkList(list, location);
   else checkFunctionalList(list, location);
 
-  const { header, footer, items = [] } = list;
+  const { header, footer, items } = list;
 
   return `\
 ${
