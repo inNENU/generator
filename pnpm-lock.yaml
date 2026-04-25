@@ -16,7 +16,7 @@ importers:
         version: 4.1.1
       upath:
         specifier: ^3.0.6
-        version: 3.0.6
+        version: 3.0.7
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -1472,8 +1472,8 @@ packages:
       synckit:
         optional: true
 
-  upath@3.0.6:
-    resolution: {integrity: sha512-kZvdlBwUVscisAJC7EufEhT1H2orxYEpInA6vrM46pUqFW42iOYkyo0KsKvkdMKows2xdFmYUUI1IXDwvB06Dg==}
+  upath@3.0.7:
+    resolution: {integrity: sha512-VjBBquch25nUGMuVBpOb2Cj3gc8Kb7lJBqbsXR/0anZ/5uJsL14Kpth9JKfnBsckxCfgIp6hPvcvvmZ97R9X7g==}
     engines: {node: '>=20'}
 
   urllib@2.44.0:
@@ -2735,7 +2735,7 @@ snapshots:
     dependencies:
       rolldown: 1.0.0-rc.17
 
-  upath@3.0.6: {}
+  upath@3.0.7: {}
 
   urllib@2.44.0:
     dependencies:
