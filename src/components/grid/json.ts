@@ -12,25 +12,22 @@ export const getGridJSON = (
     grid.items.forEach((gridItem) => {
       // 处理路径
       if ("path" in gridItem && !("appId" in gridItem)) {
+        let path: string;
+
         if (gridItem.path.startsWith("/")) {
-          const path = resolvePath(gridItem.path);
-
-          if (!existsSync(`./pages/${path}.yml`))
-            console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-          gridItem.path = path;
+          path = resolvePath(gridItem.path);
         } else {
           const paths = pageId.split("/");
 
           paths.pop();
 
-          const path = resolvePath(`${paths.join("/")}/${gridItem.path}`);
-
-          if (!existsSync(`./pages/${path}.yml`))
-            console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-          gridItem.path = path;
+          path = resolvePath(`${paths.join("/")}/${gridItem.path}`);
         }
+
+        if (!existsSync(`./pages/${path}.yml`))
+          console.error(`路径 ${path} 在 ${location} 中不存在`);
+
+        gridItem.path = path;
       }
     });
   }

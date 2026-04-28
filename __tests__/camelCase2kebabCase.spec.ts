@@ -1,15 +1,17 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { camelCase2kebabCase } from "../src/utils.js";
 
-it("camelCase2kebabCase", () => {
-  const tests = [
-    ["camelCase2kebabCase", "camel-case2kebab-case"],
-    ["aBC", "a-b-c"],
-    ["aWord", "a-word"],
-  ];
+describe(camelCase2kebabCase, () => {
+  it("should convert camelCase to kebab-case", () => {
+    const tests = [
+      ["camelCase2kebabCase", "camel-case2kebab-case"],
+      ["aBC", "a-b-c"],
+      ["aWord", "a-word"],
+    ];
 
-  tests.forEach(([content, result]) => {
-    expect(camelCase2kebabCase(content)).toBe(result);
+    tests.forEach(([content, result]) => {
+      expect(camelCase2kebabCase(content)).toBe(result);
+    });
   });
 });

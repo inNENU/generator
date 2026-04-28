@@ -14,25 +14,22 @@ export const getListJSON = (
       list.items.forEach((listItem) => {
         // 处理路径
         if ("path" in listItem && listItem.path) {
+          let path: string;
+
           if (listItem.path.startsWith("/")) {
-            const path = resolvePath(listItem.path);
-
-            if (!existsSync(`./pages/${path}.yml`))
-              console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-            listItem.path = path;
+            path = resolvePath(listItem.path);
           } else {
             const paths = pageId.split("/");
 
             paths.pop();
 
-            const path = resolvePath(`${paths.join("/")}/${listItem.path}`);
-
-            if (!existsSync(`./pages/${path}.yml`))
-              console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-            listItem.path = path;
+            path = resolvePath(`${paths.join("/")}/${listItem.path}`);
           }
+
+          if (!existsSync(`./pages/${path}.yml`))
+            console.error(`路径 ${path} 在 ${location} 中不存在`);
+
+          listItem.path = path;
         }
       });
     }
@@ -44,25 +41,21 @@ export const getListJSON = (
 
       // 处理路径（仅对 navigator 类型或基础类型的列表项）
       if ("path" in listItem && listItem.path && !("appId" in listItem)) {
+        let path: string;
+
         if (listItem.path.startsWith("/")) {
-          const path = resolvePath(listItem.path);
-
-          if (!existsSync(`./pages/${path}.yml`))
-            console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-          listItem.path = path;
+          path = resolvePath(listItem.path);
         } else {
           const paths = pageId.split("/");
 
           paths.pop();
 
-          const path = resolvePath(`${paths.join("/")}/${listItem.path}`);
-
-          if (!existsSync(`./pages/${path}.yml`))
-            console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-          listItem.path = path;
+          path = resolvePath(`${paths.join("/")}/${listItem.path}`);
         }
+
+        if (!existsSync(`./pages/${path}.yml`))
+          console.error(`路径 ${path} 在 ${location} 中不存在`);
+        listItem.path = path;
       }
     });
   }

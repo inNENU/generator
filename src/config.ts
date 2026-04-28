@@ -6,7 +6,7 @@ interface Config {
   pageFolder: string;
 }
 
-export const _config: Config = {
+export const generatorConfig: Config = {
   assets: "",
   icon: "",
   mapKey: "",
@@ -15,7 +15,7 @@ export const _config: Config = {
 };
 
 export const config = ({ assets, icon, mapFolder, mapKey, pageFolder }: Config): void => {
-  Object.assign(_config, {
+  Object.assign(generatorConfig, {
     assets: assets.replace(/\/$/, ""),
     icon: icon.replace(/\/$/, ""),
     mapFolder,

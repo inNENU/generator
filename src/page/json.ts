@@ -19,7 +19,7 @@ import { getTableJSON } from "../components/table/json.js";
 import { getTextJSON } from "../components/text/json.js";
 import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
-import { _config } from "../config.js";
+import { generatorConfig } from "../config.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
@@ -169,17 +169,12 @@ export const getPageJSON = (
     if (images.length) pageData.images = images;
 
     if (time) {
-      const pageYAMLPath = join(_config.pageFolder, `${pagePath}.yml`);
+      const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
+      let date: Date;
 
       // update time
       if (diffFiles.includes(pageYAMLPath)) {
-        const date = new Date();
-
-        const timeText = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
-          (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
-            ? ` ${date.toTimeString().split(" ")[0]}`
-            : ""
-        }`;
+        date = new Date();
 
         writeFileSync(
           pageYAMLPath,
@@ -189,18 +184,15 @@ export const getPageJSON = (
           ),
           { encoding: "utf-8" },
         );
-        pageData.time = timeText;
       } else {
-        const date = new Date(Date.parse(time));
-
-        const timeText = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
-          (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
-            ? ` ${date.toTimeString().split(" ")[0]}`
-            : ""
-        }`;
-
-        pageData.time = timeText;
+        date = new Date(Date.parse(time));
       }
+
+      pageData.time = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
+        (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
+          ? ` ${date.toTimeString().split(" ")[0]}`
+          : ""
+      }`;
     }
 
     if (options.removeFields?.length) {
