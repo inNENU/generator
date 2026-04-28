@@ -1,6 +1,5 @@
 // oxlint-disable max-statements
 // oxlint-disable max-lines-per-function
-// oxlint-disable no-shadow
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getTableMarkdown } from "../components/table/markdown.js";
 import { generatorConfig } from "../config.js";
@@ -40,9 +39,9 @@ ${content
             ? [component.text]
             : [];
 
-        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}`;
+        const textContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}`;
 
-        return content ? `${content}\n\n` : "";
+        return textContent ? `${textContent}\n\n` : "";
       }
 
       case "ul": {
@@ -52,9 +51,9 @@ ${content
             ? [component.text]
             : [];
 
-        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}`;
+        const ulContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}`;
 
-        return content ? `${content}\n\n` : "";
+        return ulContent ? `${ulContent}\n\n` : "";
       }
 
       case "ol": {
@@ -64,9 +63,9 @@ ${content
             ? [component.text]
             : [];
 
-        const content = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}`;
+        const olContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}`;
 
-        return content ? `${content}\n\n` : "";
+        return olContent ? `${olContent}\n\n` : "";
       }
 
       case "grid":
@@ -97,10 +96,10 @@ ${header ? `#### ${header}位置\n\n` : ""}\
       }
 
       case "img": {
-        const { src, desc } = component;
+        const { src, desc: imgDesc } = component;
         const imgLink = getFileLink(src);
 
-        return `![${desc ?? ""}](${imgLink})\n\n`;
+        return `![${imgDesc ?? ""}](${imgLink})\n\n`;
       }
 
       case "carousel": {
@@ -131,7 +130,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
           hostNum,
           nick,
           org,
-          title,
+          title: contactTitle,
           remark,
           province = "",
           city = "",
@@ -152,7 +151,7 @@ ${homeNum ? `- 家庭电话: ${homeNum}\n` : ""}\
 ${site ? `- 网站: <${site}>\n` : ""}\
 ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
 ${org ? `- 组织: ${org}\n` : ""}\
-${title ? `- 职位: ${title}\n` : ""}\
+${contactTitle ? `- 职位: ${contactTitle}\n` : ""}\
 ${nick ? `- 昵称: ${nick}\n` : ""}\
 ${remark ? `- 备注: ${remark}\n` : ""}\
 ${province || city || street ? `- 地址: ${province}${city}${street}\n` : ""}\
@@ -166,13 +165,13 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
       }
 
       case "account": {
-        const { name, detail, desc, logo, qq, wxid, site, mail } = component;
+        const { name, detail, desc: accountDesc, logo, qq, wxid, site, mail } = component;
 
         return `\
 ${logo ? `![${name}](${getFileLink(logo)})\n\n` : ""}\
 ${name ? `- 名称: ${name}\n` : ""}\
 ${detail ? `- 详情: ${detail}\n` : ""}\
-${desc ? `- 描述: ${desc}\n` : ""}\
+${accountDesc ? `- 描述: ${accountDesc}\n` : ""}\
 ${qq ? `- QQ: ${qq}\n` : ""}\
 ${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
 ${site ? `- 网站: <${site}>\n` : ""}\
@@ -189,10 +188,10 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
       }
 
       case "video": {
-        const { src, title } = component;
+        const { src, title: videoTitle } = component;
         const videoLink = getFileLink(src);
 
-        return `[视频${title ? `: ${title}` : ""}](${videoLink})\n\n`;
+        return `[视频${videoTitle ? `: ${videoTitle}` : ""}](${videoLink})\n\n`;
       }
 
       default: {
