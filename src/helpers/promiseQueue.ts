@@ -12,7 +12,7 @@ export interface Task {
 
 /** 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。 */
 export class Queue {
-  constructor(
+  public constructor(
     /** 允许同时并行的任务数 */
     public capacity = 1,
   ) {}

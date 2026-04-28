@@ -1,4 +1,4 @@
-import { _config } from "../../config.js";
+import { generatorConfig } from "../../config.js";
 import type { LocationComponentOptions } from "./schema.js";
 import { checkLocation } from "./schema.js";
 
@@ -28,7 +28,9 @@ ${
       ({ loc, name = "位置", detail = "详情" }) =>
         `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
     )
-    .join("|")}&key=${_config.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
+    .join(
+      "|",
+    )}&key=${generatorConfig.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
 
 `;
 };

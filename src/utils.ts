@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
-import { _config } from "./config.js";
+import { generatorConfig } from "./config.js";
 
 export const camelCase2kebabCase = (str: string): string => {
   const hyphenateRE = /([^-])([A-Z])/gu;
@@ -38,7 +38,7 @@ export const checkFile = (link?: string, location = ""): void => {
 export const getFileLink = (link?: string): string | null => {
   if (typeof link !== "string") return null;
 
-  if (link.startsWith("$")) return link.replace(/^\$/, `${_config.assets}/`);
+  if (link.startsWith("$")) return link.replace(/^\$/, `${generatorConfig.assets}/`);
 
   return link;
 };
@@ -60,7 +60,8 @@ export const getIconLink = (icon?: string): string | null => {
 
   if (icon.startsWith("$")) return getFileLink(icon);
 
-  if (!/^https?:\/\//.test(icon) && !icon.includes(".")) return `${_config.icon}/${icon}.svg`;
+  if (!/^https?:\/\//.test(icon) && !icon.includes("."))
+    return `${generatorConfig.icon}/${icon}.svg`;
 
   return icon;
 };

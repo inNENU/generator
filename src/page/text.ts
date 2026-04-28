@@ -3,7 +3,7 @@
 // oxlint-disable no-shadow
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getTableMarkdown } from "../components/table/markdown.js";
-import { _config } from "../config.js";
+import { generatorConfig } from "../config.js";
 import type { PageConfig } from "../typings.js";
 import { getFileLink } from "../utils.js";
 
@@ -93,7 +93,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
             ({ loc, name = "位置", detail = "详情" }) =>
               `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
           )
-          .join("|")}&key=${_config.mapKey}&referer=inNENU)\n\n`;
+          .join("|")}&key=${generatorConfig.mapKey}&referer=inNENU)\n\n`;
       }
 
       case "img": {

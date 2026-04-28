@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`getFileList 1`] = `
+exports[`getFileList > should return a list of files in the specified directory 1`] = `
 [
   "config.ts",
   "index.ts",

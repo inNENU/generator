@@ -34,6 +34,7 @@ describe(Queue, () => {
       let completed = 0;
       const checkDone = (): void => {
         completed += 1;
+        // oxlint-disable-next-line vitest/no-conditional-in-test
         if (completed === 3) resolve();
       };
 

@@ -13,23 +13,20 @@ export const getTextJSON = (
     if (text.type === "none" || !text.type)
       console.warn(`${location}: A type must be set when path is set`);
 
+    let path: string;
+
     if (text.path.startsWith("/")) {
-      const path = resolvePath(text.path);
-
-      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-      text.path = path;
+      path = resolvePath(text.path);
     } else {
       const paths = pageId.split("/");
 
       paths.pop();
 
-      const path = resolvePath(`${paths.join("/")}/${text.path}`);
-
-      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-      text.path = path;
+      path = resolvePath(`${paths.join("/")}/${text.path}`);
     }
+
+    if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
+    text.path = path;
   }
 
   const { style, text: textContent, ...data } = text;

@@ -9,23 +9,21 @@ export const getCardJSON = (
   location = "",
 ): CardComponentOptions => {
   if ("path" in card && !("appId" in card)) {
+    let path: string;
+
     if (card.path.startsWith("/")) {
-      const path = resolvePath(card.path);
-
-      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-      card.path = path;
+      path = resolvePath(card.path);
     } else {
       const paths = pageId.split("/");
 
       paths.pop();
 
-      const path = resolvePath(`${paths.join("/")}/${card.path}`);
-
-      if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
-
-      card.path = path;
+      path = resolvePath(`${paths.join("/")}/${card.path}`);
     }
+
+    if (!existsSync(`./pages/${path}.yml`)) console.error(`路径 ${path} 在 ${location} 中不存在`);
+
+    card.path = path;
   }
 
   return card;

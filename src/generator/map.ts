@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 
 import { join } from "upath";
 
-import { _config } from "../config.js";
+import { generatorConfig } from "../config.js";
 import { getPageJSON } from "../page/json.js";
 import type {
   MapPageConfig,
@@ -44,7 +44,7 @@ export const getMarkerJSON = (
 
   if (marker.path) {
     const path = join(category, marker.path);
-    const filePath = join(_config.mapFolder, folder, category, `${marker.path}.yml`);
+    const filePath = join(generatorConfig.mapFolder, folder, category, `${marker.path}.yml`);
 
     if (!existsSync(filePath)) console.error(`路径 ${filePath} 在 ${path} 中不存在!`);
 
