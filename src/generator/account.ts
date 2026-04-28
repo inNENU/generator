@@ -12,14 +12,14 @@ const decodeText = (text: string): string => {
     .replaceAll("\\x0d", " ")
     // oxlint-disable-next-line unicorn/prefer-string-raw
     .replaceAll("\\x0a", " ")
-    // oxlint-disable-next-line unicorn/prefer-string-raw
-    .replaceAll("\\x26", "&")
     .replaceAll("&quot;", '"')
     .replaceAll("&#39;", "'")
-    .replaceAll("&amp;", "&")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll("&nbsp;", " ")
+    .replaceAll("&amp;", "&")
+    // oxlint-disable-next-line unicorn/prefer-string-raw
+    .replaceAll("\\x26", "&")
     .replaceAll(/ +/g, " ");
   const shouldWrapWithSingleQuote = !encodedText.includes("'") && encodedText.includes('"');
   const shouldWrapWithDoubleQuote =
