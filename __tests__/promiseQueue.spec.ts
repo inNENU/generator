@@ -1,3 +1,4 @@
+// oxlint-disable node/callback-return
 import { describe, expect, it } from "vitest";
 
 import { Queue, createPromiseQueue } from "../src/helpers/promiseQueue.js";
@@ -23,7 +24,7 @@ describe(Queue, () => {
       });
     });
 
-    expect(order).toEqual([1, 2, 3]);
+    expect(order).toStrictEqual([1, 2, 3]);
   });
 
   it("should allow parallel execution with capacity > 1", async () => {
@@ -75,25 +76,27 @@ describe(Queue, () => {
     const queue = new Queue(1);
     const executed: number[] = [];
 
-    queue.funcQueue.push({
-      func: (next) => {
-        executed.push(1);
-        next();
+    queue.funcQueue.push(
+      {
+        func: (next) => {
+          executed.push(1);
+          next();
+        },
+        ctx: undefined,
+        args: [],
       },
-      ctx: undefined,
-      args: [],
-    });
-    queue.funcQueue.push({
-      func: (next) => {
-        executed.push(2);
-        next();
+      {
+        func: (next) => {
+          executed.push(2);
+          next();
+        },
+        ctx: undefined,
+        args: [],
       },
-      ctx: undefined,
-      args: [],
-    });
+    );
 
     queue.clear();
-    expect(queue.funcQueue).toEqual([]);
+    expect(queue.funcQueue).toStrictEqual([]);
   });
 
   it("should pass arguments to tasks", async () => {
@@ -112,7 +115,7 @@ describe(Queue, () => {
       );
     });
 
-    expect(results).toEqual(["hello"]);
+    expect(results).toStrictEqual(["hello"]);
   });
 });
 
@@ -124,7 +127,7 @@ describe(createPromiseQueue, () => {
       (): Promise<number> => Promise.resolve(3),
     ]);
 
-    expect(results).toEqual([1, 2, 3]);
+    expect(results).toStrictEqual([1, 2, 3]);
   });
 
   it("should execute promises sequentially with capacity 1", async () => {
@@ -152,7 +155,7 @@ describe(createPromiseQueue, () => {
       1,
     );
 
-    expect(order).toEqual(["start-1", "end-1", "start-2", "end-2"]);
+    expect(order).toStrictEqual(["start-1", "end-1", "start-2", "end-2"]);
   });
 
   it("should execute promises in parallel with capacity > 1", async () => {
@@ -198,7 +201,7 @@ describe(createPromiseQueue, () => {
   it("should resolve immediately for empty list", async () => {
     const result = createPromiseQueue<never>([]);
 
-    await expect(result).resolves.toEqual([]);
+    await expect(result).resolves.toStrictEqual([]);
   });
 
   it("should handle single task", async () => {
@@ -206,7 +209,7 @@ describe(createPromiseQueue, () => {
       (): Promise<boolean> => Promise.resolve(true),
     ]);
 
-    expect(result).toEqual([true]);
+    expect(result).toStrictEqual([true]);
   });
 
   it("should return results in order regardless of completion order", async () => {
@@ -235,6 +238,6 @@ describe(createPromiseQueue, () => {
     );
 
     // Results should be in original order, not completion order
-    expect(results).toEqual([1, 2, 3]);
+    expect(results).toStrictEqual([1, 2, 3]);
   });
 });

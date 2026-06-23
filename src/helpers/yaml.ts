@@ -74,7 +74,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
     const sourceFilename = resolve(sourceFolder, filePath);
     const targetFilename = resolve(
       targetFolder,
-      filePath.replace(/\.yml$/u, ".md").replace(/(\/|^)index.md$/, "$1README.md"),
+      filePath.replace(/\.yml$/u, ".md").replace(/(?<sep>\/|^)index.md$/u, "$<sep>README.md"),
     );
     const targetFolderPath = dirname(targetFilename);
 

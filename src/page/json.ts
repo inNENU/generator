@@ -179,7 +179,7 @@ export const getPageJSON = (
         writeFileSync(
           pageYAMLPath,
           readFileSync(pageYAMLPath, { encoding: "utf-8" }).replace(
-            /^time: .+$/m,
+            /^time: .+$/mu,
             `time: ${date.toISOString()}`,
           ),
           { encoding: "utf-8" },

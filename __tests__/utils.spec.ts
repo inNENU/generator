@@ -89,6 +89,6 @@ describe(resolvePath, () => {
   it("should strip leading slash", () => {
     const result = resolvePath("/guide/intro");
 
-    expect(result).not.toMatch(/^\//);
+    expect(result).not.toMatch(/^\//u);
   });
 });

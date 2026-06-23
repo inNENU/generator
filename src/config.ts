@@ -16,8 +16,8 @@ export const generatorConfig: Config = {
 
 export const config = ({ assets, icon, mapFolder, mapKey, pageFolder }: Config): void => {
   Object.assign(generatorConfig, {
-    assets: assets.replace(/\/$/, ""),
-    icon: icon.replace(/\/$/, ""),
+    assets: assets.replace(/\/$/u, ""),
+    icon: icon.replace(/\/$/u, ""),
     mapFolder,
     mapKey,
     pageFolder,

@@ -41,7 +41,7 @@ describe(convertSVGToDataURI, () => {
   it("should start with correct prefix", () => {
     const result = convertSVGToDataURI("<svg></svg>");
 
-    expect(result).toMatch(/^data:image\/svg\+xml,/);
+    expect(result).toMatch(/^data:image\/svg\+xml,/u);
   });
 });
 
@@ -50,7 +50,7 @@ describe(convertSVGToBase64DataURI, () => {
     const svg = "<svg></svg>";
     const result = convertSVGToBase64DataURI(svg);
 
-    expect(result).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(result).toMatch(/^data:image\/svg\+xml;base64,/u);
   });
 
   it("should produce valid base64", () => {
@@ -59,7 +59,7 @@ describe(convertSVGToBase64DataURI, () => {
     const base64Part = result.replace("data:image/svg+xml;base64,", "");
 
     // Base64 should only contain valid characters
-    expect(base64Part).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(base64Part).toMatch(/^[A-Za-z0-9+/]+=*$/u);
 
     // Decode and verify
     const decoded = Buffer.from(base64Part, "base64").toString("utf-8");
@@ -72,6 +72,6 @@ describe(convertSVGToBase64DataURI, () => {
     const svg = '<svg><text>Hello & "World"</text></svg>';
     const result = convertSVGToBase64DataURI(svg);
 
-    expect(result).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(result).toMatch(/^data:image\/svg\+xml;base64,/u);
   });
 });

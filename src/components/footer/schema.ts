@@ -28,7 +28,7 @@ export const footerSchema = zod
       .optional(),
     /** 原文链接 */
     cite: zod
-      .array(zod.url({ protocol: /^https?$/ }))
+      .array(zod.url({ protocol: /^https?$/u }))
       .meta({
         description: "原文链接",
       })

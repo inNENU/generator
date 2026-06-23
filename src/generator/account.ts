@@ -20,7 +20,7 @@ const decodeText = (text: string): string => {
     .replaceAll("&amp;", "&")
     // oxlint-disable-next-line unicorn/prefer-string-raw
     .replaceAll("\\x26", "&")
-    .replaceAll(/ +/g, " ");
+    .replaceAll(/ +/gu, " ");
   const shouldWrapWithSingleQuote = !encodedText.includes("'") && encodedText.includes('"');
   const shouldWrapWithDoubleQuote =
     !shouldWrapWithSingleQuote &&
@@ -61,7 +61,7 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
 
   const results = data
     .split("\n")
-    .map((item) => /- url: (.*)$/.exec(item)?.[1] ?? "")
+    .map((item) => /- url: (?<url>.*)$/u.exec(item)?.groups?.url ?? "")
     .filter((item) => item.length);
 
   const replacements = await createPromiseQueue(
@@ -73,14 +73,14 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
         const supportedOGP = content.includes("<meta property");
 
         const cover = supportedOGP
-          ? /<meta property="og:image" content="(.*?)" \/>/.exec(content)?.[1]
-          : /msg_cdn_url = "(.*)"/.exec(content)?.[1];
+          ? /<meta property="og:image" content="(?<image>.*?)" \/>/u.exec(content)?.[1]
+          : /msg_cdn_url = "(?<url>.*)"/u.exec(content)?.[1];
         const title = supportedOGP
-          ? /<meta property="og:title" content="(.*?)" \/>/.exec(content)?.[1]
-          : /msg_title = '(.*)'/.exec(content)?.[1];
+          ? /<meta property="og:title" content="(?<title>.*?)" \/>/u.exec(content)?.[1]
+          : /msg_title = '(?<title>.*)'/u.exec(content)?.[1];
         const desc = supportedOGP
-          ? /<meta property="og:description" content="(.*?)" \/>/.exec(content)?.[1]
-          : /msg_desc = htmlDecode\("(.*)"\)/.exec(content)?.[1];
+          ? /<meta property="og:description" content="(?<desc>.*?)" \/>/u.exec(content)?.[1]
+          : /msg_desc = htmlDecode\("(?<desc>.*)"\)/u.exec(content)?.[1];
 
         if (typeof cover !== "string" || typeof title !== "string" || typeof desc !== "string") {
           throw new TypeError(

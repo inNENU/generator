@@ -1,12 +1,15 @@
 import { existsSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import path from "node:path";
 
 import { generatorConfig } from "./config.js";
 
 export const camelCase2kebabCase = (str: string): string => {
-  const hyphenateRE = /([^-])([A-Z])/gu;
+  const hyphenateRE = /(?<before>[^-])(?<upper>[A-Z])/gu;
 
-  return str.replace(hyphenateRE, "$1-$2").replace(hyphenateRE, "$1-$2").toLowerCase();
+  return str
+    .replace(hyphenateRE, "$<before>-$<upper>")
+    .replace(hyphenateRE, "$<before>-$<upper>")
+    .toLowerCase();
 };
 
 export const indentMarkdownListItem = (content: string, indent = 0): string =>
@@ -17,15 +20,19 @@ export const indentMarkdownListItem = (content: string, indent = 0): string =>
     )
     .join("\n\n");
 
-export const getMarkdownPath = (path: string): string =>
-  `${path.replace(/\/(?:index)?$/, "/README")}.md`;
+export const getMarkdownPath = (filePath: string): string =>
+  `${filePath.replace(/\/(?:index)?$/u, "/README")}.md`;
 
-export const getHTMLPath = (path: string): string =>
-  path.endsWith("/") ? path : path.endsWith("/index") ? path.slice(0, -5) : `${path}.html`;
+export const getHTMLPath = (filePath: string): string =>
+  filePath.endsWith("/")
+    ? filePath
+    : filePath.endsWith("/index")
+      ? filePath.slice(0, -5)
+      : `${filePath}.html`;
 
 export const checkFile = (link?: string, location = ""): void => {
   if (typeof link === "string" && link.startsWith("$")) {
-    const [localPath] = link.replace(/^\$/, "./").split("?");
+    const [localPath] = link.replace(/^\$/u, "./").split("?");
 
     if (!existsSync(localPath)) {
       console.error(
@@ -38,7 +45,7 @@ export const checkFile = (link?: string, location = ""): void => {
 export const getFileLink = (link?: string): string | null => {
   if (typeof link !== "string") return null;
 
-  if (link.startsWith("$")) return link.replace(/^\$/, `${generatorConfig.assets}/`);
+  if (link.startsWith("$")) return link.replace(/^\$/u, `${generatorConfig.assets}/`);
 
   return link;
 };
@@ -47,7 +54,7 @@ export const checkIcon = (icon?: string, location = ""): void => {
   if (icon) {
     if (icon.startsWith("$")) {
       checkFile(icon, location);
-    } else if (!/^https?:\/\//.test(icon) && !icon.includes(".")) {
+    } else if (!/^https?:\/\//u.test(icon) && !icon.includes(".")) {
       const iconPath = `./data/icon/${icon}.svg`;
 
       if (!existsSync(iconPath)) console.error(`图标 ${icon} 在 ${location} 中不存在`);
@@ -60,17 +67,19 @@ export const getIconLink = (icon?: string): string | null => {
 
   if (icon.startsWith("$")) return getFileLink(icon);
 
-  if (!/^https?:\/\//.test(icon) && !icon.includes("."))
+  if (!/^https?:\/\//u.test(icon) && !icon.includes("."))
     return `${generatorConfig.icon}/${icon}.svg`;
 
   return icon;
 };
 
-export const resolvePath = (path: string): string =>
-  relative(
-    process.cwd(),
-    resolve(path.replace(/\/\//u, "/").replace(/^\//u, "").replace(/\/$/u, "/index")),
-  ).replaceAll(sep, "/");
+export const resolvePath = (filePath: string): string =>
+  path
+    .relative(
+      process.cwd(),
+      path.resolve(filePath.replace(/\/\//u, "/").replace(/^\//u, "").replace(/\/$/u, "/index")),
+    )
+    .replaceAll(path.sep, "/");
 
 export const getAssetIconLink = (name: string): string => `/assets/icon/${name}.svg`;
 

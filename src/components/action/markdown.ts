@@ -8,8 +8,8 @@ export const getActionMarkdown = (action: ActionComponentOptions, location = "")
 
   const { content, header } = action;
   const isLink =
-    /^https?:\/\//.test(content) ||
-    /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?::\d{1,5})?$/.test(
+    /^https?:\/\//u.test(content) ||
+    /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?::\d{1,5})?$/u.test(
       content,
     );
 

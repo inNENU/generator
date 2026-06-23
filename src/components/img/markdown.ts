@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import path from "node:path";
 
 import { getFileLink } from "../../utils.js";
 import type { ImageComponentOptions } from "./schema.js";
@@ -16,7 +16,7 @@ export const getImgMarkdown = (img: ImageComponentOptions, location = ""): strin
 
   return `\
 <figure>
-  <img src="${src}" alt="${desc ?? basename(src).replace(/\..+$/, "")}" />
+  <img src="${src}" alt="${desc ?? path.basename(src).replace(/\..+$/u, "")}" />
   ${desc ? `<figcaption>${desc}</figcaption>` : ""}
 </figure>
 

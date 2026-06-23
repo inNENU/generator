@@ -17,7 +17,7 @@ export const checkAssets = (
       ),
   );
 
-  const assetRegExp = new RegExp(`\\$((?:${assetFolders.join("|")})/.*)$`, "gm");
+  const assetRegExp = new RegExp(`\\$((?:${assetFolders.join("|")})/.*)$`, "gmu");
 
   pageFolders
     .flatMap((folder) => getFileList(folder, "yml").map((path) => join(folder, path)))

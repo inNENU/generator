@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
 
 import type { ZodObject, ZodRecord, ZodUnion, ZodArray } from "zod";
 import { toJSONSchema } from "zod";
@@ -17,7 +17,7 @@ import {
 const __dirname = import.meta.dirname;
 
 // 输出目录
-const SCHEMA_DIR = join(__dirname, "..", "schemas");
+const SCHEMA_DIR = path.join(__dirname, "..", "schemas");
 
 // 确保输出目录存在
 if (!existsSync(SCHEMA_DIR)) mkdirSync(SCHEMA_DIR, { recursive: true });
@@ -43,7 +43,7 @@ const generateJsonSchema = (
     // 添加标题和描述
     if (title) jsonSchema.title = title;
 
-    const filePath = join(SCHEMA_DIR, filename);
+    const filePath = path.join(SCHEMA_DIR, filename);
 
     writeFileSync(filePath, JSON.stringify(jsonSchema, null, 2), "utf-8");
     console.log(`✅ Generated ${filename}`);

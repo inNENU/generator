@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import path from "node:path";
 
 import { getFileList } from "./getFileList.js";
 
@@ -55,12 +55,12 @@ export const getJSONValue = (content: unknown): string => {
   return "";
 };
 
-export const getJSONWordCount = (path: string): number => {
+export const getJSONWordCount = (dirPath: string): number => {
   let words = 0;
 
-  getFileList(path, "json").forEach((filePath) => {
+  getFileList(dirPath, "json").forEach((filePath) => {
     const pageContent = JSON.parse(
-      readFileSync(resolve(path, filePath), {
+      readFileSync(path.resolve(dirPath, filePath), {
         encoding: "utf-8",
       }),
     ) as unknown;

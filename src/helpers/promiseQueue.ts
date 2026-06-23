@@ -12,19 +12,19 @@ export interface Task {
 
 /** 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。 */
 export class Queue {
-  public constructor(
+  constructor(
     /** 允许同时并行的任务数 */
     public capacity = 1,
   ) {}
 
   /** 回调队列 */
-  public funcQueue: Task[] = [];
+  funcQueue: Task[] = [];
 
   /** 正在运行的数量 */
-  public running = 0;
+  running = 0;
 
   /** 执行下一个函数 */
-  public next(): void {
+  next(): void {
     /** 即将执行的任务 */
     const task = this.funcQueue.shift();
 
@@ -55,7 +55,7 @@ export class Queue {
    * @param args 函数参数
    */
   // oxlint-disable-next-line typescript/no-explicit-any, typescript/no-unnecessary-type-parameters
-  public add<T, Arguments extends any[]>(
+  add<T, Arguments extends any[]>(
     func: (next: () => void, ...args: Arguments) => void,
     ctx?: T,
     ...args: Arguments
@@ -71,7 +71,7 @@ export class Queue {
   }
 
   /** 清除队列，不再执行尚未执行的函数 */
-  public clear(): void {
+  clear(): void {
     this.funcQueue = [];
   }
 }

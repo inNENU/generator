@@ -26,10 +26,10 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
     }).split("\n");
 
     lyricLines.forEach((lyric) => {
-      const result = /\[(.*)\](.*)?/u.exec(lyric);
+      const result = /\[(?<time>.*)\](?<text>.*)?/u.exec(lyric);
 
       if (result) {
-        const timeResult = /(.*):(.*)/u.exec(result[1]);
+        const timeResult = /(?<minute>.*):(?<second>.*)/u.exec(result[1]);
 
         if (timeResult) {
           /** 正确的时间 */

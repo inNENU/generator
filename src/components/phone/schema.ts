@@ -6,26 +6,26 @@ export const phoneNumberSchema = zod.union(
   [
     // 手机号
     zod.number().min(10000000000).max(19999999999),
-    zod.string().regex(/^1\d{10}$/, "手机号格式不正确"),
+    zod.string().regex(/^1\d{10}$/u, "手机号格式不正确"),
     // 固定电话
-    zod.string().regex(/^\d{3,4}-\d{7,8}$/),
+    zod.string().regex(/^\d{3,4}-\d{7,8}$/u),
 
     // 特殊电话号码
     zod.number().min(10000).max(12999),
     zod.number().min(95000).max(96999),
-    zod.string().regex(/^\d{3,4}-(?:10|11|12|95|96)\d{3}$/),
+    zod.string().regex(/^\d{3,4}-(?:10|11|12|95|96)\d{3}$/u),
 
     // 400 电话
-    zod.string().regex(/^400-\d{3}-\d{4}$/),
+    zod.string().regex(/^400-\d{3}-\d{4}$/u),
 
     // 国际电话
-    zod.string().regex(/^\d{2}-/),
+    zod.string().regex(/^\d{2}-/u),
   ],
   "电话号码格式不正确",
 );
 
 export const postCodeSchema = zod.union(
-  [zod.string().regex(/^\d{6}$/), zod.number().min(100000).max(999999)],
+  [zod.string().regex(/^\d{6}$/u), zod.number().min(100000).max(999999)],
   "邮政编码格式不正确",
 );
 
@@ -138,7 +138,7 @@ export const phoneSchema = zod
       .optional(),
     /** 联系人的网站 */
     site: zod
-      .url({ protocol: /^https?$/ })
+      .url({ protocol: /^https?$/u })
       .meta({
         description: "联系人的网站",
       })

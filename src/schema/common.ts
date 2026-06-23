@@ -72,7 +72,7 @@ export const internalFileSchema = zod
     abort: true,
   }) as unknown as zod.ZodString;
 
-export const httpsLinkSchema = zod.url({ protocol: /^https$/ }).meta({
+export const httpsLinkSchema = zod.url({ protocol: /^https$/u }).meta({
   description: "HTTPS链接",
 });
 
@@ -90,7 +90,7 @@ export const fileSchema = zod
 
 export const internalIconSchema = zod
   .string()
-  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, {
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u, {
     error: ({ input }) => `图标 ${String(input)} 只能包含小写字母、数字和连字符`,
   })
   .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
@@ -164,7 +164,7 @@ export const officialArticleSchema = zod
     /** 文章链接 */
     url: zod
       .string()
-      .regex(/^https:\/\/mp\.weixin\.qq\.com\/s\//, {
+      .regex(/^https:\/\/mp\.weixin\.qq\.com\/s\//u, {
         error: ({ input }) => `文章链接 ${String(input)} 格式不正确`,
       })
       .meta({ description: "文章链接" }),

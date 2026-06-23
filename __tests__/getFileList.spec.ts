@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -12,16 +12,16 @@ describe(getFileList, () => {
   });
 
   describe("getFileList nested directories", () => {
-    const testDir = join(tmpdir(), "getFileList-test");
+    const testDir = path.join(tmpdir(), "getFileList-test");
 
     const setup = (): void => {
       rmSync(testDir, { recursive: true, force: true });
-      mkdirSync(join(testDir, "sub/deep"), { recursive: true });
-      writeFileSync(join(testDir, "root.txt"), "");
-      writeFileSync(join(testDir, "root.json"), "{}");
-      writeFileSync(join(testDir, "sub/file.txt"), "");
-      writeFileSync(join(testDir, "sub/deep/nested.txt"), "");
-      writeFileSync(join(testDir, "sub/deep/nested.json"), "{}");
+      mkdirSync(path.join(testDir, "sub/deep"), { recursive: true });
+      writeFileSync(path.join(testDir, "root.txt"), "");
+      writeFileSync(path.join(testDir, "root.json"), "{}");
+      writeFileSync(path.join(testDir, "sub/file.txt"), "");
+      writeFileSync(path.join(testDir, "sub/deep/nested.txt"), "");
+      writeFileSync(path.join(testDir, "sub/deep/nested.json"), "{}");
     };
 
     const teardown = (): void => {
@@ -66,7 +66,7 @@ describe(getFileList, () => {
         const files = getFileList(".", undefined, testDir);
 
         // Paths should all be relative, not absolute
-        for (const file of files) expect(file).not.toMatch(/^\//);
+        for (const file of files) expect(file).not.toMatch(/^\//u);
 
         // Nested paths must include the directory prefix
         expect(files).toContain("sub/file.txt");

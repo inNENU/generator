@@ -12,7 +12,7 @@ export const qqidSchema = zod.string().length(32, "非法的 QQ 号 ID");
 
 export const wxidSchema = zod
   .string()
-  .regex(/^[a-zA-Z][-_a-zA-Z0-9]{5,19}$/, "非法的微信公众号 ID");
+  .regex(/^[a-zA-Z][-_a-zA-Z0-9]{5,19}$/u, "非法的微信公众号 ID");
 
 export const accountSchema = zod
   .strictObject({
@@ -75,7 +75,7 @@ export const accountSchema = zod
       .optional(),
     /** 网站地址 */
     site: zod
-      .url({ protocol: /^https?$/ })
+      .url({ protocol: /^https?$/u })
       .meta({
         description: "网站地址",
       })
