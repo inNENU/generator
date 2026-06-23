@@ -5,7 +5,6 @@ export default defineHopeConfig(
     rules: {
       "no-console": "off",
       "import/no-namespace": "off",
-      "node/no-sync": "off",
       "typescript/strict-boolean-expressions": "off",
     },
     node: true,

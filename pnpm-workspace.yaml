@@ -6,6 +6,7 @@ enableGlobalVirtualStore: true
 minimumReleaseAgeExclude:
   - "@oxfmt/*"
   - "@oxlint/*"
+  - oxc-config-hope
   - oxfmt
   - oxlint
 
