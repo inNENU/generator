@@ -45,7 +45,7 @@ const generateJsonSchema = (
 
     const filePath = path.join(SCHEMA_DIR, filename);
 
-    writeFileSync(filePath, JSON.stringify(jsonSchema, null, 2), "utf-8");
+    writeFileSync(filePath, JSON.stringify(jsonSchema), "utf-8");
     console.log(`✅ Generated ${filename}`);
   } catch (err) {
     console.error(`❌ Failed to generate ${filename}:`, err);
