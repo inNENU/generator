@@ -324,8 +324,8 @@ importers:
         specifier: 1.0.2
         version: 1.0.2
       oxc-config-hope:
-        specifier: 0.3.10
-        version: 0.3.10(oxfmt@0.60.0)(oxlint-tsgolint@0.25.0)(oxlint@1.75.0(oxlint-tsgolint@0.25.0))
+        specifier: 0.3.12
+        version: 0.3.12(oxfmt@0.60.0)(oxlint-tsgolint@0.25.0)(oxlint@1.75.0(oxlint-tsgolint@0.25.0))
       oxfmt:
         specifier: 0.60.0
         version: 0.60.0
@@ -1571,8 +1571,8 @@ packages:
     engines: {node: '>=0.10.0'}
     hasBin: true
 
-  oxc-config-hope@0.3.10:
-    resolution: {integrity: sha512-XR5DgZ7hB3+ZNVAaZJpTovRyqmLAcpIeNNulO9lVmlLOOoDpxo9iSdZpBH1ZF/+puV9pdSG6+5v24//o4KOVAg==}
+  oxc-config-hope@0.3.12:
+    resolution: {integrity: sha512-Wut02mDUQqHKZNehkBkOKNOOeBSlaqC3LNy3oBAnjM08dJ60P89PRdXTQ0x7olIVzMpi5xyPY6r/cw3V98jrZA==}
     engines: {node: '>=22.12.0'}
     peerDependencies:
       oxfmt: '>=0.60.0'
@@ -2820,7 +2820,7 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
-  oxc-config-hope@0.3.10(oxfmt@0.60.0)(oxlint-tsgolint@0.25.0)(oxlint@1.75.0(oxlint-tsgolint@0.25.0)):
+  oxc-config-hope@0.3.12(oxfmt@0.60.0)(oxlint-tsgolint@0.25.0)(oxlint@1.75.0(oxlint-tsgolint@0.25.0)):
     optionalDependencies:
       oxfmt: 0.60.0
       oxlint: 1.75.0(oxlint-tsgolint@0.25.0)
