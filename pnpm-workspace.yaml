@@ -1,6 +1,3 @@
-configDependencies:
-  pacquet: ^0.11.12
-
 enableGlobalVirtualStore: true
 
 minimumReleaseAgeExclude:
