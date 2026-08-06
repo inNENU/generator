@@ -6,6 +6,7 @@
  */
 export const convertSVGToDataURI = (content: string): string =>
   `data:image/svg+xml,${content
+    .replaceAll("%", "%25")
     .replaceAll('"', "'")
     .replaceAll("<", "%3C")
     .replaceAll(">", "%3E")

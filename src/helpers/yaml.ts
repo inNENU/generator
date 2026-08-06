@@ -7,10 +7,23 @@ import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
 
-export const getYamlValue = (content: string): string =>
-  content.startsWith("@") || content.includes(": ")
-    ? `"${content.replaceAll('"', String.raw`\"`)}"`
+export const getYamlValue = (content: string): string => {
+  const needsQuote =
+    content.length > 0 &&
+    (/^[@#?!&*%|>{}[\]"',`]/u.test(content) ||
+      /^[-?:](?:\s|$)/u.test(content) ||
+      /:\s| #|:$/u.test(content) ||
+      /[\r\n]/u.test(content) ||
+      /^\s|\s$/u.test(content));
+
+  return needsQuote
+    ? `"${content
+        .replaceAll("\\", String.raw`\\`)
+        .replaceAll('"', String.raw`\"`)
+        .replaceAll("\r", String.raw`\r`)
+        .replaceAll("\n", String.raw`\n`)}"`
     : content;
+};
 
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const checkYamlFiles = <T = unknown>(

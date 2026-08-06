@@ -1,4 +1,4 @@
-import { getFileLink } from "../../utils.js";
+import { escapeHtml, getFileLink } from "../../utils.js";
 import type { VideoComponentOptions } from "./schema.js";
 import { checkVideo } from "./schema.js";
 
@@ -10,8 +10,8 @@ export const getVideoMarkdown = (video: VideoComponentOptions, location = ""): s
   const { src, poster, title } = video;
 
   return `\
-<VidStack src="${getFileLink(src)}"${title ? ` title="${title}"` : ""}${
-    poster ? ` poster="${poster}"` : ""
+<VidStack src="${escapeHtml(getFileLink(src) ?? "")}"${title ? ` title="${escapeHtml(title)}"` : ""}${
+    poster ? ` poster="${escapeHtml(poster)}"` : ""
   } />
 
 `;

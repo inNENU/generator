@@ -1,4 +1,4 @@
-import { getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
+import { escapeHtml, getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
 
@@ -16,7 +16,7 @@ export const getCardMarkdown = (card: CardComponentOptions, location = ""): stri
 ${
   cover
     ? `\
-<img class="innenu-card-cover" src="${cover}" alt="" no-view referrerpolicy="no-referer" />
+<img class="innenu-card-cover" src="${escapeHtml(cover)}" alt="" no-view referrerpolicy="no-referer" />
 `
     : ""
 }
@@ -25,7 +25,7 @@ ${
 ${
   logo
     ? `\
-    <img class="innenu-card-logo" src="${logo}" alt="" no-view />
+    <img class="innenu-card-logo" src="${escapeHtml(logo)}" alt="" no-view />
 `
     : ""
 }\
@@ -50,13 +50,13 @@ ${
 
   if ("action" in card) {
     if (card.action === "official") {
-      return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${card.username}" target="_blank">
+      return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${escapeHtml(card.username)}" target="_blank">
 ${cardContent}
 </a>`;
     }
 
     if (card.action === "article") {
-      return `<a class="innenu-card" href="${card.url}" target="_blank">
+      return `<a class="innenu-card" href="${escapeHtml(card.url)}" target="_blank">
 ${cardContent}
 </a>`;
     }
@@ -64,7 +64,7 @@ ${cardContent}
     return "";
   } else if ("path" in card) {
     return `\
-<RouteLink class="innenu-card" to="${getHTMLPath(card.path)}">
+<RouteLink class="innenu-card" to="${escapeHtml(getHTMLPath(card.path))}">
 ${cardContent}
 </RouteLink>
 

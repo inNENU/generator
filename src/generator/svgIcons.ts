@@ -14,7 +14,11 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
   fileList.forEach((filePath) => {
     const results = filePath.split("/");
 
-    if (results.length > 2) console.error("不支持深层嵌套图标生成!");
+    if (results.length > 2) {
+      console.error(`不支持深层嵌套图标生成，已跳过: ${filePath}`);
+
+      return;
+    }
 
     const sourceFilename = resolve(sourceFolder, filePath);
     const svgContent = readFileSync(sourceFilename, {

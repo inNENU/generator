@@ -156,17 +156,15 @@ export const getPageJSON = (
     if (!Array.isArray(page.content)) throw new Error(`${pagePath}.content 应为数组`);
 
     const { id = pagePath, author, cite, content, time, ...others } = page;
-    const images: string[] = [];
     const pageData: PageData = {
       ...others,
       id,
       ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
       cite: typeof cite === "string" ? [cite] : (cite ?? []),
-      content: getPageContent(content, pagePath, { id }),
+      content: getPageContent(content, pagePath, { id, check: options.check }),
     };
 
     if (!pageData.cite?.length) delete pageData.cite;
-    if (images.length) pageData.images = images;
 
     if (time) {
       const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);

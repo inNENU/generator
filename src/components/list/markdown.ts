@@ -1,4 +1,4 @@
-import { getHTMLPath, getIconLink } from "../../utils.js";
+import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { checkFunctionalList, checkList } from "./schema.js";
 
@@ -32,7 +32,7 @@ ${items
 
     const iconContent = resolvedIcon
       ? `\
-<img class="innenu-list-icon" src="${resolvedIcon}" alt="" no-view />
+<img class="innenu-list-icon" src="${escapeHtml(resolvedIcon)}" alt="" no-view />
 `
       : "";
 
@@ -60,13 +60,13 @@ ${descContent}\
 
     if ("action" in item) {
       if (item.action === "official") {
-        return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${item.username}" target="_blank">
+        return `<a class="innenu-list-item" href="https://open.weixin.qq.com/qr/code?username=${escapeHtml(item.username)}" target="_blank">
 ${listItemContent}
 </a>`;
       }
 
       if (item.action === "article") {
-        return `<a class="innenu-list-item" href="${item.url}" target="_blank">
+        return `<a class="innenu-list-item" href="${escapeHtml(item.url)}" target="_blank">
 ${listItemContent}
 </a>`;
       }
@@ -75,7 +75,7 @@ ${listItemContent}
     }
 
     if ("path" in item && item.path) {
-      return `<RouteLink class="innenu-list-item" to="${getHTMLPath(item.path)}">
+      return `<RouteLink class="innenu-list-item" to="${escapeHtml(getHTMLPath(item.path))}">
 ${listItemContent}
 </RouteLink>`;
     }

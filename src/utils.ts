@@ -96,3 +96,10 @@ export const convertStyle = (style?: string | Record<string, string>): string | 
 
   return result;
 };
+
+export const escapeHtml = (content: string): string =>
+  content
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");

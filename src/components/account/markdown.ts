@@ -1,4 +1,4 @@
-import { getAssetIconLink, getFileLink } from "../../utils.js";
+import { escapeHtml, getAssetIconLink, getFileLink } from "../../utils.js";
 import type { AccountComponentOptions } from "./schema.js";
 import { checkAccount } from "./schema.js";
 
@@ -15,9 +15,9 @@ export const getAccountMarkdown = (account: AccountComponentOptions, location = 
 
   return `\
 <div class="innenu-account">
-  <img class="innenu-account-background" src="${logo}" alt="${name}" loading="lazy" no-view />
+  <img class="innenu-account-background" src="${escapeHtml(logo ?? "")}" alt="${escapeHtml(name)}" loading="lazy" no-view />
   <div class="innenu-account-content">
-    <img class="innenu-account-logo" src="${logo}" alt="${name}" loading="lazy" no-view />
+    <img class="innenu-account-logo" src="${escapeHtml(logo ?? "")}" alt="${escapeHtml(name)}" loading="lazy" no-view />
     <div class="innenu-account-name">${name}</div>
 ${
   detail
@@ -39,8 +39,10 @@ ${
   (qq ?? qqcode)
     ? `\
     <button class="innenu-account-action" ${
-      qq ? `aria-label="${qq}" data-balloon-pos="up" data-qq="${qq}" ` : ""
-    }${qqcode ? `data-qqcode="${qqcode}"` : ""}>
+      qq
+        ? `aria-label="${escapeHtml(String(qq))}" data-balloon-pos="up" data-qq="${escapeHtml(String(qq))}" `
+        : ""
+    }${qqcode ? `data-qqcode="${escapeHtml(qqcode)}"` : ""}>
       <img class="innenu-account-icon" src="${getAssetIconLink("qq")}" alt="" no-view />
     </button>
 `
@@ -49,7 +51,7 @@ ${
 ${
   wxid
     ? `\
-    <button class="innenu-account-action" ${wxid ? `data-wxid="${wxid}" ` : ""}>
+    <button class="innenu-account-action" ${wxid ? `data-wxid="${escapeHtml(wxid)}" ` : ""}>
       <img class="innenu-account-icon" src="${getAssetIconLink("wechat")}" alt="" no-view />
     </button>
 `
@@ -58,7 +60,7 @@ ${
 ${
   site
     ? `\
-    <a class="innenu-account-action no-external-link-icon" href="${site}" target="_blank">
+    <a class="innenu-account-action no-external-link-icon" href="${escapeHtml(site)}" target="_blank">
       <img class="innenu-account-icon" src="${getAssetIconLink("web")}" alt="" no-view />
     </a>
 `
@@ -67,7 +69,7 @@ ${
 ${
   mail
     ? `\
-    <a class="innenu-account-action no-external-link-icon" href="mailto:${mail}">
+    <a class="innenu-account-action no-external-link-icon" href="mailto:${escapeHtml(mail)}">
       <img class="innenu-account-icon" src="${getAssetIconLink("mail")}" alt="" no-view />
     </a>
 `

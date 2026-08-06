@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { getFileLink } from "../../utils.js";
+import { escapeHtml, getFileLink } from "../../utils.js";
 import type { ImageComponentOptions } from "./schema.js";
 import { checkImage } from "./schema.js";
 
@@ -16,7 +16,7 @@ export const getImgMarkdown = (img: ImageComponentOptions, location = ""): strin
 
   return `\
 <figure>
-  <img src="${src}" alt="${desc ?? path.basename(src).replace(/\..+$/u, "")}" />
+  <img src="${escapeHtml(src)}" alt="${escapeHtml(desc ?? path.basename(src).replace(/\..+$/u, ""))}" />
   ${desc ? `<figcaption>${desc}</figcaption>` : ""}
 </figure>
 

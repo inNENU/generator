@@ -133,12 +133,11 @@ isOriginal: true
       }
     });
 
-    if (desc ?? cite) {
-      content +=
-        desc
-          ?.split("\n")
-          .map((line) => `> ${line}`)
-          .join("\n>\n") ?? "";
+    if (desc) {
+      content += desc
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n>\n");
     }
 
     return content;

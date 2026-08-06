@@ -1,4 +1,4 @@
-import { getFileLink } from "../../utils.js";
+import { escapeHtml, getFileLink } from "../../utils.js";
 import type { AudioComponentOptions } from "./schema.js";
 import { checkAudio } from "./schema.js";
 
@@ -10,8 +10,8 @@ export const getAudioMarkdown = (audio: AudioComponentOptions, location = ""): s
   const { src, name, author } = audio;
 
   return `\
-<VidStack src="${getFileLink(src)}" title="${name ? `名称: ${name}` : ""} ${
-    author ? `作者: ${author}` : ""
+<VidStack src="${escapeHtml(getFileLink(src) ?? "")}" title="${name ? `名称: ${escapeHtml(name)}` : ""} ${
+    author ? `作者: ${escapeHtml(author)}` : ""
   }" />
 
 `;

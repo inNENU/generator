@@ -1,4 +1,4 @@
-import { getAssetIconLink, getFileLink } from "../../utils.js";
+import { escapeHtml, getAssetIconLink, getFileLink } from "../../utils.js";
 import type { DocComponentOptions } from "./schema.js";
 import { checkDoc } from "./schema.js";
 import { getDocIcon } from "./utils.js";
@@ -24,13 +24,13 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
 ${
   /\.(?<ext>pdf|jpe?g|png|bmp|svg)$/u.test(url)
     ? `
-<a class="innenu-doc" href="${url}" name="${docName}" target="_blank" rel="noopener noreferrer">
+<a class="innenu-doc" href="${escapeHtml(url)}" name="${escapeHtml(docName)}" target="_blank" rel="noopener noreferrer">
   ${docIcon}
   ${docNameContent}
 </a>
 `
     : `
-<a class="innenu-doc" href="${url}" download="${name}">
+<a class="innenu-doc" href="${escapeHtml(url)}" download="${escapeHtml(name)}">
 ${docIcon}
 ${docNameContent}
 </a>
