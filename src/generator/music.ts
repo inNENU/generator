@@ -7,12 +7,25 @@ import type { MusicList } from "../schema/index.js";
 import { checkMusicList } from "../schema/index.js";
 import type { LyricData } from "./typings.js";
 
+/**
+ * 获取音乐列表数据 JSON
+ *
+ * @param data 音乐列表数据
+ * @param location 数据所在位置
+ * @returns 音乐列表数据
+ */
 export const getMusicListJSON = (data: MusicList, location: string): MusicList => {
   checkMusicList(data, location);
 
   return data;
 };
 
+/**
+ * 将 lrc 歌词文件转换为 JSON 文件
+ *
+ * @param lyricFolder 歌词文件夹
+ * @param output 输出文件夹
+ */
 export const generateLyrics = (lyricFolder: string, output: string): void => {
   console.log("生成歌词...");
 

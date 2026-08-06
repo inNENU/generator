@@ -4,6 +4,13 @@ import { join } from "upath";
 
 import { getFileList } from "./getFileList.js";
 
+/**
+ * 检查资源文件是否被使用
+ *
+ * @param pageFolders 页面文件夹列表
+ * @param assetFolders 资源文件夹列表
+ * @param ignoreRules 忽略规则列表
+ */
 export const checkAssets = (
   pageFolders: string[],
   assetFolders: string[],

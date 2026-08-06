@@ -38,6 +38,12 @@ export const pageIndexesSchema = zod.array(pageIndexSchema).meta({
 
 export type PageIndexes = zod.infer<typeof pageIndexesSchema>;
 
+/**
+ * 检查页面索引数据
+ *
+ * @param data 页面索引数据
+ * @param location 数据所在位置
+ */
 export const checkPageIndexes = (data: PageIndexes, location: string): void => {
   const result = pageIndexesSchema.safeParse(data);
 

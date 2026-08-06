@@ -4,6 +4,12 @@ import { resolve } from "upath";
 
 import { convertSVGToBase64DataURI, getFileList } from "../helpers/index.js";
 
+/**
+ * 生成 SVG 图标文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹
+ */
 export const generateSvgIcons = (sourceFolder: string, targetFolder: string): void => {
   const fileList = getFileList(sourceFolder, "svg");
 

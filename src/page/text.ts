@@ -6,6 +6,13 @@ import { generatorConfig } from "../config.js";
 import type { PageConfig } from "../typings.js";
 import { getFileLink } from "../utils.js";
 
+/**
+ * 获取页面文本
+ *
+ * @param page 页面数据
+ * @param pagePath 页面路径
+ * @returns 页面文本
+ */
 export const getPageText = (page: PageConfig, pagePath = ""): string => {
   try {
     if (!page) throw new Error(`${pagePath} doesn't contain anything`);
@@ -86,7 +93,7 @@ ${footer ? `> ${footer}\n\n` : ""}\
         return `\
 ${header ? `#### ${header}位置\n\n` : ""}\
 ![在腾讯地图中查看](https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
-          // maximum 4 points
+          // 最多 4 个点
           .slice(0, 4)
           .map(
             ({ loc, name = "位置", detail = "详情" }) =>

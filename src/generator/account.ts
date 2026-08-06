@@ -33,18 +33,39 @@ const decodeText = (text: string): string => {
       : encodedText;
 };
 
+/**
+ * 获取 QQ 账号数据 JSON
+ *
+ * @param data QQ 账号数据
+ * @param location 数据所在位置
+ * @returns QQ 账号数据
+ */
 export const getQQAccountsJSON = (data: QQAccounts, location: string): QQAccounts => {
   checkQQAccounts(data, location);
 
   return data;
 };
 
+/**
+ * 获取微信公众号账号数据 JSON
+ *
+ * @param data 微信公众号账号数据
+ * @param location 数据所在位置
+ * @returns 微信公众号账号数据
+ */
 export const getWechatAccountsJSON = (data: WechatAccounts, location: string): WechatAccounts => {
   checkWechatAccounts(data, location);
 
   return data;
 };
 
+/**
+ * 获取微信公众号账号详情数据 JSON
+ *
+ * @param data 微信公众号账号详情数据
+ * @param location 数据所在位置
+ * @returns 微信公众号账号详情数据
+ */
 export const getWechatAccountDataJSON = (
   data: WechatAccountData,
   location: string,
@@ -54,6 +75,12 @@ export const getWechatAccountDataJSON = (
   return data;
 };
 
+/**
+ * 更新单个账号文件，自动获取文章封面、标题与描述
+ *
+ * @param folder 文件夹
+ * @param path 文件路径
+ */
 export const updateAccountFile = async (folder: string, path: string): Promise<void> => {
   const filePath = join(folder, path);
 
@@ -109,6 +136,11 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
   writeFileSync(filePath, data, "utf-8");
 };
 
+/**
+ * 更新文件夹下的所有账号文件
+ *
+ * @param folder 文件夹
+ */
 export const updateAccountFiles = async (folder: string): Promise<void> => {
   const fileList = getFileList(folder, "yml");
 

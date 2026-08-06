@@ -7,6 +7,12 @@ import { getFileList } from "./helpers/index.js";
 import { getPageText } from "./page/text.js";
 import type { PageConfig } from "./typings.js";
 
+/**
+ * 生成知识库内容，将源文件夹下的 YAML 页面转换为 Markdown 文本
+ *
+ * @param sourceFolder 源文件夹
+ * @param distFolder 输出文件夹
+ */
 export const generateKnowledgeContent = (sourceFolder: string, distFolder: string): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 

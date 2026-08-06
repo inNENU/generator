@@ -42,6 +42,13 @@ export type MusicInfo = zod.infer<typeof musicInfoSchema>;
 
 export type MusicList = zod.infer<typeof musicListSchema>;
 
+/**
+ * 检查音乐列表数据
+ *
+ * @param data 音乐列表数据
+ * @param location 数据所在位置
+ * @returns 音乐列表数据
+ */
 export const checkMusicList = (data: MusicList, location: string): MusicList => {
   const result = musicListSchema.safeParse(data);
 

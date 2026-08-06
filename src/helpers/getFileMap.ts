@@ -41,5 +41,12 @@ const getFileMapInfo = (folder: string, ext?: string): FileMapItem[] =>
     })
     .filter((item): item is FileMapItem => item != null);
 
+/**
+ * 获取目录下的文件映射
+ *
+ * @param folder 文件夹路径
+ * @param ext 文件扩展名，不传则返回所有文件
+ * @returns 文件映射列表
+ */
 export const getFileMap = (folder: string, ext?: string): FileMapItem[] =>
   getFileMapInfo(folder, ext);

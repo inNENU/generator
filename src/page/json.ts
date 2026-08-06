@@ -23,6 +23,14 @@ import { generatorConfig } from "../config.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
+/**
+ * 处理页面内容
+ *
+ * @param content 页面内容
+ * @param pagePath 页面路径
+ * @param options 处理选项
+ * @returns 处理后的页面内容
+ */
 export const getPageContent = (
   content: ComponentOptions[],
   pagePath: string,
@@ -170,7 +178,7 @@ export const getPageJSON = (
       const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
       let date: Date;
 
-      // update time
+      // 更新时间
       if (diffFiles.includes(pageYAMLPath)) {
         date = new Date();
 

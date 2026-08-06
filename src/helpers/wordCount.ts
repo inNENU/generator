@@ -4,29 +4,29 @@ import path from "node:path";
 import { getFileList } from "./getFileList.js";
 
 /**
- * Extract Latin words from content
+ * 从内容中提取拉丁单词
  *
- * @param content - The content to extract Latin words from
- * @returns An array of Latin words found in the content, or null if none are found
+ * @param content 需要提取拉丁单词的内容
+ * @returns 内容中的拉丁单词数组，若没有则返回 null
  */
 const getLatinWords = (content: string): RegExpMatchArray | null =>
-  // \u00C0-\u024F are Latin Supplement letters, maybe used in language like french
-  // \u0400-\u04FF are Cyrillic letters, used in russian
+  // \u00C0-\u024F 是拉丁补充字母，可能用于法语等语言
+  // \u0400-\u04FF 是西里尔字母，用于俄语
   content.match(/[\w\d\s,.\u00C0-\u024F\u0400-\u04FF]+/giu);
 
 /**
- * Extract Chinese Characters from content
+ * 从内容中提取中文字符
  *
- * @param content - The content to extract Chinese characters from
- * @returns An array of Chinese characters found in the content, or null if none are found
+ * @param content 需要提取中文字符的内容
+ * @returns 内容中的中文字符数组，若没有则返回 null
  */
 const getChinese = (content: string): RegExpMatchArray | null => content.match(/[\u4E00-\u9FD5]/gu);
 
 /**
- * Get word number of given string
+ * 统计字符串的字数
  *
- * @param content - The content to count words from
- * @returns Number of words in the content, counting both Latin words and Chinese characters
+ * @param content 需要统计字数的内容
+ * @returns 内容中的字数，同时统计拉丁单词与中文字符
  */
 export const getWordNumber = (content: string): number =>
   (getLatinWords(content)?.reduce(
@@ -35,6 +35,12 @@ export const getWordNumber = (content: string): number =>
     0,
   ) ?? 0) + (getChinese(content)?.length ?? 0);
 
+/**
+ * 提取 JSON 值中的文本
+ *
+ * @param content JSON 内容
+ * @returns 提取的文本
+ */
 export const getJSONValue = (content: unknown): string => {
   if (typeof content === "number") return content.toString();
   if (typeof content === "string") return content;
@@ -55,6 +61,12 @@ export const getJSONValue = (content: unknown): string => {
   return "";
 };
 
+/**
+ * 统计目录下所有 JSON 文件的总字数
+ *
+ * @param dirPath 目录路径
+ * @returns 总字数
+ */
 export const getJSONWordCount = (dirPath: string): number => {
   let words = 0;
 

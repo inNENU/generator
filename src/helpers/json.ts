@@ -20,6 +20,11 @@ const testJSON = async (path: string): Promise<void> => {
   }
 };
 
+/**
+ * 检查目录下所有 JSON 文件
+ *
+ * @param path 目录路径
+ */
 export const checkJSON = async (path: string): Promise<void> => {
   try {
     const files = await readdir(path, { withFileTypes: true });

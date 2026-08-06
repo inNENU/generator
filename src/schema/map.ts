@@ -137,6 +137,12 @@ export type MarkerCategory = zod.infer<typeof markerCategoryItemSchema>;
 export type MarkersData = zod.infer<typeof markersDataSchema>;
 
 // 校验函数
+/**
+ * 检查地图页面配置
+ *
+ * @param config 地图页面配置
+ * @param location 配置所在位置
+ */
 export const checkMapPageConfig = (config: MapPageConfig, location = ""): void => {
   const result = mapPageConfigSchema.safeParse(config);
 
@@ -144,6 +150,12 @@ export const checkMapPageConfig = (config: MapPageConfig, location = ""): void =
     console.error(`${location} 发现非法地图页面配置:`, zod.prettifyError(result.error));
 };
 
+/**
+ * 检查地图页面数据
+ *
+ * @param data 地图页面数据
+ * @param location 数据所在位置
+ */
 export const checkMapPageData = (data: MapPageData, location = ""): void => {
   const result = mapPageDataSchema.safeParse(data);
 
@@ -151,6 +163,12 @@ export const checkMapPageData = (data: MapPageData, location = ""): void => {
     console.error(`${location} 发现非法地图页面数据:`, zod.prettifyError(result.error));
 };
 
+/**
+ * 检查标记点配置
+ *
+ * @param marker 标记点配置
+ * @param location 配置所在位置
+ */
 export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => {
   const result = markerConfigSchema.safeParse(marker);
 
@@ -158,6 +176,12 @@ export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => 
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
 };
 
+/**
+ * 检查标记点配置集
+ *
+ * @param markers 标记点配置集
+ * @param location 配置所在位置
+ */
 export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void => {
   const result = markersConfigSchema.safeParse(markers);
 
@@ -165,6 +189,12 @@ export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void 
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
 };
 
+/**
+ * 检查标记点数据
+ *
+ * @param data 标记点数据
+ * @param location 数据所在位置
+ */
 export const checkMarkersData = (data: MarkersData, location = ""): void => {
   const result = markersDataSchema.safeParse(data);
 

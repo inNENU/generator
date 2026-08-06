@@ -7,6 +7,12 @@ import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
 
+/**
+ * 获取 YAML 值
+ *
+ * @param content 内容
+ * @returns 处理后的 YAML 值
+ */
 export const getYamlValue = (content: string): string => {
   const needsQuote =
     content.length > 0 &&
@@ -25,6 +31,12 @@ export const getYamlValue = (content: string): string => {
     : content;
 };
 
+/**
+ * 检查源文件夹下的所有 YAML 文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param checker 检查函数，接收解析后的数据与文件路径
+ */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const checkYamlFiles = <T = unknown>(
   sourceFolder: string,
@@ -42,6 +54,14 @@ export const checkYamlFiles = <T = unknown>(
   });
 };
 
+/**
+ * 将源文件夹下的所有 YAML 文件转换为 JSON 文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹，默认为源文件夹
+ * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
+ * @param processFunction 内容处理函数，在解析前对 YAML 内容进行预处理
+ */
 export const convertYamlFilesToJson = <T = unknown, Value = T>(
   sourceFolder: string,
   targetFolder = sourceFolder,
@@ -75,6 +95,13 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   });
 };
 
+/**
+ * 将源文件夹下的所有 YAML 文件转换为 Markdown 文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回 Markdown 内容
+ * @param targetFolder 目标文件夹，默认为源文件夹
+ */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const convertYamlFilesToMarkdown = <T = unknown>(
   sourceFolder: string,
@@ -118,6 +145,13 @@ export interface YamlDirInfo<Value = unknown> {
 
 export type YamlMapItem<Value> = YamlInfo<Value> | YamlDirInfo<Value>;
 
+/**
+ * 获取源文件夹下的 YAML 文件映射
+ *
+ * @param sourceFolder 源文件夹
+ * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
+ * @returns YAML 映射列表
+ */
 export const getYamlMap = <T = unknown, Value = T>(
   sourceFolder: string,
   convertFunction: (data: T, filePath: string) => Value = (data): Value => data as unknown as Value,

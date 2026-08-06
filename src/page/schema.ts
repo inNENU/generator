@@ -53,6 +53,12 @@ export const pageContentSchema = zod.array(componentSchema).min(1, "页面内容
   description: "页面内容",
 });
 
+/**
+ * 检查页面内容
+ *
+ * @param content 页面内容
+ * @param location 内容所在位置
+ */
 export const checkPageContent = (content: ComponentOptions[], location: string): void => {
   const result = pageContentSchema.safeParse(content);
 
@@ -138,7 +144,7 @@ export const pageConfigSchema = zod
     /**
      * 是否可以下载二维码
      *
-     * Can download when shareable is true
+     * 当 shareable 为 true 时可以下载
      */
     qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
       description: "是否可以下载二维码",
@@ -216,7 +222,7 @@ export const pageDataSchema = zod
     /**
      * 是否可以下载二维码
      *
-     * Can download when shareable is true
+     * 当 shareable 为 true 时可以下载
      */
     qrcode: zod.union([zod.string(), zod.boolean()]).optional().meta({
       description: "是否可以下载二维码",
@@ -259,6 +265,13 @@ export interface CheckPageConfigOptions {
   allowedTags?: string[];
 }
 
+/**
+ * 检查页面配置
+ *
+ * @param config 页面配置
+ * @param location 配置所在位置
+ * @param options 检查选项
+ */
 export const checkPageConfig = (
   config: PageConfig,
   location = "",
@@ -283,6 +296,12 @@ export const checkPageConfig = (
   }
 };
 
+/**
+ * 检查页面数据
+ *
+ * @param data 页面数据
+ * @param location 数据所在位置
+ */
 export const checkPageData = (data: PageData, location = ""): void => {
   const result = pageDataSchema.safeParse(data);
 

@@ -22,7 +22,7 @@ ${
     : ""
 }\
 <iframe class="location-iframe" src="https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
-    // maximum 4 points
+    // 最多 4 个点
     .slice(0, 4)
     .map(
       ({ loc, name = "位置", detail = "详情" }) =>

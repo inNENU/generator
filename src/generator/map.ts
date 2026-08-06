@@ -14,6 +14,13 @@ import type {
 } from "../schema/index.js";
 import { checkMapPageConfig, checkMarkerConfig } from "../schema/index.js";
 
+/**
+ * 处理地图页面数据
+ *
+ * @param data 地图页面配置
+ * @param filePath 文件路径
+ * @returns 处理后的地图页面数据
+ */
 export const getMapPageJSON = (data: MapPageConfig, filePath: string): MapPageData => {
   checkMapPageConfig(data, filePath);
 
@@ -54,6 +61,13 @@ export const getMarkerJSON = (
   return markerData;
 };
 
+/**
+ * 处理标记点数据
+ *
+ * @param data 标记点配置
+ * @param folder 标记点所在的文件夹
+ * @returns 处理后的标记点数据
+ */
 export const getMarkersJSON = (data: MarkersConfig, folder: string): MarkersData => {
   const categories = Object.keys(data);
 

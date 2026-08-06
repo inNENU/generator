@@ -32,5 +32,13 @@ const getFiles = (base: string, ext: string, dir = ""): string[] => {
   ];
 };
 
+/**
+ * 获取目录下的文件列表
+ *
+ * @param dirPath 目录路径
+ * @param ext 文件扩展名，不传则返回所有文件
+ * @param cwd 当前工作目录，默认为 process.cwd()
+ * @returns 文件路径列表
+ */
 export const getFileList = (dirPath: string, ext?: string, cwd = process.cwd()): string[] =>
   getFiles(join(cwd, dirPath), ext ? `.${ext}` : "");

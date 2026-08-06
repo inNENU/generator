@@ -95,6 +95,12 @@ export const qqAccountsSchema = zod.array(qqAccountGroupSchema).meta({
 
 export type QQAccounts = zod.infer<typeof qqAccountsSchema>;
 
+/**
+ * 检查 QQ 账号数据
+ *
+ * @param data QQ 账号数据
+ * @param location 数据所在位置
+ */
 export const checkQQAccounts = (data: QQAccounts, location: string): void => {
   const result = qqAccountsSchema.safeParse(data);
 
@@ -123,6 +129,12 @@ export const wechatAccountsSchema = zod.array(wechatAccountGroupSchema).meta({
 
 export type WechatAccounts = zod.infer<typeof wechatAccountsSchema>;
 
+/**
+ * 检查微信公众号账号数据
+ *
+ * @param data 微信公众号账号数据
+ * @param location 数据所在位置
+ */
 export const checkWechatAccounts = (data: WechatAccounts, location: string): void => {
   const result = wechatAccountsSchema.safeParse(data);
 
@@ -201,6 +213,12 @@ export const wechatAccountDataSchema = zod
 
 export type WechatAccountData = zod.infer<typeof wechatAccountDataSchema>;
 
+/**
+ * 检查微信公众号账号详情数据
+ *
+ * @param data 微信公众号账号详情数据
+ * @param location 数据所在位置
+ */
 export const checkWechatAccountData = (data: WechatAccountData, location: string): void => {
   const result = wechatAccountDataSchema.safeParse(data);
 
