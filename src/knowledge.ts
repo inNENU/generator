@@ -42,10 +42,26 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
   });
 };
 
+export interface KnowledgeIndexItem {
+  /** 页面路径（不含扩展名，与 Markdown 文件路径对应） */
+  path: string;
+  /** 页面标题 */
+  title: string;
+  /** 页面摘要 */
+  summary?: string;
+  /** 页面关键词 */
+  keywords?: string[];
+  /** 所属校区 */
+  campus?: string;
+}
+
 /**
  * 生成知识库索引（L0 文档索引）
  *
- * 输出 `distFolder/index.json`（或 `index.yaml`），每条记录为： `{ path, title, summary, keywords, campus }`
+ * - `json`（默认）：输出 `distFolder/index.json`，每条记录 `{ path, title, summary, keywords, campus }`
+ * - `yaml`：输出 `distFolder/index.yaml`，每条记录一行，自动处理转义
+ * - `lora`：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 title，summary 直接在 title 下一行裸写（无前缀）， keywords /
+ *   campus 仅在存在时以 `keywords:` / `campus:` 前缀附加，记录间空行分隔，适合直接注入 LLM 上下文
  *
  * 空字段（summary/keywords/campus）自动省略，不输出空字符串或空数组。
  *
@@ -54,12 +70,12 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
  *
  * @param sourceFolder 源文件夹
  * @param distFolder 输出文件夹
- * @param format 输出格式，`json`（默认）或 `yaml`
+ * @param format 输出格式，`json`（默认）、`yaml` 或 `lora`
  */
 export const generateKnowledgeIndex = (
   sourceFolder: string,
   distFolder: string,
-  format: "json" | "yaml" = "json",
+  format: "json" | "yaml" | "lora" = "json",
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
@@ -79,7 +95,7 @@ export const generateKnowledgeIndex = (
       const path = filePath.replace(/\.yml$/u, "").replace(/(?<sep>\/|^)index$/u, "$<sep>README");
 
       // 跳过空字段
-      const item: Record<string, unknown> = { path, title: data.title };
+      const item: KnowledgeIndexItem = { path, title: data.title };
 
       if (data.summary) item.summary = data.summary;
       if (data.keywords?.length) item.keywords = data.keywords;
@@ -87,16 +103,31 @@ export const generateKnowledgeIndex = (
 
       return item;
     })
-    .filter((item): item is Exclude<typeof item, null> => item != null);
+    .filter((item): item is KnowledgeIndexItem => item != null);
 
-  const targetFilename =
-    format === "yaml" ? resolve(distFolder, "index.yaml") : resolve(distFolder, "index.json");
+  const targetFilename = resolve(
+    distFolder,
+    format === "yaml" ? "index.yaml" : format === "lora" ? "index.lora" : "index.json",
+  );
 
   const output =
-    format === "yaml"
-      ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
-        dump(index, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
-      : JSON.stringify(index, null, 2);
+    format === "lora"
+      ? `${index
+          .map(({ path, title, summary, keywords, campus }) => {
+            const lines = [path, title];
+
+            // 纯文本格式：summary 无前缀紧接 title，keywords / campus 带前缀区分类型，换行压缩为单行
+            if (summary) lines.push(summary.trim().replaceAll(/\n+/gu, " "));
+            if (keywords?.length) lines.push(`keywords: [${keywords.join(", ")}]`);
+            if (campus) lines.push(`campus: ${campus}`);
+
+            return lines.join("\n");
+          })
+          .join("\n\n")}\n`
+      : format === "yaml"
+        ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
+          dump(index, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
+        : JSON.stringify(index, null, 2);
 
   writeFileSync(targetFilename, output, { encoding: "utf-8" });
 };
