@@ -89,10 +89,6 @@ export const pageConfigSchema = zod
     aiIgnore: zod.boolean().optional().meta({
       description: "是否被 AI 忽略",
     }),
-    /** 页面标签 */
-    tags: zod.array(zod.string()).optional().meta({
-      description: "页面标签",
-    }),
     /** 页面描述 */
     desc: zod.string().optional().meta({
       description: "页面描述（页脚补充描述，小程序端展示）",
@@ -267,14 +263,6 @@ export interface CheckPageConfigOptions {
    * @default false
    */
   iconRequired?: boolean;
-  /**
-   * 是否强制标签
-   *
-   * @default false
-   */
-  tagRequired?: boolean;
-  /** 允许的标签 */
-  allowedTags?: string[];
 }
 
 /**
@@ -295,17 +283,6 @@ export const checkPageConfig = (
     console.error(`${location} 发现非法页面配置:`, zod.prettifyError(result.error));
 
   if (options.iconRequired && !config.icon) console.error(`${location} 页面缺少图标`);
-
-  if (!config.aiIgnore) {
-    if (options.allowedTags?.length) {
-      config.tags?.forEach((tag) => {
-        if (!options.allowedTags?.includes(tag))
-          console.error(`${location} page contains illegal tag ${tag}`);
-      });
-    }
-
-    if (options.tagRequired && !config.tags?.length) console.error(`${location} 应包含标签`);
-  }
 };
 
 /**
