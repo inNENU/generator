@@ -95,7 +95,19 @@ export const pageConfigSchema = zod
     }),
     /** 页面描述 */
     desc: zod.string().optional().meta({
-      description: "页面描述",
+      description: "页面描述（页脚补充描述，小程序端展示）",
+    }),
+    /** 页面摘要（供 AI 索引） */
+    summary: zod.string().optional().meta({
+      description: "页面摘要",
+    }),
+    /** 所属校区（供 AI 索引与校区过滤；仅当页面专属于某校区时声明，缺省=两校区通用） */
+    campus: zod.enum(["本部校区", "净月校区"]).optional().meta({
+      description: "所属校区（缺省=两校区通用）",
+    }),
+    /** 页面关键词（供 AI 索引，不设上限） */
+    keywords: zod.array(zod.string()).optional().meta({
+      description: "页面关键词",
     }),
     /** 页面作者 */
     author: zod
