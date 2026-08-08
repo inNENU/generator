@@ -91,7 +91,8 @@ const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
  * - `lora`：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 title，summary 直接在 title 下一行裸写（无前缀）， keywords /
  *   campus 仅在存在时以 `keywords:` / `campus:` 前缀附加，记录间空行分隔，适合直接注入 LLM 上下文
  *
- * Lora 的 title 行规则：页面有 summary 时，summary **取代 title**（不再单独输出 title 行）。无 summary 的页面才输出 title 行。
+ * Lora 的 title 行规则：页面有 summary 时，summary **取代 title**（不再单独输出 title 行）。无 summary 的页面才输出 title 行。 若
+ * summary 需体现标题，页面 YAML 中在 summary 内容前加 `标题: ` 前缀（如 `summary: 校园卡挂失与补办: 丢失后的...`）。
  *
  * 空字段（summary/keywords/campus）自动省略，不输出空字符串或空数组。
  *
