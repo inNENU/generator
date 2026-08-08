@@ -125,16 +125,17 @@ describe("knowledge 索引生成", () => {
         expect(lora).toBe(
           [
             "guide/card",
-            "校园卡",
+            // 有 summary：summary 取代 title 行
             "校园卡办理、挂失与充值指南",
             "keywords: [办卡, 挂失, 充值]",
             "campus: 本部校区",
             "",
             "guide/README",
+            // 无 summary：输出 title 行
             "东师指南",
             "",
             "guide/multi",
-            "多行摘要",
+            // 有 summary：summary 取代 title 行
             "第一行内容 第二行内容",
             "",
           ].join("\n"),

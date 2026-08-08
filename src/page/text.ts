@@ -19,13 +19,14 @@ export const getPageText = (page: PageConfig, pagePath = ""): string => {
 
     if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
 
-    const { title, desc, cite, content } = page;
+    const { title, desc, content } = page;
+
+    // 不输出 cite：AI 无网络搜索能力，来源只能是小程序页面，不引用外部网址
 
     return `\
 # ${title}
 
 ${desc ? `> 描述: ${desc}\n\n` : ""}\
-${cite ? `${["**引用来源**", ...(typeof cite === "string" ? [cite] : cite).map((line) => `- <${line}>`)].map((line) => `> ${line}`).join("\n")}\n\n` : ""}\
 ${content
   // oxlint-disable-next-line complexity
   .map((component, index) => {

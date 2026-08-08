@@ -53,7 +53,35 @@ export interface KnowledgeIndexItem {
   keywords?: string[];
   /** 所属校区 */
   campus?: string;
+  /** AI 索引优先级（缺省=high） */
+  priority?: "high" | "low";
 }
+
+const renderLoraItem = ({ path, title, summary, keywords, campus }: KnowledgeIndexItem): string => {
+  const lines = [path];
+
+  // 纯文本格式：有 summary 时 summary 取代 title 行，无 summary 才输出 title 行；换行压缩为单行
+  if (summary) lines.push(summary.trim().replaceAll(/\n+/gu, " "));
+  else lines.push(title);
+  if (keywords?.length) lines.push(`keywords: [${keywords.join(", ")}]`);
+  if (campus) lines.push(`campus: ${campus}`);
+
+  return lines.join("\n");
+};
+
+const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
+  // 高优先级在前，低优先级在后（低优先级块用标记行分隔，提示 AI 次要参考）
+  const high = index
+    .filter((item) => item.priority !== "low")
+    .map((item) => renderLoraItem(item))
+    .join("\n\n");
+  const low = index
+    .filter((item) => item.priority === "low")
+    .map((item) => renderLoraItem(item))
+    .join("\n\n");
+
+  return `${high}${low ? `\n\n# 低优先级（次要参考）\n\n${low}` : ""}\n`;
+};
 
 /**
  * 生成知识库索引（L0 文档索引）
@@ -62,6 +90,8 @@ export interface KnowledgeIndexItem {
  * - `yaml`：输出 `distFolder/index.yaml`，每条记录一行，自动处理转义
  * - `lora`：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 title，summary 直接在 title 下一行裸写（无前缀）， keywords /
  *   campus 仅在存在时以 `keywords:` / `campus:` 前缀附加，记录间空行分隔，适合直接注入 LLM 上下文
+ *
+ * Lora 的 title 行规则：页面有 summary 时，summary **取代 title**（不再单独输出 title 行）。无 summary 的页面才输出 title 行。
  *
  * 空字段（summary/keywords/campus）自动省略，不输出空字符串或空数组。
  *
@@ -100,6 +130,7 @@ export const generateKnowledgeIndex = (
       if (data.summary) item.summary = data.summary;
       if (data.keywords?.length) item.keywords = data.keywords;
       if (data.campus) item.campus = data.campus;
+      if (data.aiPriority === "low") item.priority = "low";
 
       return item;
     })
@@ -112,18 +143,7 @@ export const generateKnowledgeIndex = (
 
   const output =
     format === "lora"
-      ? `${index
-          .map(({ path, title, summary, keywords, campus }) => {
-            const lines = [path, title];
-
-            // 纯文本格式：summary 无前缀紧接 title，keywords / campus 带前缀区分类型，换行压缩为单行
-            if (summary) lines.push(summary.trim().replaceAll(/\n+/gu, " "));
-            if (keywords?.length) lines.push(`keywords: [${keywords.join(", ")}]`);
-            if (campus) lines.push(`campus: ${campus}`);
-
-            return lines.join("\n");
-          })
-          .join("\n\n")}\n`
+      ? renderLoraIndex(index)
       : format === "yaml"
         ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
           dump(index, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
