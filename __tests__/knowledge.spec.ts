@@ -76,13 +76,9 @@ describe("knowledge 索引生成", () => {
     mkdirSync(path.join(testDir, "pages/apartment"), { recursive: true });
     writeFileSync(
       path.join(testDir, "pages/apartment/office.yml"),
-      [
-        "title: 办公室",
-        "aiPriority: low",
-        "content:",
-        "  - tag: text",
-        "    text: 办公室信息",
-      ].join("\n"),
+      ["title: 办公室", "aiPriority: -1", "content:", "  - tag: text", "    text: 办公室信息"].join(
+        "\n",
+      ),
     );
 
     process.chdir(testDir);
@@ -116,8 +112,8 @@ describe("knowledge 索引生成", () => {
           { path: "guide/README", title: "东师指南" },
           { path: "guide/multi", title: "多行摘要", summary: "第一行内容\n第二行内容\n" },
           { path: "other/about", title: "关于" },
-          // 低优先级排最后
-          { path: "apartment/office", title: "办公室", priority: "low" },
+          // 低优先级（负数）排最后
+          { path: "apartment/office", title: "办公室", priority: -1 },
         ]);
       } finally {
         teardown();
@@ -258,6 +254,42 @@ describe("knowledge 索引生成", () => {
         // guide 目录内按文件列表顺序：card → README → multi
         expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("guide/README"));
         expect(paths.indexOf("guide/README")).toBeLessThan(paths.indexOf("guide/multi"));
+      } finally {
+        teardown();
+      }
+    });
+
+    it("数字优先级越大越靠前，负数归入低优先级块", () => {
+      setup();
+      try {
+        // 新增一个高优先级页面（priority: 10）与一个默认页面（无 aiPriority）
+        mkdirSync(path.join(testDir, "pages/newcomer"), { recursive: true });
+        writeFileSync(
+          path.join(testDir, "pages/newcomer/top.yml"),
+          [
+            "title: 置顶页",
+            "aiPriority: 10",
+            "content:",
+            "  - tag: text",
+            "    text: 最高优先级",
+          ].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", "json");
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        const paths = json.map((item) => item.path as string);
+
+        // priority: 10 排最前（高于默认 0 的 newcomer/README）
+        expect(paths[0]).toBe("newcomer/top");
+        expect(json[0]).toStrictEqual({ path: "newcomer/top", title: "置顶页", priority: 10 });
+        // 默认 0 的 newcomer/README 紧随其后
+        expect(paths[1]).toBe("newcomer/README");
+        // 负数（apartment/office）仍在最后
+        expect(paths[paths.length - 1]).toBe("apartment/office");
       } finally {
         teardown();
       }

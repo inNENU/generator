@@ -89,9 +89,9 @@ export const pageConfigSchema = zod
     aiIgnore: zod.boolean().optional().meta({
       description: "是否被 AI 忽略",
     }),
-    /** AI 索引优先级（缺省=高；低优先级页面排在 lora 索引末尾） */
-    aiPriority: zod.enum(["high", "low"]).optional().meta({
-      description: "AI 索引优先级（缺省=high，低优先级页面排在索引末尾）",
+    /** AI 索引优先级（数字权重，缺省=0；越大越靠前，负数视为低优先级排索引末尾） */
+    aiPriority: zod.number().optional().meta({
+      description: "AI 索引优先级（缺省=0，越大越靠前；负数视为低优先级，排在索引末尾）",
     }),
     /** 页面描述 */
     desc: zod.string().optional().meta({

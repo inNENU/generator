@@ -53,8 +53,8 @@ export interface KnowledgeIndexItem {
   keywords?: string[];
   /** 所属校区 */
   campus?: string;
-  /** AI 索引优先级（缺省=high） */
-  priority?: "high" | "low";
+  /** AI 索引优先级（数字权重，缺省=0；越大越靠前，负数视为低优先级） */
+  priority?: number;
 }
 
 /**
@@ -68,8 +68,8 @@ const sortIndex = (items: KnowledgeIndexItem[], order: string[]): KnowledgeIndex
   const orderMap = new Map(order.map((dir, position) => [dir, position]));
 
   return items.toSorted((a, b) => {
-    // 优先级：high 在前，low 在后
-    const priorityDiff = (a.priority === "low" ? 1 : 0) - (b.priority === "low" ? 1 : 0);
+    // 优先级：数字越大越靠前（缺省 0）
+    const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
 
     if (priorityDiff !== 0) return priorityDiff;
 
@@ -99,13 +99,13 @@ const renderLoraItem = ({ path, title, summary, keywords, campus }: KnowledgeInd
 };
 
 const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
-  // 高优先级在前，低优先级在后（低优先级块用标记行分隔，提示 AI 次要参考）
+  // 高优先级（priority >= 0）在前，低优先级（priority < 0）在后（标记行分隔，提示 AI 次要参考）
   const high = index
-    .filter((item) => item.priority !== "low")
+    .filter((item) => (item.priority ?? 0) >= 0)
     .map((item) => renderLoraItem(item))
     .join("\n\n");
   const low = index
-    .filter((item) => item.priority === "low")
+    .filter((item) => (item.priority ?? 0) < 0)
     .map((item) => renderLoraItem(item))
     .join("\n\n");
 
@@ -162,7 +162,7 @@ export const generateKnowledgeIndex = (
       if (data.summary) item.summary = data.summary;
       if (data.keywords?.length) item.keywords = data.keywords;
       if (data.campus) item.campus = data.campus;
-      if (data.aiPriority === "low") item.priority = "low";
+      if ("aiPriority" in data && data.aiPriority !== 0) item.priority = data.aiPriority;
 
       return item;
     })
