@@ -62,6 +62,29 @@ describe("knowledge 索引生成", () => {
       ].join("\n"),
     );
 
+    // 排序测试页面（不同一级目录）
+    mkdirSync(path.join(testDir, "pages/newcomer"), { recursive: true });
+    writeFileSync(
+      path.join(testDir, "pages/newcomer/index.yml"),
+      ["title: 新生专题", "content:", "  - tag: text", "    text: 新生指南"].join("\n"),
+    );
+    mkdirSync(path.join(testDir, "pages/other"), { recursive: true });
+    writeFileSync(
+      path.join(testDir, "pages/other/about.yml"),
+      ["title: 关于", "content:", "  - tag: text", "    text: 关于页面"].join("\n"),
+    );
+    mkdirSync(path.join(testDir, "pages/apartment"), { recursive: true });
+    writeFileSync(
+      path.join(testDir, "pages/apartment/office.yml"),
+      [
+        "title: 办公室",
+        "aiPriority: low",
+        "content:",
+        "  - tag: text",
+        "    text: 办公室信息",
+      ].join("\n"),
+    );
+
     process.chdir(testDir);
   };
 
@@ -81,6 +104,8 @@ describe("knowledge 索引生成", () => {
         ) as Record<string, unknown>[];
 
         expect(json).toStrictEqual([
+          // 排序：高优先级按 newcomer > guide > other（order 外目录最后）
+          { path: "newcomer/README", title: "新生专题" },
           {
             path: "guide/card",
             title: "校园卡",
@@ -90,6 +115,9 @@ describe("knowledge 索引生成", () => {
           },
           { path: "guide/README", title: "东师指南" },
           { path: "guide/multi", title: "多行摘要", summary: "第一行内容\n第二行内容\n" },
+          { path: "other/about", title: "关于" },
+          // 低优先级排最后
+          { path: "apartment/office", title: "办公室", priority: "low" },
         ]);
       } finally {
         teardown();
@@ -124,6 +152,10 @@ describe("knowledge 索引生成", () => {
 
         expect(lora).toBe(
           [
+            // 高优先级块：newcomer 在最前
+            "newcomer/README",
+            "新生专题",
+            "",
             "guide/card",
             // 有 summary：summary 取代 title 行
             "校园卡办理、挂失与充值指南",
@@ -137,6 +169,16 @@ describe("knowledge 索引生成", () => {
             "guide/multi",
             // 有 summary：summary 取代 title 行
             "第一行内容 第二行内容",
+            "",
+            // order 外目录（other）排高优先级块最后
+            "other/about",
+            "关于",
+            "",
+            "# 低优先级（次要参考）",
+            "",
+            // 低优先级块：apartment 目录
+            "apartment/office",
+            "办公室",
             "",
           ].join("\n"),
         );
@@ -153,6 +195,69 @@ describe("knowledge 索引生成", () => {
         const lora = readFileSync(path.join(testDir, "dist/index.lora"), { encoding: "utf-8" });
 
         expect(lora).not.toContain("secret");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
+  describe("排序", () => {
+    it("默认按 newcomer > guide > school > intro > apartment，未列出的目录排最后", () => {
+      setup();
+      try {
+        generateKnowledgeIndex("./pages", "./dist", "json");
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        const paths = json.map((item) => item.path as string);
+
+        // 高优先级：newcomer 在 guide 前，other（order 外）在最后
+        expect(paths.indexOf("newcomer/README")).toBeLessThan(paths.indexOf("guide/card"));
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("other/about"));
+        // 低优先级最后
+        expect(paths[paths.length - 1]).toBe("apartment/office");
+      } finally {
+        teardown();
+      }
+    });
+
+    it("自定义 order 生效", () => {
+      setup();
+      try {
+        generateKnowledgeIndex("./pages", "./dist", "json", ["guide", "other"]);
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        const paths = json.map((item) => item.path as string);
+
+        // 高优先级内：guide（order 中）在 other（order 中）前，newcomer（order 外）排最后
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("other/about"));
+        expect(paths.indexOf("other/about")).toBeLessThan(paths.indexOf("newcomer/README"));
+        // 低优先级（apartment/office）始终在最后
+        expect(paths[paths.length - 1]).toBe("apartment/office");
+      } finally {
+        teardown();
+      }
+    });
+
+    it("同目录内保持原有顺序（稳定排序）", () => {
+      setup();
+      try {
+        generateKnowledgeIndex("./pages", "./dist", "json");
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        const paths = json.map((item) => item.path as string);
+
+        // guide 目录内按文件列表顺序：card → README → multi
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("guide/README"));
+        expect(paths.indexOf("guide/README")).toBeLessThan(paths.indexOf("guide/multi"));
       } finally {
         teardown();
       }

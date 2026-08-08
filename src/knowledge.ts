@@ -57,6 +57,35 @@ export interface KnowledgeIndexItem {
   priority?: "high" | "low";
 }
 
+/**
+ * 索引排序：高优先级在前，同级内按一级目录顺序排列（未列出的目录排最后），同目录保持原顺序（稳定）
+ *
+ * @param items 索引项数组
+ * @param order 一级目录顺序
+ * @returns 排序后的索引项数组
+ */
+const sortIndex = (items: KnowledgeIndexItem[], order: string[]): KnowledgeIndexItem[] => {
+  const orderMap = new Map(order.map((dir, position) => [dir, position]));
+
+  return items.toSorted((a, b) => {
+    // 优先级：high 在前，low 在后
+    const priorityDiff = (a.priority === "low" ? 1 : 0) - (b.priority === "low" ? 1 : 0);
+
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const aDir = a.path.split("/")[0] ?? "";
+    const bDir = b.path.split("/")[0] ?? "";
+
+    const aIndex = orderMap.get(aDir) ?? order.length;
+    const bIndex = orderMap.get(bDir) ?? order.length;
+
+    if (aIndex !== bIndex) return aIndex - bIndex;
+
+    // 同一目录内保持原有顺序（稳定排序）
+    return 0;
+  });
+};
+
 const renderLoraItem = ({ path, title, summary, keywords, campus }: KnowledgeIndexItem): string => {
   const lines = [path];
 
@@ -102,11 +131,13 @@ const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
  * @param sourceFolder 源文件夹
  * @param distFolder 输出文件夹
  * @param format 输出格式，`json`（默认）、`yaml` 或 `lora`
+ * @param order 一级目录排序（默认 `newcomer > guide > school > intro > apartment`，未列出的目录如 `other` 排最后）
  */
 export const generateKnowledgeIndex = (
   sourceFolder: string,
   distFolder: string,
   format: "json" | "yaml" | "lora" = "json",
+  order: string[] = ["newcomer", "guide", "school", "intro", "apartment"],
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
@@ -137,6 +168,9 @@ export const generateKnowledgeIndex = (
     })
     .filter((item): item is KnowledgeIndexItem => item != null);
 
+  // 统一排序：高优先级在前，同级内按一级目录顺序（重要内容靠前）
+  const sortedIndex = sortIndex(index, order);
+
   const targetFilename = resolve(
     distFolder,
     format === "yaml" ? "index.yaml" : format === "lora" ? "index.lora" : "index.json",
@@ -144,11 +178,11 @@ export const generateKnowledgeIndex = (
 
   const output =
     format === "lora"
-      ? renderLoraIndex(index)
+      ? renderLoraIndex(sortedIndex)
       : format === "yaml"
         ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
-          dump(index, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
-        : JSON.stringify(index, null, 2);
+          dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
+        : JSON.stringify(sortedIndex, null, 2);
 
   writeFileSync(targetFilename, output, { encoding: "utf-8" });
 };
