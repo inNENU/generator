@@ -163,11 +163,11 @@ export interface KnowledgeIndexOptions {
   /** 索引排序器。可传入自定义 `(a, b) => number` 函数，或路径前缀数组（内部用 `createKnowledgeSorter` 转换） */
   sorter?: KnowledgeIndexSorter | string[];
   /**
-   * 优先级计算器：基于页面信息（info）与已有的 aiPriority（可能缺省），返回新的优先级。
+   * 优先级计算器：基于完整索引项（`path` / `info` / `keywords` / `campus`）与已有的 aiPriority（可能缺省）返回新的优先级。
    *
    * 返回 `null` / `undefined` 时视为 `0`（缺省优先级）。
    */
-  priorityGetter?: (info: string, priority?: number) => number | null | undefined;
+  priorityGetter?: (item: KnowledgeIndexItem, priority?: number) => number | null | undefined;
 }
 
 /**
@@ -214,17 +214,20 @@ export const generateKnowledgeIndex = (
 
       const info = (data.summary ?? data.title).trim();
 
-      // 已有优先级（aiPriority，无字段时为 0）
-      const basePriority = "aiPriority" in data ? data.aiPriority : 0;
+      // 已有优先级（aiPriority，无字段时为 undefined）
+      const basePriority = "aiPriority" in data ? data.aiPriority : void 0;
 
-      // 有 priorityGetter 时基于 info 与已有优先级重新计算（返回 null / undefined 视为 0）
-      const priority = priorityGetter ? (priorityGetter(info, basePriority) ?? 0) : basePriority;
-
-      // 跳过空字段
+      // 构造完整索引项（path / info / keywords / campus）
       const item: KnowledgeIndexItem = { path, info };
 
       if (data.keywords?.length) item.keywords = data.keywords;
       if (data.campus) item.campus = data.campus;
+
+      // 有 priorityGetter 时基于完整索引项与已有优先级重新计算（返回 null / undefined 视为 0）
+      const priority = priorityGetter
+        ? (priorityGetter(item, basePriority) ?? 0)
+        : (basePriority ?? 0);
+
       if (priority !== 0) item.priority = priority;
 
       return item;

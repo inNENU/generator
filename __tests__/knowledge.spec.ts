@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import type { KnowledgeIndexItem } from "../src/index.js";
 import { config, generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
 
 /**
@@ -26,35 +27,37 @@ const testUrlConverter = (url: string): { miniapp: string; web: string } | null 
 };
 
 /**
- * 测试用 priorityGetter：含“置顶”的页面优先级为 5，其余返回 null（视为 0）
+ * 测试用 priorityGetter：info 含“置顶”的页面优先级为 5，其余返回 null（视为 0）
  *
- * @param info 页面信息
+ * @param item 完整索引项
  * @returns 优先级或 null
  */
-const markTopGetter = (info: string): number | null => (info.includes("置顶") ? 5 : null);
+const markTopGetter = (item: KnowledgeIndexItem): number | null =>
+  item.info.includes("置顶") ? 5 : null;
 
 /**
- * 测试用 priorityGetter：含“校园卡”的页面优先级为 10，其余为 0
+ * 测试用 priorityGetter：info 含“校园卡”的页面优先级为 10，其余为 0
  *
- * @param info 页面信息
+ * @param item 完整索引项
  * @returns 优先级
  */
-const markCardGetter = (info: string): number | null => (info.includes("校园卡") ? 10 : 0);
+const markCardGetter = (item: KnowledgeIndexItem): number | null =>
+  item.info.includes("校园卡") ? 10 : 0;
 
 /**
- * 测试用 priorityGetter：捕获含“置顶”页面的已有优先级，其余保持不变
+ * 测试用 priorityGetter：捕获 info 含“置顶”页面的已有优先级，其余保持不变
  *
- * @param info 页面信息
+ * @param item 完整索引项
  * @param priority 已有优先级
  * @param capture 捕获回调
  * @returns 计算后的优先级
  */
 const captureTopGetter = (
-  info: string,
+  item: KnowledgeIndexItem,
   priority: number | undefined,
   capture: (value: number | null) => void,
 ): number => {
-  if (info.includes("置顶")) capture(priority ?? null);
+  if (item.info.includes("置顶")) capture(priority ?? null);
 
   return priority ?? 0;
 };
