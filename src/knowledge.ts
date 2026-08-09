@@ -162,6 +162,12 @@ export interface KnowledgeIndexOptions {
   format?: "json" | "yaml" | "lora";
   /** 索引排序器。可传入自定义 `(a, b) => number` 函数，或路径前缀数组（内部用 `createKnowledgeSorter` 转换） */
   sorter?: KnowledgeIndexSorter | string[];
+  /**
+   * 优先级计算器：基于页面信息（info）与已有的 aiPriority（可能缺省），返回新的优先级。
+   *
+   * 返回 `null` / `undefined` 时视为 `0`（缺省优先级）。
+   */
+  priorityGetter?: (info: string, priority?: number) => number | null | undefined;
 }
 
 /**
@@ -185,7 +191,7 @@ export interface KnowledgeIndexOptions {
 export const generateKnowledgeIndex = (
   sourceFolder: string,
   distFolder: string,
-  { format = "lora", sorter }: KnowledgeIndexOptions = {},
+  { format = "lora", sorter, priorityGetter }: KnowledgeIndexOptions = {},
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
@@ -208,12 +214,18 @@ export const generateKnowledgeIndex = (
 
       const info = (data.summary ?? data.title).trim();
 
+      // 已有优先级（aiPriority，无字段时为 0）
+      const basePriority = "aiPriority" in data ? data.aiPriority : 0;
+
+      // 有 priorityGetter 时基于 info 与已有优先级重新计算（返回 null / undefined 视为 0）
+      const priority = priorityGetter ? (priorityGetter(info, basePriority) ?? 0) : basePriority;
+
       // 跳过空字段
       const item: KnowledgeIndexItem = { path, info };
 
       if (data.keywords?.length) item.keywords = data.keywords;
       if (data.campus) item.campus = data.campus;
-      if ("aiPriority" in data && data.aiPriority !== 0) item.priority = data.aiPriority;
+      if (priority !== 0) item.priority = priority;
 
       return item;
     })

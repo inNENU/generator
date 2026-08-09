@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
+import { config, generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
 
 /**
  * 测试用 urlConverter：转换 notice-detail 链接（999999 除外），其他返回 null
@@ -23,6 +23,40 @@ const testUrlConverter = (url: string): { miniapp: string; web: string } | null 
     miniapp: url,
     web: `https://m-443.webvpn.nenu.edu.cn/${target}`,
   };
+};
+
+/**
+ * 测试用 priorityGetter：含“置顶”的页面优先级为 5，其余返回 null（视为 0）
+ *
+ * @param info 页面信息
+ * @returns 优先级或 null
+ */
+const markTopGetter = (info: string): number | null => (info.includes("置顶") ? 5 : null);
+
+/**
+ * 测试用 priorityGetter：含“校园卡”的页面优先级为 10，其余为 0
+ *
+ * @param info 页面信息
+ * @returns 优先级
+ */
+const markCardGetter = (info: string): number | null => (info.includes("校园卡") ? 10 : 0);
+
+/**
+ * 测试用 priorityGetter：捕获含“置顶”页面的已有优先级，其余保持不变
+ *
+ * @param info 页面信息
+ * @param priority 已有优先级
+ * @param capture 捕获回调
+ * @returns 计算后的优先级
+ */
+const captureTopGetter = (
+  info: string,
+  priority: number | undefined,
+  capture: (value: number | null) => void,
+): number => {
+  if (info.includes("置顶")) capture(priority ?? null);
+
+  return priority ?? 0;
 };
 
 describe("knowledge 索引生成", () => {
@@ -491,6 +525,168 @@ describe("knowledge 索引生成", () => {
         // 无 url 项：保留原样输出
         expect(content).toContain("- 无链接项 - 说明文字");
       } finally {
+        teardown();
+      }
+    });
+  });
+
+  describe("priorityGetter", () => {
+    it("基于 info 重新计算优先级，返回 null/undefined 视为 0（不输出 priority）", () => {
+      setup();
+      try {
+        // 已有 aiPriority: 10 的页面 + 无优先级的页面
+        mkdirSync(path.join(testDir, "pages/newcomer"), { recursive: true });
+        writeFileSync(
+          path.join(testDir, "pages/newcomer/top.yml"),
+          [
+            "title: 置顶页",
+            "aiPriority: 10",
+            "content:",
+            "  - tag: text",
+            "    text: 最高优先级",
+          ].join("\n"),
+        );
+        writeFileSync(
+          path.join(testDir, "pages/newcomer/zero.yml"),
+          ["title: 归零页", "content:", "  - tag: text", "    text: 无优先级"].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", {
+          format: "json",
+          priorityGetter: markTopGetter,
+        });
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        // 置顶页：priorityGetter 基于 info 返回 5（覆盖原 aiPriority: 10）
+        expect(json.find((item) => item.path === "newcomer/top")).toStrictEqual({
+          path: "newcomer/top",
+          info: "置顶页",
+          priority: 5,
+        });
+        // 其他页面：返回 null → 视为 0，不输出 priority
+        expect(json.find((item) => item.path === "newcomer/zero")).toStrictEqual({
+          path: "newcomer/zero",
+          info: "归零页",
+        });
+        // 原 aiPriority: -1（apartment/office）被 null 覆盖为 0
+        expect(json.find((item) => item.path === "apartment/office")).toStrictEqual({
+          path: "apartment/office",
+          info: "办公室",
+        });
+      } finally {
+        teardown();
+      }
+    });
+
+    it("priorityGetter 收到已有 aiPriority 作为第二参数", () => {
+      setup();
+      try {
+        mkdirSync(path.join(testDir, "pages/newcomer"), { recursive: true });
+        writeFileSync(
+          path.join(testDir, "pages/newcomer/top.yml"),
+          [
+            "title: 置顶页",
+            "aiPriority: 10",
+            "content:",
+            "  - tag: text",
+            "    text: 最高优先级",
+          ].join("\n"),
+        );
+
+        let received: number | null = null;
+
+        generateKnowledgeIndex("./pages", "./dist", {
+          format: "json",
+          priorityGetter: (info, priority) =>
+            captureTopGetter(info, priority, (value) => {
+              received = value;
+            }),
+        });
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        // 置顶页已有 aiPriority: 10，getter 第二参数应收到 10
+        expect(received).toBe(10);
+        expect(json.find((item) => item.path === "newcomer/top")).toStrictEqual({
+          path: "newcomer/top",
+          info: "置顶页",
+          priority: 10,
+        });
+      } finally {
+        teardown();
+      }
+    });
+
+    it("priorityGetter 结果参与排序（先按优先级，相同优先级再用 sorter）", () => {
+      setup();
+      try {
+        generateKnowledgeIndex("./pages", "./dist", {
+          format: "json",
+          priorityGetter: markCardGetter,
+        });
+
+        const json = JSON.parse(
+          readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
+        ) as Record<string, unknown>[];
+
+        const paths = json.map((item) => item.path as string);
+
+        // 校园卡 info 含"校园卡" → priority 10，排最前
+        expect(paths[0]).toBe("guide/card");
+        // 原 apartment/office 的 aiPriority: -1 被 priorityGetter 返回 0 覆盖 → 不再输出 priority
+        expect(json.find((item) => item.path === "apartment/office")).toStrictEqual({
+          path: "apartment/office",
+          info: "办公室",
+        });
+        // 其余同为 priority 0：保持原顺序（guide/index 在 other/about 前）
+        expect(paths.indexOf("guide/index")).toBeLessThan(paths.indexOf("other/about"));
+      } finally {
+        teardown();
+      }
+    });
+  });
+
+  describe("action $ 前缀转换", () => {
+    it("generateKnowledgeContent 将 action content 中的 $file/$img 转为完整 URL", () => {
+      setup();
+      try {
+        // 配置 assets 前缀（与生成器默认空前缀区分，验证完整 URL）
+        config({
+          assets: "https://assets.innenu.com",
+          icon: "",
+          mapFolder: "",
+          mapKey: "",
+          pageFolder: "page",
+        });
+
+        writeFileSync(
+          path.join(testDir, "pages/guide/action.yml"),
+          [
+            "title: 工具下载",
+            "content:",
+            "  - tag: action",
+            "    header: 下载 KMS 工具",
+            "    content: $file/tools/KMS_VL_ALL_AIO.cmd",
+          ].join("\n"),
+        );
+
+        generateKnowledgeContent("./pages", "./dist");
+
+        const content = readFileSync(path.join(testDir, "dist/guide/action.md"), {
+          encoding: "utf-8",
+        });
+
+        // $ 前缀被转为完整 URL，不再保留 $file
+        expect(content).not.toContain("$file");
+        expect(content).toContain("https://assets.innenu.com/file/tools/KMS_VL_ALL_AIO.cmd");
+      } finally {
+        // 恢复生成器默认配置
+        config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
         teardown();
       }
     });
