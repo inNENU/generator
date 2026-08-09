@@ -58,33 +58,62 @@ export interface KnowledgeIndexItem {
 }
 
 /**
- * 索引排序：高优先级在前，同级内按一级目录顺序排列（未列出的目录排最后），同目录保持原顺序（稳定）
+ * 知识库索引排序器：比较两个索引项的先后顺序
+ *
+ * @param a 索引项 a
+ * @param b 索引项 b
+ * @returns 负数表示 a 在前，正数表示 b 在前，0 表示保持原顺序
+ */
+export type KnowledgeIndexSorter = (a: KnowledgeIndexItem, b: KnowledgeIndexItem) => number;
+
+/**
+ * 根据路径前缀数组创建排序器
+ *
+ * 对每个索引项，取其 path 能匹配的**最长**路径前缀在数组中的位置进行比较； 未匹配任何前缀的项排在最后（保持原相对顺序）。
+ *
+ * 例：paths 为 `["intro", "guide", "intro/teacher"]` 时， `intro/history` 匹配 `intro`（靠前）， 而
+ * `intro/teacher/xxx` 匹配更长的 `intro/teacher`（排到 `guide` 之后）。
+ *
+ * @param paths 路径前缀数组，按优先级从高到低排列
+ * @returns 排序器
+ */
+export const createKnowledgeSorter = (paths: string[]): KnowledgeIndexSorter => {
+  const getPosition = (path: string): number => {
+    let bestIndex = paths.length;
+    let bestLength = -1;
+
+    paths.forEach((prefix, index) => {
+      if ((path === prefix || path.startsWith(`${prefix}/`)) && prefix.length > bestLength) {
+        bestLength = prefix.length;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  };
+
+  return (a, b) => getPosition(a.path) - getPosition(b.path);
+};
+
+/**
+ * 索引排序：先按优先级（数字越大越靠前），再按自定义排序器（sorter 缺省时保持同优先级项的原顺序）
  *
  * @param items 索引项数组
- * @param order 一级目录顺序
+ * @param sorter 路径排序器（可省略）
  * @returns 排序后的索引项数组
  */
-const sortIndex = (items: KnowledgeIndexItem[], order: string[]): KnowledgeIndexItem[] => {
-  const orderMap = new Map(order.map((dir, position) => [dir, position]));
-
-  return items.toSorted((a, b) => {
+const sortIndex = (
+  items: KnowledgeIndexItem[],
+  sorter?: KnowledgeIndexSorter | null,
+): KnowledgeIndexItem[] =>
+  items.toSorted((a, b) => {
     // 优先级：数字越大越靠前（缺省 0）
     const priorityDiff = (b.priority ?? 0) - (a.priority ?? 0);
 
     if (priorityDiff !== 0) return priorityDiff;
 
-    const aDir = a.path.split("/")[0] ?? "";
-    const bDir = b.path.split("/")[0] ?? "";
-
-    const aIndex = orderMap.get(aDir) ?? order.length;
-    const bIndex = orderMap.get(bDir) ?? order.length;
-
-    if (aIndex !== bIndex) return aIndex - bIndex;
-
-    // 同一目录内保持原有顺序（稳定排序）
-    return 0;
+    return sorter ? sorter(a, b) : 0;
   });
-};
 
 const renderLoraItem = ({ path, title, summary, keywords, campus }: KnowledgeIndexItem): string => {
   const lines = [path];
@@ -131,17 +160,21 @@ const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
  * @param sourceFolder 源文件夹
  * @param distFolder 输出文件夹
  * @param format 输出格式，`json`（默认）、`yaml` 或 `lora`
- * @param order 一级目录排序（默认 `newcomer > guide > school > intro > apartment`，未列出的目录如 `other` 排最后）
+ * @param sorter 索引排序器（缺省不排序，保持文件列表原始顺序）。可传入自定义 `(a, b) => number` 函数，或路径前缀数组（内部用
+ *   `createKnowledgeSorter` 转换）
  */
 export const generateKnowledgeIndex = (
   sourceFolder: string,
   distFolder: string,
   format: "json" | "yaml" | "lora" = "json",
-  order: string[] = ["newcomer", "guide", "school", "intro", "apartment"],
+  sorter: KnowledgeIndexSorter | string[] = [],
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
   const fileList = getFileList(sourceFolder, "yml");
+
+  const resolveSorter = (): KnowledgeIndexSorter | null =>
+    sorter ? (typeof sorter === "function" ? sorter : createKnowledgeSorter(sorter)) : null;
 
   const index = fileList
     .map((filePath) => {
@@ -168,8 +201,8 @@ export const generateKnowledgeIndex = (
     })
     .filter((item): item is KnowledgeIndexItem => item != null);
 
-  // 统一排序：高优先级在前，同级内按一级目录顺序（重要内容靠前）
-  const sortedIndex = sortIndex(index, order);
+  // 统一排序：先按优先级，再按自定义排序器（sorter 缺省为空时不改变顺序）
+  const sortedIndex = sortIndex(index, resolveSorter());
 
   const targetFilename = resolve(
     distFolder,
