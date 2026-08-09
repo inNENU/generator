@@ -7,13 +7,37 @@ import type { PageConfig } from "../typings.js";
 import { getFileLink } from "../utils.js";
 
 /**
+ * URL 转换器：将页面组件中的链接（如 `notice-detail?url=...`）转换为知识库可读形式。
+ *
+ * 返回 `{ miniapp, web }` 时该链接以"小程序优先"格式输出；返回 `null` / `undefined` 时该链接（及其所在条目）被丢弃。
+ */
+export interface UrlConverterResult {
+  /** 小程序端跳转形式 */
+  miniapp: string;
+  /** 网页端地址 */
+  web: string;
+}
+
+export type UrlConverter = (url: string) => UrlConverterResult | null | undefined;
+
+export interface GetPageTextOptions {
+  /** URL 转换器（见 `UrlConverter`） */
+  urlConverter?: UrlConverter;
+}
+
+/**
  * 获取页面文本
  *
  * @param page 页面数据
  * @param pagePath 页面路径
+ * @param options 生成选项
  * @returns 页面文本
  */
-export const getPageText = (page: PageConfig, pagePath = ""): string => {
+export const getPageText = (
+  page: PageConfig,
+  pagePath = "",
+  options: GetPageTextOptions = {},
+): string => {
   try {
     if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
@@ -80,9 +104,25 @@ ${content
       case "list": {
         const { header, items, footer } = component;
 
+        const renderedItems = items
+          .map((item) => {
+            // 带 url 的条目：交给 urlConverter 转换（返回 null/undefined 时丢弃）
+            if ("url" in item && item.url) {
+              const converted = options.urlConverter?.(item.url);
+
+              if (!converted) return null;
+
+              return `- ${item.text}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+            }
+
+            return `- ${item.text}${"desc" in item && item.desc ? ` - ${item.desc}` : ""}`;
+          })
+          .filter((item): item is string => item != null)
+          .join("\n");
+
         return `\
 ${header ? `#### ${header}\n\n` : ""}\
-${items.map((item) => `- ${item.text}${"desc" in item && item.desc ? ` - ${item.desc}` : ""}`).join("\n")}
+${renderedItems}
 
 ${footer ? `> ${footer}\n\n` : ""}\
 `;

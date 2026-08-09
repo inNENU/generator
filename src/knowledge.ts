@@ -5,15 +5,30 @@ import { resolve, relative, dirname } from "upath";
 
 import { getFileList } from "./helpers/index.js";
 import { getPageText } from "./page/text.js";
+import type { UrlConverter } from "./page/text.js";
 import type { PageConfig } from "./typings.js";
+
+export interface KnowledgeContentOptions {
+  /**
+   * URL 转换器：将页面组件中的链接（如 `notice-detail?url=...`）转换为知识库可读的 `{ miniapp, web }` 两种形式。返回 `null` /
+   * `undefined` 时该链接（及其所在条目）被丢弃。
+   */
+  urlConverter?: UrlConverter;
+}
 
 /**
  * 生成知识库内容，将源文件夹下的 YAML 页面转换为 Markdown 文本
  *
+ * @default {}
  * @param sourceFolder 源文件夹
  * @param distFolder 输出文件夹
+ * @param options 生成选项
  */
-export const generateKnowledgeContent = (sourceFolder: string, distFolder: string): void => {
+export const generateKnowledgeContent = (
+  sourceFolder: string,
+  distFolder: string,
+  options: KnowledgeContentOptions = {},
+): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
   const fileList = getFileList(sourceFolder, "yml");
@@ -28,12 +43,9 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
 
     if (data.aiIgnore) return;
 
-    const text = getPageText(data, filePathRelative);
+    const text = getPageText(data, filePathRelative, options);
 
-    const targetFilename = resolve(
-      distFolder,
-      filePath.replace(/\.yml$/u, ".md").replace(/(?<sep>\/|^)index.md$/u, "$<sep>README.md"),
-    );
+    const targetFilename = resolve(distFolder, filePath.replace(/\.yml$/u, ".md"));
     const targetDirname = dirname(targetFilename);
 
     if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
@@ -45,15 +57,17 @@ export const generateKnowledgeContent = (sourceFolder: string, distFolder: strin
 export interface KnowledgeIndexItem {
   /** 页面路径（不含扩展名，与 Markdown 文件路径对应） */
   path: string;
-  /** 页面标题 */
-  title: string;
-  /** 页面摘要 */
-  summary?: string;
+  /** 页面信息（summary 取代 title，无 summary 时为 title） */
+  info: string;
   /** 页面关键词 */
   keywords?: string[];
   /** 所属校区 */
   campus?: string;
-  /** AI 索引优先级（数字权重，缺省=0；越大越靠前，负数视为低优先级） */
+  /**
+   * AI 索引优先级（数字权重，越大越靠前，负数视为低优先级）
+   *
+   * @default 0
+   */
   priority?: number;
 }
 
@@ -115,12 +129,10 @@ const sortIndex = (
     return sorter ? sorter(a, b) : 0;
   });
 
-const renderLoraItem = ({ path, title, summary, keywords, campus }: KnowledgeIndexItem): string => {
-  const lines = [path];
+const renderLoraItem = ({ path, info, keywords, campus }: KnowledgeIndexItem): string => {
+  const lines = [path, info.replaceAll(/\n+/gu, " ")];
 
-  // 纯文本格式：有 summary 时 summary 取代 title 行，无 summary 才输出 title 行；换行压缩为单行
-  if (summary) lines.push(summary.trim().replaceAll(/\n+/gu, " "));
-  else lines.push(title);
+  // 纯文本格式：keywords / campus 带前缀区分类型，换行压缩为单行
   if (keywords?.length) lines.push(`keywords: [${keywords.join(", ")}]`);
   if (campus) lines.push(`campus: ${campus}`);
 
@@ -141,33 +153,39 @@ const renderLoraIndex = (index: KnowledgeIndexItem[]): string => {
   return `${high}${low ? `\n\n# 低优先级（次要参考）\n\n${low}` : ""}\n`;
 };
 
+export interface KnowledgeIndexOptions {
+  /**
+   * 输出格式
+   *
+   * @default "lora"
+   */
+  format?: "json" | "yaml" | "lora";
+  /** 索引排序器。可传入自定义 `(a, b) => number` 函数，或路径前缀数组（内部用 `createKnowledgeSorter` 转换） */
+  sorter?: KnowledgeIndexSorter | string[];
+}
+
 /**
  * 生成知识库索引（L0 文档索引）
  *
- * - `json`（默认）：输出 `distFolder/index.json`，每条记录 `{ path, title, summary, keywords, campus }`
+ * - `json`：输出 `distFolder/index.json`，每条记录 `{ path, info, keywords, campus }`
  * - `yaml`：输出 `distFolder/index.yaml`，每条记录一行，自动处理转义
- * - `lora`：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 title，summary 直接在 title 下一行裸写（无前缀）， keywords /
- *   campus 仅在存在时以 `keywords:` / `campus:` 前缀附加，记录间空行分隔，适合直接注入 LLM 上下文
+ * - `lora`（默认）：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 info（summary 取代 title）， keywords / campus 仅
+ *   在存在时以 `keywords:` / `campus:` 前缀附加，记录间空行分隔，适合直接注入 LLM 上下文
  *
- * Lora 的 title 行规则：页面有 summary 时，summary **取代 title**（不再单独输出 title 行）。无 summary 的页面才输出 title 行。 若
- * summary 需体现标题，页面 YAML 中在 summary 内容前加 `标题: ` 前缀（如 `summary: 校园卡挂失与补办: 丢失后的...`）。
+ * 空字段（keywords/campus）自动省略，不输出空字符串或空数组。
  *
- * 空字段（summary/keywords/campus）自动省略，不输出空字符串或空数组。
+ * `path` 与 `.knowledge` 下生成的 Markdown 文件路径对应（不含扩展名）， 供 AI 读取【信息 + keywords + campus】判断学生问题对应哪个文档，
+ * 再调用工具按 path 取全文。
  *
- * `path` 与 `.knowledge` 下生成的 Markdown 文件路径对应（不含扩展名）， 供 AI 读取【标题 + summary + keywords +
- * campus】判断学生问题对应哪个文档， 再调用工具按 path 取全文。
- *
+ * @default {}
  * @param sourceFolder 源文件夹
  * @param distFolder 输出文件夹
- * @param format 输出格式，`json`（默认）、`yaml` 或 `lora`
- * @param sorter 索引排序器（缺省不排序，保持文件列表原始顺序）。可传入自定义 `(a, b) => number` 函数，或路径前缀数组（内部用
- *   `createKnowledgeSorter` 转换）
+ * @param options 生成选项
  */
 export const generateKnowledgeIndex = (
   sourceFolder: string,
   distFolder: string,
-  format: "json" | "yaml" | "lora" = "json",
-  sorter: KnowledgeIndexSorter | string[] = [],
+  { format = "lora", sorter }: KnowledgeIndexOptions = {},
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
@@ -186,13 +204,13 @@ export const generateKnowledgeIndex = (
 
       if (data.aiIgnore) return null;
 
-      // 与 generateKnowledgeContent 的 targetFilename 路径保持一致（不含 .md）
-      const path = filePath.replace(/\.yml$/u, "").replace(/(?<sep>\/|^)index$/u, "$<sep>README");
+      const path = filePath.replace(/\.yml$/u, "");
+
+      const info = (data.summary ?? data.title).trim();
 
       // 跳过空字段
-      const item: KnowledgeIndexItem = { path, title: data.title };
+      const item: KnowledgeIndexItem = { path, info };
 
-      if (data.summary) item.summary = data.summary;
       if (data.keywords?.length) item.keywords = data.keywords;
       if (data.campus) item.campus = data.campus;
       if ("aiPriority" in data && data.aiPriority !== 0) item.priority = data.aiPriority;

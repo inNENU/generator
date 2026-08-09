@@ -4,7 +4,26 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { generateKnowledgeIndex } from "../src/index.js";
+import { generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
+
+/**
+ * 测试用 urlConverter：转换 notice-detail 链接（999999 除外），其他返回 null
+ *
+ * @param url 待转换的原始链接
+ * @returns 转换结果或 null
+ */
+const testUrlConverter = (url: string): { miniapp: string; web: string } | null => {
+  if (!url.startsWith("notice-detail")) return null;
+
+  const target = /info\/(?<id>[^&]+)/u.exec(url)?.groups?.id;
+
+  if (!target || target.includes("999999")) return null;
+
+  return {
+    miniapp: url,
+    web: `https://m-443.webvpn.nenu.edu.cn/${target}`,
+  };
+};
 
 describe("knowledge 索引生成", () => {
   const originalCwd = process.cwd();
@@ -62,6 +81,23 @@ describe("knowledge 索引生成", () => {
       ].join("\n"),
     );
 
+    // 带 url 的 list 页面（测试 urlConverter）
+    writeFileSync(
+      path.join(testDir, "pages/guide/notice.yml"),
+      [
+        "title: 通知",
+        "content:",
+        "  - tag: list",
+        "    items:",
+        "      - text: 可转换链接",
+        "        url: notice-detail?url=info/1031/255432.htm&title=公告",
+        "      - text: 被丢弃链接",
+        "        url: notice-detail?url=info/1031/999999.htm",
+        "      - text: 无链接项",
+        "        desc: 说明文字",
+      ].join("\n"),
+    );
+
     // 排序测试页面（不同一级目录）
     mkdirSync(path.join(testDir, "pages/newcomer"), { recursive: true });
     writeFileSync(
@@ -93,7 +129,7 @@ describe("knowledge 索引生成", () => {
     it("输出 index.json 且跳过空字段与 aiIgnore 页面", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist");
+        generateKnowledgeIndex("./pages", "./dist", { format: "json" });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -103,17 +139,17 @@ describe("knowledge 索引生成", () => {
           // 缺省不排序：按文件创建顺序（guide → newcomer → other），仅低优先级排最后
           {
             path: "guide/card",
-            title: "校园卡",
-            summary: "校园卡办理、挂失与充值指南",
+            info: "校园卡办理、挂失与充值指南",
             keywords: ["办卡", "挂失", "充值"],
             campus: "本部校区",
           },
-          { path: "guide/README", title: "东师指南" },
-          { path: "guide/multi", title: "多行摘要", summary: "第一行内容\n第二行内容\n" },
-          { path: "newcomer/README", title: "新生专题" },
-          { path: "other/about", title: "关于" },
+          { path: "guide/index", info: "东师指南" },
+          { path: "guide/multi", info: "第一行内容\n第二行内容" },
+          { path: "guide/notice", info: "通知" },
+          { path: "newcomer/index", info: "新生专题" },
+          { path: "other/about", info: "关于" },
           // 低优先级（负数）排最后
-          { path: "apartment/office", title: "办公室", priority: -1 },
+          { path: "apartment/office", info: "办公室", priority: -1 },
         ]);
       } finally {
         teardown();
@@ -125,7 +161,7 @@ describe("knowledge 索引生成", () => {
     it("输出 index.yaml", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "yaml");
+        generateKnowledgeIndex("./pages", "./dist", { format: "yaml" });
 
         const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
 
@@ -139,10 +175,27 @@ describe("knowledge 索引生成", () => {
   });
 
   describe("lora 格式", () => {
+    it("缺省不传 options 时输出 index.lora", () => {
+      setup();
+      try {
+        generateKnowledgeIndex("./pages", "./dist");
+
+        const lora = readFileSync(path.join(testDir, "dist/index.lora"), {
+          encoding: "utf-8",
+        });
+
+        expect(lora).toContain("guide/card");
+        expect(lora).toContain("校园卡办理、挂失与充值指南");
+        expect(lora).not.toContain("secret");
+      } finally {
+        teardown();
+      }
+    });
+
     it("输出 index.lora，path/title 无前缀，可选字段仅在有值时输出，记录间空行分隔", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "lora");
+        generateKnowledgeIndex("./pages", "./dist", { format: "lora" });
 
         const lora = readFileSync(path.join(testDir, "dist/index.lora"), { encoding: "utf-8" });
 
@@ -155,7 +208,7 @@ describe("knowledge 索引生成", () => {
             "keywords: [办卡, 挂失, 充值]",
             "campus: 本部校区",
             "",
-            "guide/README",
+            "guide/index",
             // 无 summary：输出 title 行
             "东师指南",
             "",
@@ -163,7 +216,11 @@ describe("knowledge 索引生成", () => {
             // 有 summary：summary 取代 title 行
             "第一行内容 第二行内容",
             "",
-            "newcomer/README",
+            "guide/notice",
+            // 无 summary：输出 title 行
+            "通知",
+            "",
+            "newcomer/index",
             "新生专题",
             "",
             "other/about",
@@ -185,7 +242,7 @@ describe("knowledge 索引生成", () => {
     it("aiIgnore 页面不出现在 lora 中", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "lora");
+        generateKnowledgeIndex("./pages", "./dist", { format: "lora" });
 
         const lora = readFileSync(path.join(testDir, "dist/index.lora"), { encoding: "utf-8" });
 
@@ -200,7 +257,7 @@ describe("knowledge 索引生成", () => {
     it("缺省不排序，保持文件列表原始顺序（仅按优先级分组）", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "json");
+        generateKnowledgeIndex("./pages", "./dist", { format: "json" });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -210,8 +267,8 @@ describe("knowledge 索引生成", () => {
 
         // 不传 sorter：按文件创建顺序（guide → newcomer → other），仅低优先级排最后
         expect(paths[0]).toBe("guide/card");
-        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("newcomer/README"));
-        expect(paths.indexOf("newcomer/README")).toBeLessThan(paths.indexOf("other/about"));
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("newcomer/index"));
+        expect(paths.indexOf("newcomer/index")).toBeLessThan(paths.indexOf("other/about"));
         // 低优先级最后
         expect(paths[paths.length - 1]).toBe("apartment/office");
       } finally {
@@ -222,13 +279,10 @@ describe("knowledge 索引生成", () => {
     it("传入路径数组时按一级目录排序，未列出的目录排最后", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "json", [
-          "newcomer",
-          "guide",
-          "school",
-          "intro",
-          "apartment",
-        ]);
+        generateKnowledgeIndex("./pages", "./dist", {
+          format: "json",
+          sorter: ["newcomer", "guide", "school", "intro", "apartment"],
+        });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -237,7 +291,7 @@ describe("knowledge 索引生成", () => {
         const paths = json.map((item) => item.path as string);
 
         // 高优先级：newcomer 在 guide 前，other（未列出）在最后
-        expect(paths.indexOf("newcomer/README")).toBeLessThan(paths.indexOf("guide/card"));
+        expect(paths.indexOf("newcomer/index")).toBeLessThan(paths.indexOf("guide/card"));
         expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("other/about"));
         // 低优先级最后
         expect(paths[paths.length - 1]).toBe("apartment/office");
@@ -249,7 +303,7 @@ describe("knowledge 索引生成", () => {
     it("自定义 order 生效", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "json", ["guide", "other"]);
+        generateKnowledgeIndex("./pages", "./dist", { format: "json", sorter: ["guide", "other"] });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -259,7 +313,7 @@ describe("knowledge 索引生成", () => {
 
         // 高优先级内：guide（order 中）在 other（order 中）前，newcomer（order 外）排最后
         expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("other/about"));
-        expect(paths.indexOf("other/about")).toBeLessThan(paths.indexOf("newcomer/README"));
+        expect(paths.indexOf("other/about")).toBeLessThan(paths.indexOf("newcomer/index"));
         // 低优先级（apartment/office）始终在最后
         expect(paths[paths.length - 1]).toBe("apartment/office");
       } finally {
@@ -270,7 +324,7 @@ describe("knowledge 索引生成", () => {
     it("同目录内保持原有顺序（稳定排序）", () => {
       setup();
       try {
-        generateKnowledgeIndex("./pages", "./dist", "json");
+        generateKnowledgeIndex("./pages", "./dist", { format: "json" });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -278,9 +332,9 @@ describe("knowledge 索引生成", () => {
 
         const paths = json.map((item) => item.path as string);
 
-        // guide 目录内按文件列表顺序：card → README → multi
-        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("guide/README"));
-        expect(paths.indexOf("guide/README")).toBeLessThan(paths.indexOf("guide/multi"));
+        // guide 目录内按文件列表顺序：card → index → multi
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("guide/index"));
+        expect(paths.indexOf("guide/index")).toBeLessThan(paths.indexOf("guide/multi"));
       } finally {
         teardown();
       }
@@ -302,7 +356,7 @@ describe("knowledge 索引生成", () => {
           ].join("\n"),
         );
 
-        generateKnowledgeIndex("./pages", "./dist", "json");
+        generateKnowledgeIndex("./pages", "./dist", { format: "json" });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -312,7 +366,7 @@ describe("knowledge 索引生成", () => {
 
         // priority: 10 排最前（高于默认 0 的所有项）
         expect(paths[0]).toBe("newcomer/top");
-        expect(json[0]).toStrictEqual({ path: "newcomer/top", title: "置顶页", priority: 10 });
+        expect(json[0]).toStrictEqual({ path: "newcomer/top", info: "置顶页", priority: 10 });
         // 其余 priority 0 项保持原始顺序（guide/card 最先创建）
         expect(paths[1]).toBe("guide/card");
         // 负数（apartment/office）仍在最后
@@ -342,15 +396,18 @@ describe("knowledge 索引生成", () => {
         );
 
         // 把 newcomer/tip 与 school/international 排在 apartment 之后（降权）
-        generateKnowledgeIndex("./pages", "./dist", "json", [
-          "newcomer",
-          "guide",
-          "school",
-          "intro",
-          "apartment",
-          "newcomer/tip",
-          "school/international",
-        ]);
+        generateKnowledgeIndex("./pages", "./dist", {
+          format: "json",
+          sorter: [
+            "newcomer",
+            "guide",
+            "school",
+            "intro",
+            "apartment",
+            "newcomer/tip",
+            "school/international",
+          ],
+        });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -359,12 +416,12 @@ describe("knowledge 索引生成", () => {
         const paths = json.map((item) => item.path as string);
 
         // newcomer 下普通页面匹配 newcomer（靠前）
-        expect(paths.indexOf("newcomer/README")).toBeLessThan(paths.indexOf("guide/card"));
+        expect(paths.indexOf("newcomer/index")).toBeLessThan(paths.indexOf("guide/card"));
         // school 普通页匹配 school（位置 2），newcomer/tip 匹配 newcomer/tip（位置 5）→ school 在 tip 前
         expect(paths.indexOf("school/math")).toBeLessThan(paths.indexOf("newcomer/tip/digital"));
         // newcomer/tip（位置 5）在 school/international（位置 6）前
         expect(paths.indexOf("newcomer/tip/digital")).toBeLessThan(
-          paths.indexOf("school/international/README"),
+          paths.indexOf("school/international/index"),
         );
         // 低优先级（apartment/office 是 -1）始终在最后
         expect(paths[paths.length - 1]).toBe("apartment/office");
@@ -380,7 +437,7 @@ describe("knowledge 索引生成", () => {
         const sorter = (a: { path: string }, b: { path: string }): number =>
           Number(a.path.startsWith("newcomer")) - Number(b.path.startsWith("newcomer"));
 
-        generateKnowledgeIndex("./pages", "./dist", "json", sorter);
+        generateKnowledgeIndex("./pages", "./dist", { format: "json", sorter });
 
         const json = JSON.parse(
           readFileSync(path.join(testDir, "dist/index.json"), { encoding: "utf-8" }),
@@ -389,7 +446,50 @@ describe("knowledge 索引生成", () => {
         const paths = json.map((item) => item.path as string);
 
         // guide 在 newcomer 前（自定义 sorter 让 newcomer 排后）
-        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("newcomer/README"));
+        expect(paths.indexOf("guide/card")).toBeLessThan(paths.indexOf("newcomer/index"));
+      } finally {
+        teardown();
+      }
+    });
+  });
+
+  describe("urlConverter", () => {
+    it("generateKnowledgeContent 转换 list 中带 url 的项，null 返回时丢弃该项", () => {
+      setup();
+      try {
+        generateKnowledgeContent("./pages", "./dist", { urlConverter: testUrlConverter });
+
+        const content = readFileSync(path.join(testDir, "dist/guide/notice.md"), {
+          encoding: "utf-8",
+        });
+
+        // 可转换链接：输出小程序优先格式
+        expect(content).toContain(
+          "- 可转换链接（小程序：`notice-detail?url=info/1031/255432.htm&title=公告`，[网页版](https://m-443.webvpn.nenu.edu.cn/1031/255432.htm)）",
+        );
+        // 被丢弃链接（999999）：不输出
+        expect(content).not.toContain("999999");
+        // 无 url 项：保持原格式输出
+        expect(content).toContain("- 无链接项 - 说明文字");
+      } finally {
+        teardown();
+      }
+    });
+
+    it("不传 urlConverter 时带 url 的 list 项被丢弃，无 url 项保留", () => {
+      setup();
+      try {
+        generateKnowledgeContent("./pages", "./dist");
+
+        const content = readFileSync(path.join(testDir, "dist/guide/notice.md"), {
+          encoding: "utf-8",
+        });
+
+        // 无 urlConverter：带 url 的项无法转换，被丢弃
+        expect(content).not.toContain("可转换链接");
+        expect(content).not.toContain("被丢弃链接");
+        // 无 url 项：保留原样输出
+        expect(content).toContain("- 无链接项 - 说明文字");
       } finally {
         teardown();
       }
