@@ -2,6 +2,7 @@
 
 exports[`getFileList > should return a list of files in the specified directory 1`] = `
 [
+  "component-schema.ts",
   "config.ts",
   "index.ts",
   "knowledge.ts",
