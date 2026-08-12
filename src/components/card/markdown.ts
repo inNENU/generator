@@ -1,8 +1,12 @@
+import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
 
-export const getCardMarkdown = (card: CardComponentOptions, location = ""): string => {
+export const getCardMarkdown = (
+  card: CardComponentOptions,
+  { location = "", urlHandler = () => null }: MarkdownOptions = {},
+): string => {
   if (card.env && !card.env.includes("web")) return "";
 
   checkCard(card, location);
@@ -69,6 +73,21 @@ ${cardContent}
 </RouteLink>
 
 `;
+  } else if ("url" in card && card.url) {
+    const resolvedUrl = urlHandler(card.url);
+
+    if (resolvedUrl == null) return "";
+
+    return resolvedUrl.startsWith("/")
+      ? `\
+<RouteLink class="innenu-card" to="${escapeHtml(resolvedUrl)}">
+${cardContent}
+</RouteLink>
+
+`
+      : `<a class="innenu-card" href="${escapeHtml(resolvedUrl)}" target="_blank">
+${cardContent}
+</a>`;
   }
 
   return "";

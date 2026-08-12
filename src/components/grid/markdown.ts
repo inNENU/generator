@@ -1,8 +1,12 @@
+import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
 import type { GridComponentOptions } from "./schema.js";
 import { checkGrid } from "./schema.js";
 
-export const getGridMarkdown = (grid: GridComponentOptions, location = ""): string => {
+export const getGridMarkdown = (
+  grid: GridComponentOptions,
+  { location = "", urlHandler = () => null }: MarkdownOptions = {},
+): string => {
   if (grid.env && !grid.env.includes("web")) return "";
 
   checkGrid(grid, location);
@@ -64,6 +68,20 @@ ${gridItemContent}
       return `<RouteLink class="innenu-grid-item" to="${escapeHtml(getHTMLPath(item.path))}">
 ${gridItemContent}
 </RouteLink>`;
+    }
+
+    if ("url" in item && item.url) {
+      const resolvedUrl = urlHandler(item.url);
+
+      if (resolvedUrl == null) return "";
+
+      return resolvedUrl.startsWith("/")
+        ? `<RouteLink class="innenu-grid-item" to="${escapeHtml(resolvedUrl)}">
+${gridItemContent}
+</RouteLink>`
+        : `<a class="innenu-grid-item" href="${escapeHtml(resolvedUrl)}" target="_blank">
+${gridItemContent}
+</a>`;
     }
 
     return `\

@@ -1,10 +1,11 @@
+import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { checkFunctionalList, checkList } from "./schema.js";
 
 export const getListMarkdown = (
   list: ListComponentOptions | FunctionalListComponentOptions,
-  location = "",
+  { location = "", urlHandler = () => null }: MarkdownOptions = {},
 ): string => {
   if (list.tag === "list") checkList(list, location);
   else checkFunctionalList(list, location);
@@ -78,6 +79,20 @@ ${listItemContent}
       return `<RouteLink class="innenu-list-item" to="${escapeHtml(getHTMLPath(item.path))}">
 ${listItemContent}
 </RouteLink>`;
+    }
+
+    if ("url" in item && item.url && !("type" in item)) {
+      const resolvedUrl = urlHandler(item.url);
+
+      if (resolvedUrl == null) return "";
+
+      return resolvedUrl.startsWith("/")
+        ? `<RouteLink class="innenu-list-item" to="${escapeHtml(resolvedUrl)}">
+${listItemContent}
+</RouteLink>`
+        : `<a class="innenu-list-item" href="${escapeHtml(resolvedUrl)}" target="_blank">
+${listItemContent}
+</a>`;
     }
 
     return `\

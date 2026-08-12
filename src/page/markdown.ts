@@ -14,6 +14,7 @@ import { getTextMarkdown } from "../components/text/markdown.js";
 import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
 import { getYamlValue } from "../helpers/index.js";
+import type { MarkdownOptions, UrlHandler } from "../typings.js";
 import { getIconLink } from "../utils.js";
 import type { PageConfig } from "./schema.js";
 
@@ -21,10 +22,12 @@ import type { PageConfig } from "./schema.js";
  * 生成页面 Markdown
  *
  * @param page 页面数据
- * @param location 页面位置
+ * @param options 生成选项
  * @returns Markdown 内容
  */
-export const getPageMarkdown = (page: PageConfig, location = ""): string => {
+export const getPageMarkdown = (page: PageConfig, options: MarkdownOptions = {}): string => {
+  const { location = "", urlHandler = (): ReturnType<UrlHandler> => null } = options;
+
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
   if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
@@ -102,15 +105,17 @@ isOriginal: true
           content += getTextMarkdown(component, componentLocation);
         // 设置列表组件
         else if (tag === "list" || tag === "functional-list")
-          content += getListMarkdown(component, componentLocation);
+          content += getListMarkdown(component, { location: componentLocation, urlHandler });
         // 设置网格组件
-        else if (tag === "grid") content += getGridMarkdown(component, componentLocation);
+        else if (tag === "grid")
+          content += getGridMarkdown(component, { location: componentLocation, urlHandler });
         // 检测文档
         else if (tag === "doc") content += getDocMarkdown(component, componentLocation);
         // 设置电话
         else if (tag === "phone") content += getPhoneMarkdown(component, componentLocation);
         // 检测音频
-        else if (tag === "card") content += getCardMarkdown(component, componentLocation);
+        else if (tag === "card")
+          content += getCardMarkdown(component, { location: componentLocation, urlHandler });
         // 检测音频
         else if (tag === "audio") content += getAudioMarkdown(component, componentLocation);
         // 检测视频
