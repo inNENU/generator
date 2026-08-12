@@ -5,6 +5,7 @@ import { getTableMarkdown } from "../components/table/markdown.js";
 import { generatorConfig } from "../config.js";
 import type { PageConfig } from "../typings.js";
 import { getFileLink } from "../utils.js";
+import { checkPageConfig, checkPageContent } from "./schema.js";
 
 /**
  * URL 转换器：将页面组件中的链接（如 `notice-detail?url=...`）转换为知识库可读形式。
@@ -42,6 +43,9 @@ export const getPageText = (
     if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
     if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
+
+    checkPageConfig(page, pagePath);
+    checkPageContent(page.content, pagePath, pagePath);
 
     const { title, desc, content } = page;
 

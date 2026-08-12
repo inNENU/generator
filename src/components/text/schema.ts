@@ -12,6 +12,7 @@ import {
   styleSchema,
   urlSchema,
 } from "../../schema/common.js";
+import { checkPagePath } from "../../utils.js";
 
 const baseTextComponentSchema = zod.strictObject({
   /** 文字标签 */
@@ -158,9 +159,13 @@ export interface TextComponentData extends Omit<TextComponentOptions, "style" | 
   style?: string;
 }
 
-export const checkText = (text: TextComponentOptions, location = ""): void => {
+export const checkText = (text: TextComponentOptions, location = "", pageId = ""): void => {
   const result = textComponentSchema.safeParse(text);
 
   if (!result.success)
     console.error(`${location} 发现非法 text 数据:`, zod.prettifyError(result.error));
+
+  // 检查跳转路径是否存在（排除小程序路径）
+  if (pageId && "path" in text && text.path && !("appId" in text))
+    checkPagePath(text.path, pageId, location);
 };

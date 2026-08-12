@@ -13,6 +13,7 @@ import {
   pathSchema,
   urlSchema,
 } from "../../schema/common.js";
+import { checkPagePath } from "../../utils.js";
 
 const baseCardSchema = zod.strictObject({
   tag: zod.literal("card"),
@@ -124,9 +125,12 @@ export type CardComponentOptions =
   | ArticleCardComponentOptions
   | VideoCardComponentOptions;
 
-export const checkCard = (card: CardComponentOptions, location = ""): void => {
+export const checkCard = (card: CardComponentOptions, location = "", pageId = ""): void => {
   const result = cardSchema.safeParse(card);
 
   if (!result.success)
     console.error(`${location} 发现非法 card 数据:`, zod.prettifyError(result.error));
+
+  // 检查跳转路径是否存在（排除小程序路径）
+  if (pageId && "path" in card && !("appId" in card)) checkPagePath(card.path, pageId, location);
 };

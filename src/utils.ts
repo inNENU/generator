@@ -137,6 +137,37 @@ export const resolvePath = (filePath: string): string =>
     .replaceAll(path.sep, "/");
 
 /**
+ * 解析页面跳转路径
+ *
+ * @param targetPath 跳转路径
+ * @param pageId 当前页面 ID
+ * @returns 解析后的路径
+ */
+export const resolvePagePath = (targetPath: string, pageId: string): string => {
+  if (targetPath.startsWith("/")) return resolvePath(targetPath);
+
+  const paths = pageId.split("/");
+
+  paths.pop();
+
+  return resolvePath(`${paths.join("/")}/${targetPath}`);
+};
+
+/**
+ * 检查页面跳转路径是否存在
+ *
+ * @param targetPath 跳转路径
+ * @param pageId 当前页面 ID
+ * @param location 路径所在位置
+ */
+export const checkPagePath = (targetPath: string, pageId: string, location = ""): void => {
+  const resolvedPath = resolvePagePath(targetPath, pageId);
+
+  if (!existsSync(`./pages/${resolvedPath}.yml`))
+    console.error(`路径 ${resolvedPath} 在 ${location} 中不存在`);
+};
+
+/**
  * 获取资源图标链接
  *
  * @param name 图标名称

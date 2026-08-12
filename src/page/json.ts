@@ -34,10 +34,10 @@ import { checkPageConfig, checkPageContent } from "./schema.js";
 export const getPageContent = (
   content: ComponentOptions[],
   pagePath: string,
-  { id = pagePath, check = false }: { id?: string; check?: boolean } = {},
+  { id = pagePath, check = true }: { id?: string; check?: boolean } = {},
 ): ComponentOptions[] => {
   try {
-    if (check) checkPageContent(content, pagePath);
+    if (check) checkPageContent(content, pagePath, id);
 
     return content.map((element, index) => {
       const { tag } = element;
@@ -62,7 +62,7 @@ export const getPageContent = (
 
         case "list":
         case "functional-list": {
-          return getListJSON(element, id, position);
+          return getListJSON(element, id);
         }
 
         case "doc": {
@@ -70,7 +70,7 @@ export const getPageContent = (
         }
 
         case "grid": {
-          return getGridJSON(element, id, position);
+          return getGridJSON(element, id);
         }
 
         case "footer": {
@@ -90,7 +90,7 @@ export const getPageContent = (
         }
 
         case "card": {
-          return getCardJSON(element, id, position);
+          return getCardJSON(element, id);
         }
 
         case "action": {
@@ -131,7 +131,7 @@ export interface GetPageJSONOptions extends CheckPageConfigOptions {
   /**
    * 是否检查页面内容
    *
-   * @default false
+   * @default true
    */
   check?: boolean;
   /** 需要移除的字段 */
@@ -154,7 +154,9 @@ export const getPageJSON = (
   diffFiles: string[] = [],
   options: GetPageJSONOptions = {},
 ): PageData => {
-  if (options.check) checkPageConfig(page, pagePath, options);
+  const { check = true } = options;
+
+  if (check) checkPageConfig(page, pagePath, options);
 
   try {
     if (!page) throw new Error(`${pagePath} 不存在内容`);
@@ -169,7 +171,7 @@ export const getPageJSON = (
       id,
       ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
       cite: typeof cite === "string" ? [cite] : (cite ?? []),
-      content: getPageContent(content, pagePath, { id, check: options.check }),
+      content: getPageContent(content, pagePath, { id, check }),
     };
 
     if (!pageData.cite?.length) delete pageData.cite;

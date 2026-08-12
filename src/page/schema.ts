@@ -6,6 +6,11 @@ import {
   audioSchema,
   cardSchema,
   carouselSchema,
+  checkCard,
+  checkFunctionalList,
+  checkGrid,
+  checkList,
+  checkText,
   docSchema,
   footerSchema,
   functionalListSchema,
@@ -58,12 +63,34 @@ export const pageContentSchema = zod.array(componentSchema).min(1, "页面内容
  *
  * @param content 页面内容
  * @param location 内容所在位置
+ * @param pageId 当前页面 ID
  */
-export const checkPageContent = (content: ComponentOptions[], location: string): void => {
+export const checkPageContent = (
+  content: ComponentOptions[],
+  location: string,
+  pageId = "",
+): void => {
   const result = pageContentSchema.safeParse(content);
 
   if (!result.success)
     console.error(`${location} 发现非法页面内容:`, zod.prettifyError(result.error));
+
+  content.forEach((component, index) => {
+    const componentLocation = `${location} page.content[${index}]`;
+
+    if (component.tag === "grid") checkGrid(component, componentLocation, pageId);
+    else if (component.tag === "list") checkList(component, componentLocation, pageId);
+    else if (component.tag === "functional-list")
+      checkFunctionalList(component, componentLocation, pageId);
+    else if (component.tag === "card") checkCard(component, componentLocation, pageId);
+    else if (
+      component.tag === "text" ||
+      component.tag === "p" ||
+      component.tag === "ol" ||
+      component.tag === "ul"
+    )
+      checkText(component, componentLocation, pageId);
+  });
 };
 
 export const pageTitleSchema = zod
