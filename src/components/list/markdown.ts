@@ -5,7 +5,7 @@ import { checkFunctionalList, checkList } from "./schema.js";
 
 export const getListMarkdown = (
   list: ListComponentOptions | FunctionalListComponentOptions,
-  { location = "", urlHandler = () => null }: MarkdownOptions = {},
+  { location = "", urlConverter = () => null }: MarkdownOptions = {},
 ): string => {
   if (list.tag === "list") checkList(list, location);
   else checkFunctionalList(list, location);
@@ -82,7 +82,7 @@ ${listItemContent}
     }
 
     if ("url" in item && item.url && !("type" in item)) {
-      const resolvedUrl = urlHandler(item.url);
+      const resolvedUrl = urlConverter(item.url);
 
       if (resolvedUrl == null) return "";
 

@@ -5,7 +5,7 @@ import { checkGrid } from "./schema.js";
 
 export const getGridMarkdown = (
   grid: GridComponentOptions,
-  { location = "", urlHandler = () => null }: MarkdownOptions = {},
+  { location = "", urlConverter = () => null }: MarkdownOptions = {},
 ): string => {
   if (grid.env && !grid.env.includes("web")) return "";
 
@@ -71,7 +71,7 @@ ${gridItemContent}
     }
 
     if ("url" in item && item.url) {
-      const resolvedUrl = urlHandler(item.url);
+      const resolvedUrl = urlConverter(item.url);
 
       if (resolvedUrl == null) return "";
 

@@ -5,8 +5,8 @@ export type UrlHandler = (url: string) => string | null | undefined;
 export interface MarkdownOptions {
   /** 内容位置 */
   location?: string;
-  /** URL 处理器 */
-  urlHandler?: UrlHandler;
+  /** URL 转换器（见 `UrlHandler`） */
+  urlConverter?: UrlHandler;
 }
 
 export type * from "./components/schema.js";

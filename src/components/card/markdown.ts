@@ -5,7 +5,7 @@ import { checkCard } from "./schema.js";
 
 export const getCardMarkdown = (
   card: CardComponentOptions,
-  { location = "", urlHandler = () => null }: MarkdownOptions = {},
+  { location = "", urlConverter = () => null }: MarkdownOptions = {},
 ): string => {
   if (card.env && !card.env.includes("web")) return "";
 
@@ -74,7 +74,7 @@ ${cardContent}
 
 `;
   } else if ("url" in card && card.url) {
-    const resolvedUrl = urlHandler(card.url);
+    const resolvedUrl = urlConverter(card.url);
 
     if (resolvedUrl == null) return "";
 

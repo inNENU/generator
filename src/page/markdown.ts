@@ -26,7 +26,7 @@ import type { PageConfig } from "./schema.js";
  * @returns Markdown 内容
  */
 export const getPageMarkdown = (page: PageConfig, options: MarkdownOptions = {}): string => {
-  const { location = "", urlHandler = (): ReturnType<UrlHandler> => null } = options;
+  const { location = "", urlConverter = (): ReturnType<UrlHandler> => null } = options;
 
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
@@ -105,17 +105,17 @@ isOriginal: true
           content += getTextMarkdown(component, componentLocation);
         // 设置列表组件
         else if (tag === "list" || tag === "functional-list")
-          content += getListMarkdown(component, { location: componentLocation, urlHandler });
+          content += getListMarkdown(component, { location: componentLocation, urlConverter });
         // 设置网格组件
         else if (tag === "grid")
-          content += getGridMarkdown(component, { location: componentLocation, urlHandler });
+          content += getGridMarkdown(component, { location: componentLocation, urlConverter });
         // 检测文档
         else if (tag === "doc") content += getDocMarkdown(component, componentLocation);
         // 设置电话
         else if (tag === "phone") content += getPhoneMarkdown(component, componentLocation);
         // 检测音频
         else if (tag === "card")
-          content += getCardMarkdown(component, { location: componentLocation, urlHandler });
+          content += getCardMarkdown(component, { location: componentLocation, urlConverter });
         // 检测音频
         else if (tag === "audio") content += getAudioMarkdown(component, componentLocation);
         // 检测视频
