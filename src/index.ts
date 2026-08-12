@@ -1,3 +1,4 @@
+export * from "./components/schema.js";
 export * from "./config.js";
 export * from "./generator/index.js";
 export * from "./helpers/index.js";
