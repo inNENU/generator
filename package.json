@@ -24,6 +24,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./schema": {
+      "types": "./dist/component-schema.d.ts",
+      "default": "./dist/component-schema.js"
+    },
     "./typings": {
       "types": "./dist/typings.d.ts"
     }
