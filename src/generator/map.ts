@@ -24,7 +24,10 @@ import { checkMapPageConfig, checkMarkerConfig } from "../schema/index.js";
 export const getMapPageJSON = (data: MapPageConfig, filePath: string): MapPageData => {
   checkMapPageConfig(data, filePath);
 
-  return getPageJSON(data, filePath);
+  // checkMapPageConfig 已使用含 photo 字段的 mapPageConfigSchema 校验过配置，
+  // 因此跳过 getPageJSON 内部用不含 photo 的 pageConfigSchema 的重复校验（check: false），
+  // 但仍保留 checkPageContent 组件级校验（含 list/grid 路径存在性检查）
+  return getPageJSON(data, filePath, [], { check: false, checkContent: true });
 };
 
 /**
