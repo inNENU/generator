@@ -18,7 +18,11 @@ export const getListJSON = (
   // 处理功能列表项的路径
   else if (Array.isArray(list.items)) {
     list.items.forEach((listItem) => {
-      if ("type" in listItem && listItem.type === "navigator") listItem.openType ??= "navigate";
+      if ("type" in listItem && listItem.type === "navigator") {
+        listItem.openType ??= "navigate";
+        // 存在 appId 时默认为跳转其他小程序
+        if ("appId" in listItem) listItem.target ??= "miniProgram";
+      }
 
       // 处理路径（仅对 navigator 类型或基础类型的列表项）
       if ("path" in listItem && listItem.path && !("appId" in listItem))

@@ -139,6 +139,21 @@ const navigatorListItemSchema = zod.strictObject({
       description: "跳转到的 url",
     })
     .optional(),
+  /** 要打开的小程序 appId（target 为 miniProgram 时有效） */
+  appId: zod
+    .string()
+    .min(1, "小程序 appId 不能为空")
+    .meta({
+      description: "要打开的小程序 appId",
+    })
+    .optional(),
+  /** 打开的页面路径（target 为 miniProgram 时有效） */
+  path: zod
+    .string()
+    .meta({
+      description: "打开的页面路径",
+    })
+    .optional(),
 });
 
 const switchListItemSchema = zod.strictObject({
