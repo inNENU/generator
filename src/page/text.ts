@@ -201,18 +201,24 @@ ${header ? `#### ${header}位置\n\n` : ""}\
 
       case "img": {
         const { src, desc: imgDesc } = component;
-        const imgLink = getFileLink(src);
+        const imgLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
         return `![${imgDesc ?? ""}](${imgLink})\n\n`;
       }
 
       case "carousel": {
-        return `${component.images.map((link) => `![''](${getFileLink(link)})\n\n`).join("\n")}\n\n`;
+        return `${component.images
+          .map((link) => {
+            const imgLink = mode === "miniapp" ? link : (getFileLink(link) ?? "");
+
+            return `![''](${imgLink})\n\n`;
+          })
+          .join("\n")}\n\n`;
       }
 
       case "doc": {
         const { name, url } = component;
-        const docUrl = getFileLink(url);
+        const docUrl = mode === "miniapp" ? url : (getFileLink(url) ?? url);
         // oxlint-disable-next-line typescript/no-non-null-assertion
         const docName = `${name}.${url.split(".").pop()!}`;
 
@@ -275,7 +281,7 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
         const { name, detail, desc: accountDesc, logo, qq, wxid, site, mail } = component;
 
         return `\
-${logo ? `![${name}](${getFileLink(logo)})\n\n` : ""}\
+${logo ? `![${name}](${mode === "miniapp" ? logo : (getFileLink(logo) ?? "")})\n\n` : ""}\
 ${name ? `- 名称: ${name}\n` : ""}\
 ${detail ? `- 详情: ${detail}\n` : ""}\
 ${accountDesc ? `- 描述: ${accountDesc}\n` : ""}\
@@ -289,14 +295,14 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
 
       case "audio": {
         const { src, name } = component;
-        const audioLink = getFileLink(src);
+        const audioLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
         return `[音频${name ? `: ${name}` : ""}](${audioLink})\n\n`;
       }
 
       case "video": {
         const { src, title: videoTitle } = component;
-        const videoLink = getFileLink(src);
+        const videoLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
         return `[视频${videoTitle ? `: ${videoTitle}` : ""}](${videoLink})\n\n`;
       }
