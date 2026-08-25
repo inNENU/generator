@@ -24,6 +24,8 @@ export type UrlConverter = (url: string) => UrlConverterResult | null | undefine
 export interface GetPageTextOptions {
   /** URL 转换器（见 `UrlConverter`） */
   urlConverter?: UrlConverter;
+  /** 渲染模式：`web`（默认，纯标准 markdown）| `miniapp`（结构增强 markdown） */
+  mode?: "web" | "miniapp";
 }
 
 /**
@@ -48,6 +50,8 @@ export const getPageText = (
     checkPageContent(page.content, pagePath, pagePath);
 
     const { title, desc, content } = page;
+
+    const mode = options.mode ?? "web";
 
     // 不输出 cite：AI 无网络搜索能力，来源只能是小程序页面，不引用外部网址
 
@@ -75,6 +79,17 @@ ${content
             ? [component.text]
             : [];
 
+        if (
+          mode === "miniapp" &&
+          "type" in component &&
+          component.type &&
+          component.type !== "none"
+        ) {
+          const typeName = component.type === "danger" ? "caution" : component.type;
+
+          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.join("\n\n")}\n\n:::\n\n`;
+        }
+
         const textContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}`;
 
         return textContent ? `${textContent}\n\n` : "";
@@ -87,6 +102,17 @@ ${content
             ? [component.text]
             : [];
 
+        if (
+          mode === "miniapp" &&
+          "type" in component &&
+          component.type &&
+          component.type !== "none"
+        ) {
+          const typeName = component.type === "danger" ? "caution" : component.type;
+
+          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.map((item) => `- ${item}`).join("\n\n")}\n\n:::\n\n`;
+        }
+
         const ulContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}`;
 
         return ulContent ? `${ulContent}\n\n` : "";
@@ -98,6 +124,17 @@ ${content
           : component.text
             ? [component.text]
             : [];
+
+        if (
+          mode === "miniapp" &&
+          "type" in component &&
+          component.type &&
+          component.type !== "none"
+        ) {
+          const typeName = component.type === "danger" ? "caution" : component.type;
+
+          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.map((item) => `1. ${item}`).join("\n\n")}\n\n:::\n\n`;
+        }
 
         const olContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}`;
 
@@ -116,10 +153,25 @@ ${content
 
               if (!converted) return null;
 
+              if (mode === "miniapp") {
+                const icon = "icon" in item && item.icon ? `（icon: ${item.icon}）` : "";
+
+                return `- ${item.text}${icon}（小程序：\`${converted.miniapp}\`）`;
+              }
+
               return `- ${item.text}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
             }
 
-            return `- ${item.text}${"desc" in item && item.desc ? ` - ${item.desc}` : ""}`;
+            const itemDesc = "desc" in item && item.desc ? ` - ${item.desc}` : "";
+
+            if (mode === "miniapp") {
+              const icon = "icon" in item && item.icon ? `（icon: ${item.icon}）` : "";
+              const path = "path" in item && item.path ? `（path: ${item.path}）` : "";
+
+              return `- ${item.text}${itemDesc}${icon}${path}`;
+            }
+
+            return `- ${item.text}${itemDesc}`;
           })
           .filter((item): item is string => item != null)
           .join("\n");
@@ -213,7 +265,10 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
       }
 
       case "action": {
-        return getActionMarkdown(component, componentLocation);
+        return getActionMarkdown(component, componentLocation, {
+          mode,
+          urlConverter: options.urlConverter,
+        });
       }
 
       case "account": {

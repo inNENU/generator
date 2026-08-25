@@ -14,6 +14,12 @@ export interface KnowledgeContentOptions {
    * `undefined` 时该链接（及其所在条目）被丢弃。
    */
   urlConverter?: UrlConverter;
+  /**
+   * 渲染模式： - `web`（默认）：纯标准 markdown，由 Dify 等直接渲染，不带自定义容器/标记； - `miniapp`：结构增强 markdown，保留
+   * `action`（`::: action` 容器）、`text`/`p` 的 `type`（`::: tip` 等容器）、 `list`/`grid` 项的 `icon`/`path`
+   * 特征，便于 AI 还原成小程序组件 JSON。
+   */
+  mode?: "web" | "miniapp";
 }
 
 /**
