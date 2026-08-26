@@ -184,6 +184,40 @@ ${footer ? `> ${footer}\n\n` : ""}\
 `;
       }
 
+      case "card": {
+        const { title: cardTitle, desc: cardDesc, logo } = component;
+
+        // 卡片当作列表项渲染：title→text、desc→desc、logo→icon（name/cover 等其他字段丢弃）
+        // url 卡片：与列表项一致，交给 urlConverter 转换（返回 null/undefined 时丢弃）
+        if ("url" in component) {
+          const converted = options.urlConverter?.(component.url);
+
+          if (!converted) return null;
+
+          if (mode === "miniapp") {
+            const icon = logo ? `（icon: ${logo}）` : "";
+
+            return `- ${cardTitle}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
+          }
+
+          return `- ${cardTitle}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）\n\n`;
+        }
+
+        const itemDesc = cardDesc ? ` - ${cardDesc}` : "";
+
+        if (mode === "miniapp") {
+          const icon = logo ? `（icon: ${logo}）` : "";
+          const path = "path" in component && component.path ? `（path: ${component.path}）` : "";
+
+          return `- ${cardTitle}${itemDesc}${icon}${path}\n\n`;
+        }
+
+        // web：path 跳转（其他 markdown 页面）也保留
+        const path = "path" in component && component.path ? `（path: ${component.path}）` : "";
+
+        return `- ${cardTitle}${itemDesc}${path}\n\n`;
+      }
+
       case "location": {
         const { header, points } = component;
 

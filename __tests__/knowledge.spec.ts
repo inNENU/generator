@@ -533,6 +533,106 @@ describe("knowledge 索引生成", () => {
     });
   });
 
+  describe("card 组件", () => {
+    it("web 模式保留卡片（标题/描述/path），带 url 走 urlConverter", () => {
+      setup();
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/cards.yml"),
+          [
+            "title: 卡片",
+            "content:",
+            "  - tag: card",
+            "    title: 校园卡中心",
+            "    desc: 办理与挂失",
+            "    name: 财务处",
+            "    path: guide/card",
+            "  - tag: card",
+            "    title: 通知卡片",
+            "    url: notice-detail?url=info/1031/255432.htm",
+          ].join("\n"),
+        );
+
+        generateKnowledgeContent("./pages", "./dist", { urlConverter: testUrlConverter });
+
+        const content = readFileSync(path.join(testDir, "dist/guide/cards.md"), {
+          encoding: "utf-8",
+        });
+
+        // path 卡片：web 模式也保留 path（跳转到其他 markdown 页面）
+        expect(content).toContain("- 校园卡中心 - 办理与挂失（path: guide/card）");
+        // url 卡片：urlConverter 转换后输出小程序优先格式
+        expect(content).toContain(
+          "- 通知卡片（小程序：`notice-detail?url=info/1031/255432.htm`，[网页版](https://m-443.webvpn.nenu.edu.cn/1031/255432.htm)）",
+        );
+      } finally {
+        teardown();
+      }
+    });
+
+    it("带 url 的卡片无法转换时被丢弃", () => {
+      setup();
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/cards.yml"),
+          [
+            "title: 卡片",
+            "content:",
+            "  - tag: card",
+            "    title: 通知卡片",
+            "    url: notice-detail?url=info/1031/999999.htm",
+          ].join("\n"),
+        );
+
+        generateKnowledgeContent("./pages", "./dist", { urlConverter: testUrlConverter });
+
+        const content = readFileSync(path.join(testDir, "dist/guide/cards.md"), {
+          encoding: "utf-8",
+        });
+
+        expect(content).not.toContain("通知卡片");
+      } finally {
+        teardown();
+      }
+    });
+
+    it("miniapp 模式按列表项渲染（logo 对应 icon），不输出 name", () => {
+      setup();
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/cards.yml"),
+          [
+            "title: 卡片",
+            "content:",
+            "  - tag: card",
+            "    title: 校园卡中心",
+            "    desc: 办理与挂失",
+            "    name: 财务处",
+            "    logo: https://assets.innenu.com/logo.png",
+            "    path: guide/card",
+          ].join("\n"),
+        );
+
+        generateKnowledgeContent("./pages", "./dist", {
+          mode: "miniapp",
+          urlConverter: testUrlConverter,
+        });
+
+        const content = readFileSync(path.join(testDir, "dist/guide/cards.md"), {
+          encoding: "utf-8",
+        });
+
+        // 完全按列表项渲染：title→text、desc→desc、logo→icon、path 保留；name 被丢弃
+        expect(content).toContain(
+          "- 校园卡中心 - 办理与挂失（icon: https://assets.innenu.com/logo.png）（path: guide/card）",
+        );
+        expect(content).not.toContain("财务处");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
   describe("priorityGetter", () => {
     it("基于 info 重新计算优先级，返回 null/undefined 视为 0（不输出 priority）", () => {
       setup();
