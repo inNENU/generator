@@ -73,7 +73,7 @@ export const getLastChangedFiles = (before?: string, after?: string): ChangedFil
         break;
       }
       default: {
-        break;
+        throw new Error(`无法识别的文件变更状态 "${status}"（文件: ${filePath ?? "(未知)"}）`);
       }
     }
   });
