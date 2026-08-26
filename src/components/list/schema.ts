@@ -23,11 +23,11 @@ const baseListItemSchema = zod.strictObject({
       description: "列表图标的本地路径或在线网址",
     })
     .optional(),
-  /** 列表内容的描述 */
+  /** 列表内容的描述（显示上限 6 个汉字，超出会被截断显示省略号） */
   desc: zod
     .string()
     .meta({
-      description: "列表内容的描述",
+      description: "列表内容的描述（最多 6 个汉字，超出显示省略号）",
     })
     .optional(),
   /**
