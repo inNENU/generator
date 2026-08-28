@@ -12,10 +12,11 @@ import type { LyricData } from "./typings.js";
  *
  * @param data 音乐列表数据
  * @param location 数据所在位置
+ * @param check 是否进行完整性校验
  * @returns 音乐列表数据
  */
-export const getMusicListJSON = (data: MusicList, location: string): MusicList => {
-  checkMusicList(data, location);
+export const getMusicListJSON = (data: MusicList, location: string, check = true): MusicList => {
+  if (check) checkMusicList(data, location);
 
   return data;
 };

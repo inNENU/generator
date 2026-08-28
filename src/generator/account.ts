@@ -38,10 +38,11 @@ const decodeText = (text: string): string => {
  *
  * @param data QQ 账号数据
  * @param location 数据所在位置
+ * @param check 是否进行完整性校验
  * @returns QQ 账号数据
  */
-export const getQQAccountsJSON = (data: QQAccounts, location: string): QQAccounts => {
-  checkQQAccounts(data, location);
+export const getQQAccountsJSON = (data: QQAccounts, location: string, check = true): QQAccounts => {
+  if (check) checkQQAccounts(data, location);
 
   return data;
 };
@@ -51,10 +52,15 @@ export const getQQAccountsJSON = (data: QQAccounts, location: string): QQAccount
  *
  * @param data 微信公众号账号数据
  * @param location 数据所在位置
+ * @param check 是否进行完整性校验
  * @returns 微信公众号账号数据
  */
-export const getWechatAccountsJSON = (data: WechatAccounts, location: string): WechatAccounts => {
-  checkWechatAccounts(data, location);
+export const getWechatAccountsJSON = (
+  data: WechatAccounts,
+  location: string,
+  check = true,
+): WechatAccounts => {
+  if (check) checkWechatAccounts(data, location);
 
   return data;
 };
@@ -64,13 +70,15 @@ export const getWechatAccountsJSON = (data: WechatAccounts, location: string): W
  *
  * @param data 微信公众号账号详情数据
  * @param location 数据所在位置
+ * @param check 是否进行完整性校验
  * @returns 微信公众号账号详情数据
  */
 export const getWechatAccountDataJSON = (
   data: WechatAccountData,
   location: string,
+  check = true,
 ): WechatAccountData => {
-  checkWechatAccountData(data, location);
+  if (check) checkWechatAccountData(data, location);
 
   return data;
 };

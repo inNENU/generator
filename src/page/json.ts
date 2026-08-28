@@ -129,17 +129,13 @@ export const getPageContent = (
 
 export interface GetPageJSONOptions extends CheckPageConfigOptions {
   /**
-   * 是否检查页面配置（pageConfigSchema 校验）
+   * 是否进行完整性校验
+   *
+   * 为 true 时同时检查页面配置、内容组件及 `$img`/`$file` 资源可达性；为 false 时整体跳过，不检查任何内容。
    *
    * @default true
    */
   check?: boolean;
-  /**
-   * 是否检查页面内容（checkPageContent，含组件级路径存在性校验）
-   *
-   * @default 与 check 相同
-   */
-  checkContent?: boolean;
   /** 需要移除的字段 */
   removeFields?: string[];
 }
@@ -160,7 +156,7 @@ export const getPageJSON = (
   diffFiles: string[] = [],
   options: GetPageJSONOptions = {},
 ): PageData => {
-  const { check = true, checkContent = check } = options;
+  const { check = true } = options;
 
   if (check) checkPageConfig(page, pagePath, options);
 
@@ -177,7 +173,7 @@ export const getPageJSON = (
       id,
       ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
       cite: typeof cite === "string" ? [cite] : (cite ?? []),
-      content: getPageContent(content, pagePath, { id, check: checkContent }),
+      content: getPageContent(content, pagePath, { id, check }),
     };
 
     if (!pageData.cite?.length) delete pageData.cite;

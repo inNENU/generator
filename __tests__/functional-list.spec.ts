@@ -26,7 +26,7 @@ describe(getPageJSON, () => {
       ],
     } as unknown as PageConfig;
 
-    const result = getPageJSON(page, "guide/about", [], { checkContent: true });
+    const result = getPageJSON(page, "guide/about", [], { check: true });
 
     expect(errorSpy).not.toHaveBeenCalled();
 
@@ -69,7 +69,7 @@ describe(getPageJSON, () => {
       ],
     } as unknown as PageConfig;
 
-    getPageJSON(page, "guide/about", [], { checkContent: true });
+    getPageJSON(page, "guide/about", [], { check: true });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("发现非法"), expect.any(String));
 
