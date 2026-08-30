@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema } from "../../schema/common.js";
 
 export const actionSchema = zod
@@ -27,7 +28,7 @@ export const actionSchema = zod
 export type ActionComponentOptions = zod.infer<typeof actionSchema>;
 
 export const checkAction = (action: ActionComponentOptions, location = ""): void => {
-  const result = actionSchema.safeParse(action);
+  const result = useCompiled(actionSchema).safeParse(action);
 
   if (!result.success)
     console.error(`${location} 发现非法 action 数据:`, zod.prettifyError(result.error));

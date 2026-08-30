@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -122,7 +123,7 @@ export type GridComponentItemOptions =
 export type GridComponentOptions = zod.infer<typeof gridSchema>;
 
 export const checkGrid = (grid: GridComponentOptions, location = "", pageId = ""): void => {
-  const result = gridSchema.safeParse(grid);
+  const result = useCompiled(gridSchema).safeParse(grid);
 
   if (!result.success)
     console.error(`${location} 发现非法 grid 数据:`, zod.prettifyError(result.error));

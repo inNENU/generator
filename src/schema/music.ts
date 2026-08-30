@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../helpers/compile.js";
 import { fileSchema, imgSchema } from "./common.js";
 
 export const musicInfoSchema = zod
@@ -50,7 +51,7 @@ export type MusicList = zod.infer<typeof musicListSchema>;
  * @returns 音乐列表数据
  */
 export const checkMusicList = (data: MusicList, location: string): MusicList => {
-  const result = musicListSchema.safeParse(data);
+  const result = useCompiled(musicListSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法音乐数据:`, zod.prettifyError(result.error));

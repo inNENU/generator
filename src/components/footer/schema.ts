@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema } from "../../schema/common.js";
 
 export const footerSchema = zod
@@ -44,7 +45,7 @@ export const footerSchema = zod
 export type FooterComponentOptions = zod.infer<typeof footerSchema>;
 
 export const checkFooter = (footer: FooterComponentOptions, location = ""): void => {
-  const result = footerSchema.safeParse(footer);
+  const result = useCompiled(footerSchema).safeParse(footer);
 
   if (!result.success)
     console.error(`${location} 发现非法 footer 数据:`, zod.prettifyError(result.error));

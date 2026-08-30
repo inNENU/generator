@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -126,7 +127,7 @@ export type CardComponentOptions =
   | VideoCardComponentOptions;
 
 export const checkCard = (card: CardComponentOptions, location = "", pageId = ""): void => {
-  const result = cardSchema.safeParse(card);
+  const result = useCompiled(cardSchema).safeParse(card);
 
   if (!result.success)
     console.error(`${location} 发现非法 card 数据:`, zod.prettifyError(result.error));

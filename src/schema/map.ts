@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../helpers/compile.js";
 import { pageConfigSchema, pageDataSchema } from "../page/schema.js";
 import { imgSchema, locSchema } from "./common.js";
 
@@ -144,7 +145,7 @@ export type MarkersData = zod.infer<typeof markersDataSchema>;
  * @param location 配置所在位置
  */
 export const checkMapPageConfig = (config: MapPageConfig, location = ""): void => {
-  const result = mapPageConfigSchema.safeParse(config);
+  const result = useCompiled(mapPageConfigSchema).safeParse(config);
 
   if (!result.success)
     console.error(`${location} 发现非法地图页面配置:`, zod.prettifyError(result.error));
@@ -157,7 +158,7 @@ export const checkMapPageConfig = (config: MapPageConfig, location = ""): void =
  * @param location 数据所在位置
  */
 export const checkMapPageData = (data: MapPageData, location = ""): void => {
-  const result = mapPageDataSchema.safeParse(data);
+  const result = useCompiled(mapPageDataSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法地图页面数据:`, zod.prettifyError(result.error));
@@ -170,7 +171,7 @@ export const checkMapPageData = (data: MapPageData, location = ""): void => {
  * @param location 配置所在位置
  */
 export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => {
-  const result = markerConfigSchema.safeParse(marker);
+  const result = useCompiled(markerConfigSchema).safeParse(marker);
 
   if (!result.success)
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
@@ -183,7 +184,7 @@ export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => 
  * @param location 配置所在位置
  */
 export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void => {
-  const result = markersConfigSchema.safeParse(markers);
+  const result = useCompiled(markersConfigSchema).safeParse(markers);
 
   if (!result.success)
     console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
@@ -196,7 +197,7 @@ export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void 
  * @param location 数据所在位置
  */
 export const checkMarkersData = (data: MarkersData, location = ""): void => {
-  const result = markersDataSchema.safeParse(data);
+  const result = useCompiled(markersDataSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法标记点数据:`, zod.prettifyError(result.error));

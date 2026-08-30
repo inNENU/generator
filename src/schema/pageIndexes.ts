@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../helpers/compile.js";
 import { iconSchema } from "./common.js";
 
 export const pageIndexSchema = zod
@@ -45,7 +46,7 @@ export type PageIndexes = zod.infer<typeof pageIndexesSchema>;
  * @param location 数据所在位置
  */
 export const checkPageIndexes = (data: PageIndexes, location: string): void => {
-  const result = pageIndexesSchema.safeParse(data);
+  const result = useCompiled(pageIndexesSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法页面索引数据:`, zod.prettifyError(result.error));

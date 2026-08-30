@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema, locSchema } from "../../schema/common.js";
 
 const pointSchema = zod.strictObject({
@@ -64,7 +65,7 @@ export type LocationConfig = zod.infer<typeof pointSchema>;
 export type LocationComponentOptions = zod.infer<typeof locationSchema>;
 
 export const checkLocation = (location: LocationComponentOptions, locationStr = ""): void => {
-  const result = locationSchema.safeParse(location);
+  const result = useCompiled(locationSchema).safeParse(location);
 
   if (!result.success)
     console.error(`非法 location 数据在 ${locationStr}:`, zod.prettifyError(result.error));

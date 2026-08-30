@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -160,7 +161,7 @@ export interface TextComponentData extends Omit<TextComponentOptions, "style" | 
 }
 
 export const checkText = (text: TextComponentOptions, location = "", pageId = ""): void => {
-  const result = textComponentSchema.safeParse(text);
+  const result = useCompiled(textComponentSchema).safeParse(text);
 
   if (!result.success)
     console.error(`${location} 发现非法 text 数据:`, zod.prettifyError(result.error));

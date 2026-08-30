@@ -65,6 +65,7 @@ exports[`getFileList > should return a list of files in the specified directory 
   "generator/typings.ts",
   "helpers/accessToken.ts",
   "helpers/checkAssets.ts",
+  "helpers/compile.ts",
   "helpers/getFileList.ts",
   "helpers/getFileMap.ts",
   "helpers/git.ts",

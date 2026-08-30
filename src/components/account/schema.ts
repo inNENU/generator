@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema, internalImgSchema, locSchema } from "../../schema/common.js";
 
 export const qqSchema = zod
@@ -96,7 +97,7 @@ export interface AccountComponentData extends Omit<AccountComponentOptions, "log
 }
 
 export const checkAccount = (account: AccountComponentOptions, location = ""): void => {
-  const result = accountSchema.safeParse(account);
+  const result = useCompiled(accountSchema).safeParse(account);
 
   if (!result.success)
     console.error(`${location} 发现非法 account 数据:`, zod.prettifyError(result.error));

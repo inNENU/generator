@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema, fileSchema, imgSchema } from "../../schema/common.js";
 
 const danmuSchema = zod.strictObject({
@@ -112,7 +113,7 @@ export type Danmu = zod.infer<typeof danmuSchema>;
 export type VideoComponentOptions = zod.infer<typeof videoSchema>;
 
 export const checkVideo = (video: VideoComponentOptions, location = ""): void => {
-  const result = videoSchema.safeParse(video);
+  const result = useCompiled(videoSchema).safeParse(video);
 
   if (!result.success)
     console.error(`${location} 发现非法 video 数据:`, zod.prettifyError(result.error));

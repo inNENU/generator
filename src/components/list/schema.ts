@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -345,7 +346,7 @@ export type FunctionalListComponentItemOptions = zod.infer<typeof functionalList
 export type FunctionalListComponentOptions = zod.infer<typeof functionalListSchema>;
 
 export const checkList = (list: ListComponentOptions, location = "", pageId = ""): void => {
-  const result = listSchema.safeParse(list);
+  const result = useCompiled(listSchema).safeParse(list);
 
   if (!result.success)
     console.error(`${location} 发现非法 list 数据:`, zod.prettifyError(result.error));
@@ -363,7 +364,7 @@ export const checkFunctionalList = (
   location = "",
   pageId = "",
 ): void => {
-  const result = functionalListSchema.safeParse(functionalList);
+  const result = useCompiled(functionalListSchema).safeParse(functionalList);
 
   if (!result.success)
     console.error(`${location} 发现非法 functional list 数据:`, zod.prettifyError(result.error));

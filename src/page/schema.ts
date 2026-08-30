@@ -24,6 +24,7 @@ import {
   titleSchema,
   videoSchema,
 } from "../components/schema.js";
+import { useCompiled } from "../helpers/compile.js";
 import { iconSchema } from "../schema/common.js";
 
 export const componentSchema = zod
@@ -70,7 +71,7 @@ export const checkPageContent = (
   location: string,
   pageId = "",
 ): void => {
-  const result = pageContentSchema.safeParse(content);
+  const result = useCompiled(pageContentSchema).safeParse(content);
 
   if (!result.success)
     console.error(`${location} 发现非法页面内容:`, zod.prettifyError(result.error));
@@ -308,7 +309,7 @@ export const checkPageConfig = (
   location = "",
   options: CheckPageConfigOptions = {},
 ): void => {
-  const result = pageConfigSchema.safeParse(config);
+  const result = useCompiled(pageConfigSchema).safeParse(config);
 
   if (!result.success)
     console.error(`${location} 发现非法页面配置:`, zod.prettifyError(result.error));
@@ -323,7 +324,7 @@ export const checkPageConfig = (
  * @param location 数据所在位置
  */
 export const checkPageData = (data: PageData, location = ""): void => {
-  const result = pageDataSchema.safeParse(data);
+  const result = useCompiled(pageDataSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法页面数据:`, zod.prettifyError(result.error));

@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../../helpers/compile.js";
 import { envListSchema, styleSchema } from "../../schema/common.js";
 
 export const titleSchema = zod
@@ -31,7 +32,7 @@ export interface TitleComponentData extends Omit<TitleComponentOptions, "style">
 }
 
 export const checkTitle = (title: TitleComponentOptions, location = ""): void => {
-  const result = titleSchema.safeParse(title);
+  const result = useCompiled(titleSchema).safeParse(title);
 
   if (!result.success)
     console.error(`${location} 发现非法 title 数据:`, zod.prettifyError(result.error));

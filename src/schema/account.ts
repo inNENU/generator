@@ -1,5 +1,6 @@
 import * as zod from "zod";
 
+import { useCompiled } from "../helpers/compile.js";
 import { httpsLinkSchema, imgSchema } from "./common.js";
 
 export const wechatAccountInfoSchema = zod
@@ -102,7 +103,7 @@ export type QQAccounts = zod.infer<typeof qqAccountsSchema>;
  * @param location 数据所在位置
  */
 export const checkQQAccounts = (data: QQAccounts, location: string): void => {
-  const result = qqAccountsSchema.safeParse(data);
+  const result = useCompiled(qqAccountsSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法 QQ 账号数据:`, zod.prettifyError(result.error));
@@ -136,7 +137,7 @@ export type WechatAccounts = zod.infer<typeof wechatAccountsSchema>;
  * @param location 数据所在位置
  */
 export const checkWechatAccounts = (data: WechatAccounts, location: string): void => {
-  const result = wechatAccountsSchema.safeParse(data);
+  const result = useCompiled(wechatAccountsSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));
@@ -220,7 +221,7 @@ export type WechatAccountData = zod.infer<typeof wechatAccountDataSchema>;
  * @param location 数据所在位置
  */
 export const checkWechatAccountData = (data: WechatAccountData, location: string): void => {
-  const result = wechatAccountDataSchema.safeParse(data);
+  const result = useCompiled(wechatAccountDataSchema).safeParse(data);
 
   if (!result.success)
     console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));

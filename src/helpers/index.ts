@@ -1,5 +1,6 @@
 export * from "./accessToken.js";
 export * from "./checkAssets.js";
+export * from "./compile.js";
 export * from "./getFileList.js";
 export * from "./getFileMap.js";
 export * from "./git.js";
