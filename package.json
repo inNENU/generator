@@ -55,7 +55,7 @@
     "@types/node": "24.13.4",
     "husky": "9.1.7",
     "nano-staged": "1.0.2",
-    "oxc-config-hope": "0.3.13",
+    "oxc-config-hope": "0.3.14",
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
     "oxlint-tsgolint": "7.0.2003",
