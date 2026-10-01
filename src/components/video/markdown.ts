@@ -9,8 +9,12 @@ export const getVideoMarkdown = (video: VideoComponentOptions, location = ""): s
 
   const { src, poster, title } = video;
 
+  // `@vuepress/plugin-media` 自 rc.110 起用 VideoPlayer（Video.js）取代了原先的 VidStack，
+  // 组件没有 title 属性，标题改为渲染在播放器上方的 Markdown 文本。
+  const caption = title ? `${title}\n\n` : "";
+
   return `\
-<VidStack src="${escapeHtml(getFileLink(src) ?? "")}"${title ? ` title="${escapeHtml(title)}"` : ""}${
+${caption}<VideoPlayer src="${escapeHtml(getFileLink(src) ?? "")}"${
     poster ? ` poster="${escapeHtml(poster)}"` : ""
   } />
 

@@ -9,10 +9,12 @@ export const getAudioMarkdown = (audio: AudioComponentOptions, location = ""): s
 
   const { src, name, author } = audio;
 
+  // `@vuepress/plugin-media` 自 rc.110 起用 AudioPlayer（Video.js）取代了原先的 VidStack，
+  // 组件没有 title 属性，名称/作者改为渲染在播放器上方的 Markdown 文本。
+  const caption = [name, author].filter(Boolean).join(" ");
+
   return `\
-<VidStack src="${escapeHtml(getFileLink(src) ?? "")}" title="${name ? `名称: ${escapeHtml(name)}` : ""} ${
-    author ? `作者: ${escapeHtml(author)}` : ""
-  }" />
+${caption ? `${escapeHtml(caption)}\n\n` : ""}<AudioPlayer src="${escapeHtml(getFileLink(src) ?? "")}" />
 
 `;
 };
