@@ -4,16 +4,11 @@ minimumReleaseAgeExclude:
   - "@mr-hope/*"
   - "@oxfmt/*"
   - "@oxlint/*"
-  - "oxc-config-hope"
-  - "oxfmt"
-  - "oxlint"
-  - "tsdown"
-
-trustPolicy: no-downgrade
-
-trustPolicyExclude:
-  # babel
-  - semver@5.7.2
+  - oxc-config-hope
+  - oxfmt
+  - oxlint
+  - tsdown
 minimumReleaseAgeExcludePrune: true
+trustPolicy: no-downgrade
 trustPolicyExcludePrune: true
 trustPolicyIgnoreAfter: 720
