@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@mr-hope/tsconfig": "0.0.4",
-    "@types/ali-oss": "6.23.3",
+    "@types/ali-oss": "6.23.4",
     "@types/js-yaml": "4.0.9",
     "@types/node": "24.19.2",
     "husky": "9.1.7",
