@@ -183,8 +183,8 @@ importers:
         specifier: 0.0.4
         version: 0.0.4(typescript@7.0.2)
       '@types/ali-oss':
-        specifier: 6.23.3
-        version: 6.23.3
+        specifier: 6.23.4
+        version: 6.23.4
       '@types/js-yaml':
         specifier: 4.0.9
         version: 4.0.9
@@ -622,8 +622,8 @@ packages:
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
 
-  '@types/ali-oss@6.23.3':
-    resolution: {integrity: sha512-huSf6njkqhSeR37OMJTGMCyUg2d9Zp2AioefhYuUMeh0vNM+WybctrBor7bO/RcCbLCQI6sHn6NtPBIWALYVJg==}
+  '@types/ali-oss@6.23.4':
+    resolution: {integrity: sha512-WR0ml5hqj92KOPW0q8LlewHvveEJSnTfeL0VbSNM60PP1FIx6DdSx0rz/fCdDAkpS63BTZ1FYpGJ2GXsGMEtUQ==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -1867,7 +1867,7 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.1': {}
 
-  '@types/ali-oss@6.23.3': {}
+  '@types/ali-oss@6.23.4': {}
 
   '@types/chai@5.2.3':
     dependencies:
