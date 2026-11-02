@@ -13,8 +13,8 @@ export const camelCase2kebabCase = (str: string): string => {
   const hyphenateRE = /(?<before>[^-])(?<upper>[A-Z])/gu;
 
   return str
-    .replace(hyphenateRE, "$<before>-$<upper>")
-    .replace(hyphenateRE, "$<before>-$<upper>")
+    .replaceAll(hyphenateRE, "$<before>-$<upper>")
+    .replaceAll(hyphenateRE, "$<before>-$<upper>")
     .toLowerCase();
 };
 
