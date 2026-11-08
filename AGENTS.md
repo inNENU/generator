@@ -8,7 +8,7 @@ Repository-specific instructions for coding agents. User-level `~/.dsh/AGENTS.md
 
 - Package manager: pnpm `12.18.0` (declared via `devEngines`)
 - Runtime: Node.js `>=22.12.0` (supported LTS lines). `devEngines` enforces only this runtime floor, not patched security releases
-- Build: tsdown, ESM only, `target: "node24"`, minified with source maps
+- Build: tsdown, ESM only, `target: "node22"`, minified with source maps
 - Tests: vitest (`__tests__/`)
 - Lint/format: oxlint + oxfmt (type-aware rules included)
 
