@@ -1,4 +1,5 @@
 import { convertStyle, resolvePagePath } from "../../utils.js";
+import { omitEmptyPath } from "../utils.js";
 import type { TextComponentData, TextComponentOptions } from "./schema.js";
 
 export const getTextJSON = (
@@ -20,7 +21,7 @@ export const getTextJSON = (
   const convertedStyle = convertStyle(style);
 
   return {
-    ...data,
+    ...omitEmptyPath(data),
     ...(resolvedPath ? { path: resolvedPath } : {}),
     text: typeof textContent === "string" ? [textContent] : (textContent ?? []),
     ...(convertedStyle ? { style: convertedStyle } : {}),

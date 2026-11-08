@@ -1,4 +1,5 @@
 import { resolvePagePath } from "../../utils.js";
+import { omitEmptyPath } from "../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 
 export const getListJSON = (
@@ -12,7 +13,7 @@ export const getListJSON = (
         ...list,
         items: list.items.map((listItem) => {
           // 复制一份，避免修改调用方传入的对象
-          const item = { ...listItem };
+          const item = omitEmptyPath(listItem);
 
           // 处理路径
           if ("path" in item && item.path) {
@@ -32,7 +33,7 @@ export const getListJSON = (
       ...list,
       items: list.items.map((listItem) => {
         // 复制一份，避免修改调用方传入的对象
-        const item = { ...listItem };
+        const item = omitEmptyPath(listItem);
 
         if ("type" in item && item.type === "navigator") {
           item.openType ??= "navigate";

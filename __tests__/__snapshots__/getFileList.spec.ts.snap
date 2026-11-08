@@ -9,6 +9,7 @@ exports[`getFileList > should return a list of files in the specified directory 
   "typings.ts",
   "utils.ts",
   "components/schema.ts",
+  "components/utils.ts",
   "components/account/json.ts",
   "components/account/markdown.ts",
   "components/account/schema.ts",

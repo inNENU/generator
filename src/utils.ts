@@ -155,9 +155,11 @@ export const resolvePath = (filePath: string): string =>
  *
  * @param targetPath 跳转路径
  * @param pageId 当前页面 ID
- * @returns 解析后的路径
+ * @returns 解析后的路径，路径为空时返回空字符串
  */
-export const resolvePagePath = (targetPath: string, pageId: string): string => {
+export const resolvePagePath = (targetPath: string | null | undefined, pageId: string): string => {
+  if (!targetPath) return "";
+
   if (targetPath.startsWith("/")) return resolvePath(targetPath);
 
   const paths = pageId.split("/");
@@ -175,8 +177,14 @@ export const resolvePagePath = (targetPath: string, pageId: string): string => {
  * @param location 路径所在位置
  * @returns 校验问题列表
  */
-export const checkPagePath = (targetPath: string, pageId: string, location = ""): string[] => {
+export const checkPagePath = (
+  targetPath: string | null | undefined,
+  pageId: string,
+  location = "",
+): string[] => {
   const resolvedPath = resolvePagePath(targetPath, pageId);
+
+  if (!resolvedPath) return [];
 
   if (!existsSync(`./pages/${resolvedPath}.yml`)) {
     const message = `路径 ${resolvedPath} 在 ${location} 中不存在`;
