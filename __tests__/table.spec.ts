@@ -26,6 +26,27 @@ describe(getTableMarkdown, () => {
     expect(markdown).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(markdown).not.toContain("<script>");
   });
+
+  it("keeps a literal backslash-pipe pair inside one cell", () => {
+    const markdown = getTableMarkdown(createTable(["列"], [[String.raw`a\|b`]]));
+    const row = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    // 输入为反斜杠 + 管道；先转义反斜杠再转义管道，得到 `\\` + `\|`。
+    expect(row).toBe(String.raw`| a\\\|b |`);
+  });
+
+  it("doubles literal backslashes so they combine correctly with pipe escaping", () => {
+    const markdown = getTableMarkdown(createTable(["列"], [[String.raw`a\\b`]]));
+    const row = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    expect(row).toBe(String.raw`| a\\\\b |`);
+  });
+
+  it("escapes a lone pipe as a cell character", () => {
+    const markdown = getTableMarkdown(createTable(["|"], [["|"]]));
+
+    expect(markdown).toContain(String.raw`| \| |`);
+  });
 });
 
 describe(checkTable, () => {
