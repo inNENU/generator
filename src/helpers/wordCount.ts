@@ -5,6 +5,8 @@ import type { ComponentOptions, PageConfig } from "../page/schema.js";
 import { getFileList } from "./getFileList.js";
 
 const urlPattern = /(?:https?:\/\/|www\.)\S+/giu;
+/** 站内资源别名链接：`$img/a.png`、`$video/demo.mp4`、`$file/doc.pdf` 等 */
+const aliasLinkPattern = /\$[\w-]+\/[^\s)"'<>\]}]+/gu;
 const cjkPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
 const wordPattern = /[\p{L}\p{N}]+(?:['\u2019-][\p{L}\p{N}]+)*/gu;
 const emojiPattern = /\p{Extended_Pictographic}/u;
@@ -24,7 +26,7 @@ const getEmojiNumber = (content: string): number => {
 /**
  * 统计字符串的字数
  *
- * 按字统计 CJK/日文假名/韩文，按词统计拉丁/西里尔等语言，emoji 按 grapheme 计 1； 链接（http(s):// 与 www.）不计入字数。
+ * 按字统计 CJK/日文假名/韩文，按词统计拉丁/西里尔等语言，emoji 按 grapheme 计 1； 链接（http(s)://、www. 与 `$img/...` 等站内别名）不计入字数。
  *
  * @param content 需要统计字数的内容
  * @returns 内容中的字数
@@ -32,7 +34,7 @@ const getEmojiNumber = (content: string): number => {
 export const getWordNumber = (content: string): number => {
   if (!content) return 0;
 
-  const withoutUrls = content.replaceAll(urlPattern, " ");
+  const withoutUrls = content.replaceAll(urlPattern, " ").replaceAll(aliasLinkPattern, " ");
   const cjkNumber = withoutUrls.match(cjkPattern)?.length ?? 0;
   const withoutCjk = withoutUrls.replaceAll(cjkPattern, " ");
   const wordNumber = withoutCjk.match(wordPattern)?.length ?? 0;

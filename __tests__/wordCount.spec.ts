@@ -71,6 +71,14 @@ describe(getWordNumber, () => {
     expect(getWordNumber("www.example.com")).toBe(0);
     expect(getWordNumber("看 https://example.com/abc 介绍")).toBe(3);
   });
+
+  it("should not count $ alias links", () => {
+    expect(getWordNumber("$img/a.png")).toBe(0);
+    expect(getWordNumber("$video/demo.mp4")).toBe(0);
+    expect(getWordNumber("$file/doc.pdf")).toBe(0);
+    expect(getWordNumber("看 $img/a.png 介绍")).toBe(3);
+    expect(getWordNumber("图片 ![图]($img/a.png)")).toBe(3);
+  });
 });
 
 describe(getJSONValue, () => {
@@ -597,10 +605,10 @@ describe(getJSONWordCount, () => {
 
       process.chdir(testDir);
 
-      // getJSONWordCount 统计 JSON 中的全部文本，但 URL 不计入字数。
+      // getJSONWordCount 统计 JSON 中的全部文本，但 URL 与 $ 别名不计入字数。
       // 拼接后的内容为 " 测试 https://example.com/source img $img/a.png"，
-      // 即 测试(2) + img(1) + img(1) + a(1) + png(1) = 6。
-      expect(getJSONWordCount(".")).toBe(6);
+      // 即 测试(2) + tag 的 img(1) = 3；src 的 $img/a.png 不计入。
+      expect(getJSONWordCount(".")).toBe(3);
 
       // 应多于只统计正文的 getFolderPageWordCount（仅标题 测试 计入）
       expect(getJSONWordCount(".")).toBeGreaterThan(getFolderPageWordCount("."));
