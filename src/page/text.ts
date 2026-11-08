@@ -1,3 +1,4 @@
+import { ValidationError } from "../helpers/validation.js";
 import type { PageConfig } from "../typings.js";
 import { escapeHtml } from "../utils.js";
 import { renderComponentMarkdown } from "./markdown-renderers.js";
@@ -22,6 +23,15 @@ export interface GetPageTextOptions {
   urlConverter?: UrlConverter;
   /** 渲染模式：`web`（默认，纯标准 markdown）| `miniapp`（结构增强 markdown） */
   mode?: "web" | "miniapp";
+  /**
+   * 是否进行完整性校验
+   *
+   * 为 `true` 时依次运行 `checkPageConfig` 与 `checkPageContent`，并把全部中文校验问题汇总后抛出 `ValidationError`；为
+   * `false` 时不校验，保持宽松的生成行为。
+   *
+   * @default false
+   */
+  check?: boolean;
 }
 
 /**
@@ -42,8 +52,14 @@ export const getPageText = (
 
     if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
 
-    checkPageConfig(page, pagePath);
-    checkPageContent(page.content, pagePath, pagePath);
+    if (options.check) {
+      const issues = [
+        ...checkPageConfig(page, pagePath),
+        ...checkPageContent(page.content, pagePath, pagePath),
+      ];
+
+      if (issues.length) throw new ValidationError(`${pagePath} 页面校验失败`, issues);
+    }
 
     const { title, desc, content } = page;
 
@@ -71,6 +87,8 @@ ${content
   .join("\n\n")}
 `.trim();
   } catch (err) {
+    if (err instanceof ValidationError) throw err;
+
     throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
   }
 };

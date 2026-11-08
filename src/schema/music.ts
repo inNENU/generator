@@ -48,10 +48,10 @@ export type MusicList = zod.infer<typeof musicListSchema>;
  * 检查音乐列表数据
  *
  * @param data 音乐列表数据
- * @param location 数据所在位置
+ * @param location 数据所在位置，默认为空字符串
  * @returns 音乐列表数据
  */
-export const checkMusicList = (data: MusicList, location: string): string[] => {
+export const checkMusicList = (data: MusicList, location = ""): string[] => {
   const result = useCompiled(musicListSchema).safeParse(data);
 
   return result.success ? [] : collectZodIssues(location, "发现非法音乐数据", result.error);
