@@ -183,6 +183,40 @@ describe("页面管线", () => {
     expect(text).toContain("- 电话: [0431-85099999](tel:0431-85099999)");
   });
 
+  it("文本 Markdown（web）把多行描述逐行渲染为引用块", () => {
+    // 与资源仓 pages/newcomer/contact/fellow.yml 的 5 行 desc 结构一致；测试直接构造 PageConfig，不读取资源仓文件。
+    const descLines = [
+      "如需补充或申请替换群聊，请联系 QQ: 1178522294",
+      "申请替换需满足以下条件：",
+      "· 群内该地区的东北师大在校生人数不少于 50 人；",
+      "· 原群主失联且活跃管理员少于两人，或申请替换的群聊活跃度显著高于原群聊（满足其一即可）；",
+      "· 允许 Mr.Hope 加入群聊以进行核验。",
+    ];
+    const page: PageConfig = {
+      title: "老乡群",
+      desc: descLines.join("\n"),
+      content: [{ tag: "title", text: "东北师范大学老乡群" }],
+    };
+
+    const text = getPageText(page, "newcomer/contact/fellow");
+    const outputLines = text.split("\n");
+    const expectedDesc = [
+      `> 描述: ${descLines[0]}`,
+      ...descLines.slice(1).map((line) => `> ${line}`),
+    ].join("\n>\n");
+
+    expect(text).toContain(`${expectedDesc}\n\n## 东北师范大学老乡群`);
+
+    const expectedLines = [
+      `> 描述: ${descLines[0]}`,
+      ...descLines.slice(1).map((line) => `> ${line}`),
+    ];
+
+    expect(outputLines).toStrictEqual(expect.arrayContaining(expectedLines));
+    // 每一行描述都必须带 `> ` 前缀，不能有退化成普通正文的裸行
+    expect(outputLines.filter((line) => descLines.includes(line))).toStrictEqual([]);
+  });
+
   it("getPageJSON 生成稳定的页面数据快照且不泄漏 AI 专用字段", () => {
     const json = getPageJSON(createPage(), "guide/card");
 
