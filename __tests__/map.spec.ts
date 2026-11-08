@@ -67,13 +67,13 @@ describe(getMarkersJSON, () => {
     benbu: {
       name: "本部",
       content: [
-        { name: "图书馆", loc: "125.33111,43.81234" },
-        { name: "食堂", loc: "125.33222,43.81345", detail: "本部食堂" },
+        { name: "图书馆", loc: "43.81234,125.33111" },
+        { name: "食堂", loc: "43.81345,125.33222", detail: "本部食堂" },
       ],
     },
     jingyue: {
       name: "净月",
-      content: [{ name: "教学楼", loc: "125.42111,43.82111" }],
+      content: [{ name: "教学楼", loc: "43.82111,125.42111" }],
     },
   };
 
@@ -89,14 +89,14 @@ describe(getMarkersJSON, () => {
     expect(markersDataSchema.safeParse(result).success).toBe(true);
 
     // 单独生成 marker 时的默认 id 也必须是正整数
-    expect(getMarkerJSON({ name: "图书馆", loc: "125.33111,43.81234" }, "map", "benbu").id).toBe(1);
+    expect(getMarkerJSON({ name: "图书馆", loc: "43.81234,125.33111" }, "map", "benbu").id).toBe(1);
   });
 
   it("分类 path 为保留名 all 时应抛错并指出冲突的 path", () => {
     const config: MarkersConfig = {
       all: {
         name: "自定义全部",
-        content: [{ name: "图书馆", loc: "125.33111,43.81234" }],
+        content: [{ name: "图书馆", loc: "43.81234,125.33111" }],
       },
     };
 
@@ -110,7 +110,7 @@ describe(getMarkersJSON, () => {
       benbu: {
         name: "本部",
         bogus: "不应存在的键",
-        content: [{ name: "图书馆", loc: "125.33111,43.81234" }],
+        content: [{ name: "图书馆", loc: "43.81234,125.33111" }],
       },
     } as unknown as MarkersConfig;
 
