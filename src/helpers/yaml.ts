@@ -8,6 +8,40 @@ import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
 
 /**
+ * 判断 YAML 内容是否包含实际文档
+ *
+ * @param content YAML 内容
+ * @returns 是否包含非空、非注释行
+ */
+const hasYamlDocument = (content: string): boolean =>
+  content.split("\n").some((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+
+/**
+ * 解析 YAML 内容
+ *
+ * 空文件或仅包含注释时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
+ *
+ * @param content YAML 内容
+ * @param filePath 文件路径，仅用于错误信息
+ * @returns 解析结果，空文档为 `undefined`
+ */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
+export const parseYaml = <T = unknown>(content: string, filePath = ""): T | undefined => {
+  if (!hasYamlDocument(content)) return void 0;
+
+  try {
+    return load(content, { schema: JSON_SCHEMA }) as T | undefined;
+  } catch (err) {
+    const location = filePath ? `（文件: ${filePath}）` : "";
+
+    throw new Error(
+      `YAML 解析失败${location}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
+};
+
+/**
  * 获取 YAML 值
  *
  * @param content 内容
@@ -48,7 +82,13 @@ export const checkYamlFiles = <T = unknown>(
     const content = readFileSync(resolve(sourceFolder, filePath), {
       encoding: "utf-8",
     });
-    const json = load(content, { schema: JSON_SCHEMA }) as T;
+    const absolutePath = resolve(sourceFolder, filePath);
+    const json = parseYaml<T>(content, absolutePath);
+
+    if (json === void 0) {
+      console.warn(`空 YAML 文件已跳过: ${absolutePath}`);
+      return;
+    }
 
     checker(json, relative("./", filePath.replace(/\.yml$/u, "")));
   });
@@ -69,30 +109,44 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   processFunction?: (content: string, filePath: string) => string,
 ): void => {
   const fileList = getFileList(sourceFolder, "yml");
+  const errors: Error[] = [];
 
   fileList.forEach((filePath) => {
     const sourceFilename = resolve(sourceFolder, filePath);
     const targetFilename = resolve(targetFolder, filePath.replace(/\.yml$/u, ".json"));
     const targetFolderPath = dirname(targetFilename);
-
-    if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
-
-    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
     const yamlRelativePath = relative("./", filePath.replace(/\.yml$/u, ""));
 
-    const finalContent = processFunction?.(content, yamlRelativePath) ?? content;
+    try {
+      const content = readFileSync(sourceFilename, { encoding: "utf-8" });
+      const finalContent = processFunction?.(content, yamlRelativePath) ?? content;
+      const parsed = parseYaml<T>(finalContent, sourceFilename);
 
-    const result = convertFunction(
-      load(finalContent, { schema: JSON_SCHEMA }) as T,
-      yamlRelativePath,
-    );
+      if (parsed === void 0) {
+        console.warn(`空 YAML 文件已跳过: ${sourceFilename}`);
+        return;
+      }
 
-    if (result) {
-      writeFileSync(targetFilename, JSON.stringify(result), {
-        encoding: "utf-8",
-      });
+      const result = convertFunction(parsed, yamlRelativePath);
+
+      if (result) {
+        if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
+
+        writeFileSync(targetFilename, JSON.stringify(result), {
+          encoding: "utf-8",
+        });
+      }
+    } catch (err) {
+      errors.push(
+        new Error(`YAML 转 JSON 失败: ${sourceFilename}`, {
+          cause: err,
+        }),
+      );
     }
   });
+
+  if (errors.length > 0)
+    throw new AggregateError(errors, `YAML 转 JSON 失败（${errors.length} 个文件）`);
 };
 
 /**
@@ -109,6 +163,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
   targetFolder = sourceFolder,
 ): void => {
   const fileList = getFileList(sourceFolder, "yml");
+  const errors: Error[] = [];
 
   fileList.forEach((filePath) => {
     const sourceFilename = resolve(sourceFolder, filePath);
@@ -118,17 +173,31 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
     );
     const targetFolderPath = dirname(targetFilename);
 
-    if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
+    try {
+      const content = readFileSync(sourceFilename, { encoding: "utf-8" });
+      const parsed = parseYaml<T>(content, sourceFilename);
 
-    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
+      if (parsed === void 0) {
+        console.warn(`空 YAML 文件已跳过: ${sourceFilename}`);
+        return;
+      }
 
-    const result = convertFunction(
-      load(content, { schema: JSON_SCHEMA }) as T,
-      relative("./", filePath.replace(/\.yml$/u, "")),
-    );
+      const result = convertFunction(parsed, relative("./", filePath.replace(/\.yml$/u, "")));
 
-    writeFileSync(targetFilename, result, { encoding: "utf-8" });
+      if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
+
+      writeFileSync(targetFilename, result, { encoding: "utf-8" });
+    } catch (err) {
+      errors.push(
+        new Error(`YAML 转 Markdown 失败: ${sourceFilename}`, {
+          cause: err,
+        }),
+      );
+    }
   });
+
+  if (errors.length > 0)
+    throw new AggregateError(errors, `YAML 转 Markdown 失败（${errors.length} 个文件）`);
 };
 
 export interface YamlInfo<Value = unknown> {
@@ -162,14 +231,14 @@ export const getYamlMap = <T = unknown, Value = T>(
     if (item.type === "file") {
       const filename = join(base, item.filename);
       const content = readFileSync(filename, { encoding: "utf-8" });
+      const parsed = parseYaml<T>(content, filename);
+
+      if (parsed === void 0) throw new Error(`YAML 文件为空: ${filename}`);
 
       return {
         type: "file",
         filename: item.filename,
-        value: convertFunction(
-          load(content, { schema: JSON_SCHEMA }) as T,
-          filename.replace(/\.yml$/u, ""),
-        ),
+        value: convertFunction(parsed, filename.replace(/\.yml$/u, "")),
       };
     }
 
