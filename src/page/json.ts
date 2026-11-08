@@ -1,5 +1,5 @@
 // oxlint-disable import/max-dependencies
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
 import { join } from "upath";
 
@@ -172,6 +172,41 @@ const updateOptionalPageDataFields = (
 };
 
 /**
+ * 更新页面 YAML 中的最后更新时间
+ *
+ * 先写入临时文件再原子替换，避免写入中途失败破坏源文件；源文件没有 `time` 字段时跳过写入并输出警告。
+ *
+ * @param pageYAMLPath 页面 YAML 文件路径
+ * @returns 更新后的时间
+ */
+export const updatePageTime = (pageYAMLPath: string): Date => {
+  if (!existsSync(pageYAMLPath)) throw new Error(`页面文件不存在: ${pageYAMLPath}`);
+
+  const content = readFileSync(pageYAMLPath, { encoding: "utf-8" });
+  const date = new Date();
+
+  if (!/^time: .+$/mu.test(content)) {
+    console.warn(`${pageYAMLPath} 中不存在 time 字段，跳过更新时间`);
+
+    return date;
+  }
+
+  const nextContent = content.replace(/^time: .+$/mu, `time: ${date.toISOString()}`);
+  const tempPath = `${pageYAMLPath}.${process.pid}.tmp`;
+
+  try {
+    writeFileSync(tempPath, nextContent, { encoding: "utf-8" });
+    renameSync(tempPath, pageYAMLPath);
+  } catch (err) {
+    rmSync(tempPath, { force: true });
+
+    throw err;
+  }
+
+  return date;
+};
+
+/**
  * 处理页面数据
  *
  * @param page 页面数据
@@ -188,6 +223,7 @@ export const getPageJSON = (
   options: GetPageJSONOptions = {},
 ): PageData => {
   const { check = true } = options;
+  const changedFiles = new Set(diffFiles);
 
   try {
     if (!page) throw new Error(`${pagePath} 不存在内容`);
@@ -222,23 +258,9 @@ export const getPageJSON = (
 
     if (time) {
       const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
-      let date: Date;
-
-      // 更新时间
-      if (diffFiles.includes(pageYAMLPath)) {
-        date = new Date();
-
-        writeFileSync(
-          pageYAMLPath,
-          readFileSync(pageYAMLPath, { encoding: "utf-8" }).replace(
-            /^time: .+$/mu,
-            `time: ${date.toISOString()}`,
-          ),
-          { encoding: "utf-8" },
-        );
-      } else {
-        date = new Date(Date.parse(time));
-      }
+      const date = changedFiles.has(pageYAMLPath)
+        ? updatePageTime(pageYAMLPath)
+        : new Date(Date.parse(time));
 
       pageData.time = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
         (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
