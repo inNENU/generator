@@ -1,0 +1,91 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`页面管线 > getPageJSON 生成稳定的页面数据快照且不泄漏 AI 专用字段 1`] = `
+{
+  "author": "后勤管理处、信息中心",
+  "cite": [
+    "https://example.com/card-guide",
+  ],
+  "content": [
+    {
+      "tag": "title",
+      "text": "校园卡服务",
+    },
+    {
+      "header": "办理流程",
+      "tag": "text",
+      "text": [
+        "携带证件前往服务大厅",
+        "填写申请表并提交",
+      ],
+    },
+    {
+      "header": "所需材料",
+      "tag": "ul",
+      "text": [
+        "身份证原件",
+        "学生证复印件",
+      ],
+    },
+    {
+      "header": "服务网点",
+      "items": [
+        {
+          "desc": "工作日开放",
+          "text": "本部校区服务点",
+        },
+        {
+          "text": "净月校区服务点",
+          "url": "card-branch",
+        },
+      ],
+      "tag": "list",
+    },
+    {
+      "desc": "在线办理挂失",
+      "tag": "card",
+      "title": "网上服务大厅",
+      "url": "card-online",
+    },
+    {
+      "icon": "pdf",
+      "name": "校园卡申请表",
+      "tag": "doc",
+      "url": "https://example.com/files/card-form.pdf",
+    },
+    {
+      "fName": "老师",
+      "header": "咨询电话",
+      "lName": "张",
+      "num": "0431-85099999",
+      "tag": "phone",
+    },
+    {
+      "content": "https://example.com/files/card-form.pdf",
+      "header": "下载申请表",
+      "tag": "action",
+    },
+    {
+      "body": [
+        [
+          "本部",
+          "8:00-17:00",
+        ],
+        [
+          "净月",
+          "9:00-16:00",
+        ],
+      ],
+      "caption": "服务时间",
+      "header": [
+        "校区",
+        "时间",
+      ],
+      "tag": "table",
+    },
+  ],
+  "desc": "校园卡办理、挂失与充值说明",
+  "id": "guide/card",
+  "title": "校园卡服务指南",
+}
+`;
