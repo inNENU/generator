@@ -15,7 +15,7 @@ export const getVideoMarkdown = (video: VideoComponentOptions, location = ""): s
 
   return `\
 ${caption}<VideoPlayer src="${escapeHtml(getFileLink(src) ?? "")}"${
-    poster ? ` poster="${escapeHtml(poster)}"` : ""
+    poster ? ` poster="${escapeHtml(getFileLink(poster) ?? "")}"` : ""
   } />
 
 `;
