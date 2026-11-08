@@ -47,8 +47,24 @@ describe(getHTMLPath, () => {
 });
 
 describe(getAssetIconLink, () => {
-  it("should return correct icon path", () => {
+  it("should fall back to /assets when no assets directory is configured", () => {
     expect(getAssetIconLink("home")).toBe("/assets/icon/home.svg");
+  });
+
+  it("should use the configured assets directory", () => {
+    config({
+      assets: "https://assets.example.com/images",
+      icon: "https://icons.example.com",
+      mapFolder: "./map",
+      mapKey: "key",
+      pageFolder: "page",
+    });
+
+    try {
+      expect(getAssetIconLink("home")).toBe("https://assets.example.com/images/icon/home.svg");
+    } finally {
+      config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
+    }
   });
 });
 

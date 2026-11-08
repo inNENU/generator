@@ -203,9 +203,10 @@ export const checkPagePath = (
  * 获取资源图标链接
  *
  * @param name 图标名称
- * @returns 资源图标链接
+ * @returns 资源图标链接，使用 `config()` 中配置的 `assets` 目录，未配置时回退到 `/assets`
  */
-export const getAssetIconLink = (name: string): string => `/assets/icon/${name}.svg`;
+export const getAssetIconLink = (name: string): string =>
+  `${generatorConfig.assets || "/assets"}/icon/${name}.svg`;
 
 /**
  * 转换样式
