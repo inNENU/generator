@@ -39,20 +39,47 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
       encoding: "utf-8",
     }).split("\n");
 
-    lyricLines.forEach((lyric) => {
-      const result = /\[(?<time>.*)\](?<text>.*)?/u.exec(lyric);
+    /** 无法解析的行数，用于文件级汇总提示 */
+    let skippedLines = 0;
 
-      if (result) {
-        const timeResult = /(?<minute>.*):(?<second>.*)/u.exec(result[1]);
+    lyricLines.forEach((rawLine) => {
+      const lyric = rawLine.replace(/\r$/u, "");
 
-        if (timeResult) {
-          /** 正确的时间 */
-          const time = Number((Number(timeResult[1]) * 60 + Number(timeResult[2])).toFixed(3));
+      // 空行直接跳过
+      if (!lyric.trim()) return;
 
-          lyricData.push({ time, text: result[2] ?? "" });
-        }
+      // 跳过元数据 tag 行，如 [ti:]、[ar:]、[offset:]
+      if (/^\[[a-zA-Z]+:/u.test(lyric)) {
+        skippedLines += 1;
+        return;
+      }
+
+      // 歌词行必须以一个或多个 [mm:ss.xx] 时间戳开头，后续为文本
+      const result = /^(?<timestamps>(?:\[\d{1,3}:\d{2}(?:\.\d{1,3})?\])+)(?<text>.*)$/u.exec(
+        lyric,
+      );
+
+      if (!result?.groups) {
+        skippedLines += 1;
+        return;
+      }
+
+      const { text, timestamps } = result.groups;
+
+      // 一行可能带有多个时间戳，逐个展开
+      for (const timestamp of timestamps.matchAll(
+        /\[(?<minute>\d{1,3}):(?<second>\d{2}(?:\.\d{1,3})?)\]/gu,
+      )) {
+        /** 正确的时间 */
+        const time = Number(
+          (Number(timestamp.groups?.minute) * 60 + Number(timestamp.groups?.second)).toFixed(3),
+        );
+
+        lyricData.push({ time, text });
       }
     });
+
+    if (skippedLines > 0) console.warn(`歌词 ${lyricPath} 中有 ${skippedLines} 行被跳过`);
 
     writeFileSync(join(output, lyricPath.replace(/lrc$/u, "json")), JSON.stringify(lyricData));
   });
