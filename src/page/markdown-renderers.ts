@@ -63,6 +63,25 @@ const toUrlConversion = (
  * @param mode 渲染模式
  * @returns Markdown 内容
  */
+/**
+ * 转义容器正文中的块级 Markdown 语法
+ *
+ * 提示框正文会原样嵌入 `::: type` 容器；正文行首若出现 `:::`、围栏代码或标题语法，会提前闭合容器或跳出提示框样式。
+ * 逐行给这些行首加上反斜杠转义，渲染结果仍是原文字符，但不再被解析为块级语法。
+ *
+ * @param text 已做 HTML 转义的正文
+ * @returns 转义后的正文
+ */
+const escapeContainerBodySyntax = (text: string): string =>
+  text
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^(?<indent> {0,3})(?<fence>:{3,}|```|~~~)/u, String.raw`$<indent>\$<fence>`)
+        .replace(/^(?<indent> {0,3})(?<heading>#{1,6})(?=\s)/u, String.raw`$<indent>\$<heading>`),
+    )
+    .join("\n");
+
 const renderTextBlock = (
   component: Extract<ComponentOptions, { tag: "text" | "p" | "ul" | "ol" }>,
   marker: "" | "- " | "1. ",
@@ -80,7 +99,7 @@ const renderTextBlock = (
     const typeName = type === "danger" ? "caution" : type;
 
     return `::: ${typeName}${header ? ` ${escapeHtml(header)}` : ""}\n\n${texts
-      .map((item) => `${marker}${escapeHtml(item)}`)
+      .map((item) => `${marker}${escapeContainerBodySyntax(escapeHtml(item))}`)
       .join("\n\n")}\n\n:::\n\n`;
   }
 
