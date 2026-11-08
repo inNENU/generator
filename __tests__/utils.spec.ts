@@ -157,3 +157,18 @@ describe(escapeHtml, () => {
     );
   });
 });
+
+describe("resolvePath additional cases", () => {
+  it("normalizes backslashes and strips query/hash", () => {
+    expect(resolvePath(String.raw`guide\intro?from=index#top`)).toBe("guide/intro");
+  });
+
+  it("resolves empty paths to index", () => {
+    expect(resolvePath("")).toBe("index");
+    expect(resolvePath(".")).toBe("index");
+  });
+
+  it("rejects paths escaping the project root", () => {
+    expect(() => resolvePath("../secret")).toThrow("路径不能超出项目目录");
+  });
+});
