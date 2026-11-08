@@ -42,6 +42,12 @@ const pageMarkdown = getPageMarkdown("home", { mode: "web" });
 | `mapKey`     | Tencent map key                                                 |
 | `pageFolder` | Directory containing page YAML files                            |
 
+## Time formatting
+
+Page `time` values are rendered in `Asia/Shanghai` (UTC+8) regardless of the build machine's time zone. ISO datetimes are converted to
+Beijing wall-clock time, and datetimes without an explicit offset are interpreted as Beijing time, so the same source always produces
+the same output. Date-only values (`YYYY-MM-DD`) keep their date without a time component and are not shifted across days.
+
 ## Markdown output
 
 Markdown generation targets the VuePress site only. The WeChat miniapp and the native App consume the JSON artifacts, so there is no
