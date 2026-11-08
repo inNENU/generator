@@ -3,6 +3,7 @@ import { getAccountMarkdown } from "../components/account/markdown.js";
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getAudioMarkdown } from "../components/audio/markdown.js";
 import { getCardMarkdown } from "../components/card/markdown.js";
+import { getCarouselMarkdown } from "../components/carousel/markdown.js";
 import { getDocMarkdown } from "../components/doc/markdown.js";
 import { getDocDisplayName } from "../components/doc/utils.js";
 import { getGridMarkdown } from "../components/grid/markdown.js";
@@ -15,7 +16,7 @@ import { getTextMarkdown } from "../components/text/markdown.js";
 import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
 import type { MarkdownMode, UrlHandler } from "../typings.js";
-import { escapeHtml, getFileLink } from "../utils.js";
+import { escapeContainerBodySyntax, escapeHtml, getFileLink } from "../utils.js";
 import type { ComponentOptions } from "./schema.js";
 
 /** URL 转换结果 */
@@ -63,25 +64,6 @@ const toUrlConversion = (
  * @param mode 渲染模式
  * @returns Markdown 内容
  */
-/**
- * 转义容器正文中的块级 Markdown 语法
- *
- * 提示框正文会原样嵌入 `::: type` 容器；正文行首若出现 `:::`、围栏代码或标题语法，会提前闭合容器或跳出提示框样式。
- * 逐行给这些行首加上反斜杠转义，渲染结果仍是原文字符，但不再被解析为块级语法。
- *
- * @param text 已做 HTML 转义的正文
- * @returns 转义后的正文
- */
-const escapeContainerBodySyntax = (text: string): string =>
-  text
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^(?<indent> {0,3})(?<fence>:{3,}|```|~~~)/u, String.raw`$<indent>\$<fence>`)
-        .replace(/^(?<indent> {0,3})(?<heading>#{1,6})(?=\s)/u, String.raw`$<indent>\$<heading>`),
-    )
-    .join("\n");
-
 const renderTextBlock = (
   component: Extract<ComponentOptions, { tag: "text" | "p" | "ul" | "ol" }>,
   marker: "" | "- " | "1. ",
@@ -354,6 +336,10 @@ const renderVuePressComponentMarkdown = (
   switch (component.tag) {
     case "img": {
       return getImgMarkdown(component, location);
+    }
+
+    case "carousel": {
+      return getCarouselMarkdown(component, location);
     }
 
     case "title": {

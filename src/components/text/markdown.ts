@@ -1,4 +1,9 @@
-import { escapeHtml, getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
+import {
+  escapeContainerBodySyntax,
+  escapeHtml,
+  getMarkdownPath,
+  indentMarkdownListItem,
+} from "../../utils.js";
 import type { TextComponentOptions } from "./schema.js";
 import { checkText } from "./schema.js";
 
@@ -34,10 +39,10 @@ ${
   texts
     .map((item) =>
       tag === "ul"
-        ? `- ${indentMarkdownListItem(escapeHtml(item), 3)}`
+        ? `- ${indentMarkdownListItem(escapeContainerBodySyntax(escapeHtml(item)), 3)}`
         : tag === "ol"
-          ? `1. ${indentMarkdownListItem(escapeHtml(item), 3)}`
-          : escapeHtml(item),
+          ? `1. ${indentMarkdownListItem(escapeContainerBodySyntax(escapeHtml(item)), 3)}`
+          : escapeContainerBodySyntax(escapeHtml(item)),
     )
     .join("\n\n") || ""
 }

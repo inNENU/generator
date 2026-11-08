@@ -134,7 +134,7 @@ describe("page markdown parity", () => {
     expect(text).toContain("| 列 |\n| :-: |\n| 值 |");
   });
 
-  it("carousel 目前仅文本管线输出图片", () => {
+  it("carousel 在两条管线中输出一致的图片列表", () => {
     const page = createPage([
       { tag: "carousel", images: ["https://example.com/a.png", "https://example.com/b.png"] },
     ]);
@@ -142,9 +142,20 @@ describe("page markdown parity", () => {
     const markdown = getPageMarkdown(page, { location: "guide/carousel" });
     const text = getPageText(page, "guide/carousel");
 
-    // 站点端还没有 carousel 渲染器，暂不输出；文本管线为知识库保留图片链接。
+    // 站点端与文本管线使用相同的图片链接与顺序，知识库检索与页面展示保持一致。
+    expect(markdown).toContain("![''](https://example.com/a.png)");
+    expect(markdown).toContain("![''](https://example.com/b.png)");
     expect(text).toContain("![''](https://example.com/a.png)");
     expect(text).toContain("![''](https://example.com/b.png)");
-    expect(markdown).not.toContain("https://example.com/a.png");
+  });
+
+  it("carousel 站点渲染遵守 env 过滤", () => {
+    const page = createPage([
+      { tag: "carousel", images: ["https://example.com/wx-only.png"], env: ["wx"] },
+    ]);
+
+    const markdown = getPageMarkdown(page, { location: "guide/carousel" });
+
+    expect(markdown).not.toContain("https://example.com/wx-only.png");
   });
 });
