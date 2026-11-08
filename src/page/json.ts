@@ -200,7 +200,8 @@ const pageTimeFormatter = new Intl.DateTimeFormat("en-US", {
 const parsePageTime = (time: string): Date => {
   if (!ISO_DATETIME_WITHOUT_ZONE.test(time)) return new Date(time);
 
-  // `Asia/Shanghai` 自 1991 年起固定为 UTC+8，无夏令时
+  // `Asia/Shanghai` 自 1991 年 9 月起固定为 UTC+8；1986–1991 年中国实行夏令时，
+  // 该期间不带时区的历史时间仍按 +08:00 解释，可能有 1 小时偏差（已知边界）
   return new Date(`${time.replace(" ", "T")}+08:00`);
 };
 
@@ -226,7 +227,10 @@ const formatPageDateTime = (date: Date): string => {
  * 日期字符串（`YYYY-MM-DD`）只输出日期，避免被解析为 UTC 零点后按本地时区显示成前一天或 08:00； 其他 ISO 日期时间统一按
  * `Asia/Shanghai`（UTC+8）输出完整的年月日与 `HH:mm:ss`。不带时区标记的时间按北京时间墙钟解析， 因此输出不依赖构建机器的 `process.env.TZ`。
  *
- * @param time 页面时间（日期字符串或 Date）
+ * 仅支持 `Date` 与 ISO 日期/日期时间字符串，不支持 number 时间戳。已知边界：1986–1991 年中国实行夏令时， 该期间不带时区标记的历史时间按 UTC+8 解释，可能产生
+ * 1 小时偏差。
+ *
+ * @param time 页面时间（ISO 日期/日期时间字符串或 Date）
  * @returns 用于展示的时间文本
  */
 const formatPageTime = (time: string | Date): string => {

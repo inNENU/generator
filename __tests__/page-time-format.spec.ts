@@ -1,4 +1,3 @@
-// oxlint-disable node/no-process-env
 import { describe, expect, it } from "vitest";
 
 import { getPageJSON } from "../src/page/json.js";
@@ -41,6 +40,7 @@ describe("getPageJSON 时间格式化", () => {
 });
 
 describe("getPageJSON 时间格式化不受构建机时区影响", () => {
+  // oxlint-disable node/no-process-env -- 仅该辅助函数需要临时覆盖 TZ
   /**
    * 在指定时区下执行，结束后恢复原值
    *
@@ -60,6 +60,7 @@ describe("getPageJSON 时间格式化不受构建机时区影响", () => {
       else process.env.TZ = previous;
     }
   };
+  // oxlint-enable node/no-process-env
 
   it("时区为 UTC 与 Asia/Shanghai 时同一 ISO 输入输出一致，且按东八区墙钟展示", () => {
     const inputs = [
@@ -92,5 +93,6 @@ describe("getPageJSON 时间格式化不受构建机时区影响", () => {
 
     expect(runWithTimeZone("UTC", formatDateOnly)).toBe("2024 年 1 月 1 日");
     expect(runWithTimeZone("Asia/Shanghai", formatDateOnly)).toBe("2024 年 1 月 1 日");
+    expect(runWithTimeZone("America/New_York", formatDateOnly)).toBe("2024 年 1 月 1 日");
   });
 });
