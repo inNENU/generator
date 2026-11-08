@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
-import { JSON_SCHEMA, load } from "js-yaml";
+import type { Schema } from "js-yaml";
+import { JSON_SCHEMA, NOT_RESOLVED, defineScalarTag, intJsonTag, load } from "js-yaml";
 import { resolve, relative, dirname, join } from "upath";
 
 import { getFileList } from "./getFileList.js";
@@ -47,6 +48,62 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
   visit(value);
 };
 
+/** JavaScript 安全整数上限，超出该范围的整数无法用 `number` 精确表示 */
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+
+/**
+ * 对超出 JavaScript 安全整数范围的整数原文打印告警
+ *
+ * @param source 整数原文
+ * @param filePath 文件路径，仅用于告警信息
+ */
+const warnIfUnsafeInteger = (source: string, filePath: string): void => {
+  const signless = source.replaceAll("_", "").replace(/^[+-]/u, "");
+  const negative = source.startsWith("-");
+  let value: bigint;
+
+  try {
+    value = BigInt(signless);
+  } catch {
+    // 不是合法的整数原文（例如显式标签匹配到的其它写法），交给解析器自行处理
+    return;
+  }
+
+  if (negative) value = -value;
+  if (value >= -MAX_SAFE_INTEGER_BIGINT && value <= MAX_SAFE_INTEGER_BIGINT) return;
+
+  const location = filePath ? `（文件: ${filePath}）` : "";
+
+  console.warn(
+    `YAML 大整数超出安全整数范围，解析为 number 时可能丢失精度${location}: ${source}；长数字请加引号，以按字符串保留原始值`,
+  );
+};
+
+/**
+ * 创建带大整数告警的 YAML schema
+ *
+ * 在 js-yaml 默认 JSON schema 的基础上替换整数标签：仍按原逻辑解析，但整数超出 JavaScript 安全整数范围时打印告警，避免静默丢失精度。
+ *
+ * @param filePath 文件路径，仅用于告警信息
+ * @returns 用于本次解析的 schema
+ */
+const createYamlSchema = (filePath: string): Schema =>
+  JSON_SCHEMA.withTags(
+    defineScalarTag<number>("tag:yaml.org,2002:int", {
+      implicit: true,
+      implicitFirstChars: ["-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+      identify: intJsonTag.identify,
+      represent: intJsonTag.represent,
+      resolve: (source, isExplicit, tagName) => {
+        const value = intJsonTag.resolve(source, isExplicit, tagName);
+
+        if (value !== NOT_RESOLVED) warnIfUnsafeInteger(source, filePath);
+
+        return value;
+      },
+    }),
+  );
+
 /**
  * 匹配位于第 0 列的文档标记行（`---`、`...`）
  *
@@ -79,10 +136,11 @@ const hasYamlDocument = (content: string): boolean => {
 /**
  * 解析 YAML 内容
  *
- * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
+ * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。 未加引号的整数超出 JavaScript
+ * 安全整数范围时会打印告警：解析结果仍是 `number`，但可能已丢失精度，需要保留原始值时请加引号按字符串处理。
  *
  * @param content YAML 内容
- * @param filePath 文件路径，仅用于错误信息
+ * @param filePath 文件路径，仅用于错误与告警信息
  * @returns 解析结果，无标量文档为 `undefined`
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
@@ -90,9 +148,10 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
   if (!hasYamlDocument(content)) return void 0;
 
   try {
-    const value = load(content, { maxAliases: MAX_YAML_ALIASES, schema: JSON_SCHEMA }) as
-      | T
-      | undefined;
+    const value = load(content, {
+      maxAliases: MAX_YAML_ALIASES,
+      schema: createYamlSchema(filePath),
+    }) as T | undefined;
 
     if (value !== void 0) assertYamlValueSafe(value, filePath);
 
@@ -354,6 +413,8 @@ export type YamlMapItem<Value> = YamlInfo<Value> | YamlDirInfo<Value>;
 /**
  * 获取源文件夹下的 YAML 文件映射
  *
+ * 与其它 YAML 辅助函数一致，空文档（空文件、纯注释、仅文档标记/指令）会被跳过并打印中文告警，而不是抛错中断整个映射；空目录仍会保留。
+ *
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
  * @returns YAML 映射列表
@@ -364,13 +425,16 @@ export const getYamlMap = <T = unknown, Value = T>(
 ): YamlMapItem<Value>[] => {
   const fileMap = getFileMap(sourceFolder, "yml");
 
-  const convertYaml = (base: string, item: FileMapItem): YamlMapItem<Value> => {
+  const convertYaml = (base: string, item: FileMapItem): YamlMapItem<Value> | undefined => {
     if (item.type === "file") {
       const filename = join(base, item.filename);
       const content = readFileSync(filename, { encoding: "utf-8" });
       const parsed = parseYaml<T>(content, filename);
 
-      if (parsed === void 0) throw new Error(`YAML 文件为空: ${filename}`);
+      if (parsed === void 0) {
+        console.warn(`空 YAML 文件已跳过: ${filename}`);
+        return void 0;
+      }
 
       return {
         type: "file",
@@ -384,9 +448,13 @@ export const getYamlMap = <T = unknown, Value = T>(
     return {
       type: "dir",
       dirname: item.dirname,
-      content: item.content.map((block) => convertYaml(itemDirname, block)),
+      content: item.content
+        .map((block) => convertYaml(itemDirname, block))
+        .filter((child): child is YamlMapItem<Value> => child !== void 0),
     };
   };
 
-  return fileMap.map((item) => convertYaml(sourceFolder, item));
+  return fileMap
+    .map((item) => convertYaml(sourceFolder, item))
+    .filter((item): item is YamlMapItem<Value> => item !== void 0);
 };
