@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -9,6 +9,67 @@ import { getFileList } from "../src/index.js";
 describe(getFileList, () => {
   it("should return a list of files in the specified directory", () => {
     expect(getFileList("./src")).toMatchSnapshot();
+  });
+
+  describe("getFileList path handling", () => {
+    const makeTempDir = (): string => mkdtempSync(path.join(tmpdir(), "getFileList-path-"));
+
+    it("accepts an absolute directory path", () => {
+      const dir = makeTempDir();
+      try {
+        mkdirSync(path.join(dir, "sub"), { recursive: true });
+        writeFileSync(path.join(dir, "root.txt"), "");
+        writeFileSync(path.join(dir, "sub/nested.txt"), "");
+
+        const files = getFileList(dir);
+
+        expect(files).toContain("root.txt");
+        expect(files).toContain("sub/nested.txt");
+        expect(files).toHaveLength(2);
+        for (const file of files) expect(file).not.toMatch(/^\//u);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("resolves a relative directory path against the provided cwd", () => {
+      const dir = makeTempDir();
+      try {
+        writeFileSync(path.join(dir, "root.txt"), "");
+
+        expect(getFileList(".", undefined, dir)).toStrictEqual(["root.txt"]);
+        expect(getFileList("./", "txt", dir)).toStrictEqual(["root.txt"]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("throws for a missing directory and does not create it", () => {
+      const dir = makeTempDir();
+      try {
+        const missingDir = path.join(dir, "does-not-exist");
+        const resolvedPath = path.resolve(missingDir);
+
+        expect(() => getFileList(missingDir)).toThrow(resolvedPath);
+        expect(existsSync(missingDir)).toBe(false);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("throws when the path is a file", () => {
+      const dir = makeTempDir();
+      try {
+        const filePath = path.join(dir, "plain.txt");
+        writeFileSync(filePath, "");
+
+        expect(() => getFileList(filePath)).toThrow(path.resolve(filePath));
+        // The file must be left untouched
+        expect(existsSync(filePath)).toBe(true);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe("getFileList nested directories", () => {
