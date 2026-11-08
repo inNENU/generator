@@ -31,7 +31,7 @@ export const getLocationMarkdown = (
 
   if (points.length > 4) {
     console.warn(
-      `地点组件最多展示 4 个位置点，已忽略 ${points.length - 4} 个${
+      `地点组件网页版地图最多展示 4 个位置点，已忽略 ${points.length - 4} 个（JSON 与小程序仍使用全部点）${
         locationParam ? `（位置: ${locationParam}）` : ""
       }`,
     );
