@@ -102,23 +102,54 @@ export const iconSchema = zod.union([internalIconSchema, imgSchema]).meta({
   description: "图标",
 });
 
+/** 十进制坐标，禁止指数、正号、多余空格与超过 6 位的小数 */
+const coordinatePattern = /^-?\d+(?:\.\d{1,6})?$/u;
+
+/**
+ * 校验单个坐标
+ *
+ * @param raw 原始坐标文本
+ * @param name 坐标名称
+ * @param limit 绝对值上限
+ * @returns 合法时返回数值，否则返回错误信息
+ */
+const parseCoordinate = (raw: string, name: string, limit: number): number | string => {
+  if (!coordinatePattern.test(raw)) return `${name} ${raw} 必须是十进制数字，且最多保留 6 位小数`;
+
+  const value = Number(raw);
+
+  if (!Number.isFinite(value)) return `${name} ${raw} 必须是有限数字`;
+
+  if (value < -limit || value > limit) return `${name} ${raw} 必须在 -${limit} 到 ${limit} 之间`;
+
+  return value;
+};
+
 export const locSchema = zod
-  .templateLiteral(
-    [
-      zod
-        .number()
-        .refine((value) => value >= -180 && value <= 180, "纬度必须在 -180 到 180 之间")
-        .refine((value) => !Number.isInteger(value * 1e4), "纬度至少 5 位小数"),
-      ",",
-      zod
-        .number()
-        .refine((value) => value >= -180 && value <= 180, "经度必须在 -180 到 180 之间")
-        .refine((value) => !Number.isInteger(value * 1e4), "经度至少 5 位小数"),
-    ],
-    {
-      error: ({ input }) => `位置 ${String(input)} 不满足指定格式`,
-    },
+  .string()
+  .regex(
+    /^-?\d+(?:\.\d{1,6})?,-?\d+(?:\.\d{1,6})?$/u,
+    '位置应形如 "纬度,经度"，且每个坐标最多保留 6 位小数',
   )
+  .superRefine((loc, ctx) => {
+    const parts = loc.split(",");
+
+    if (parts.length !== 2) {
+      ctx.addIssue({
+        code: "custom",
+        message: `位置 ${loc} 应形如 "纬度,经度"`,
+      });
+
+      return;
+    }
+
+    const [rawLatitude, rawLongitude] = parts;
+    const latitude = parseCoordinate(rawLatitude, "纬度", 90);
+    const longitude = parseCoordinate(rawLongitude, "经度", 180);
+
+    if (typeof latitude === "string") ctx.addIssue({ code: "custom", message: latitude });
+    if (typeof longitude === "string") ctx.addIssue({ code: "custom", message: longitude });
+  })
   .meta({
     description: "位置坐标",
   });
