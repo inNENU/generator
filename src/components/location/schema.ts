@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { formatZodError } from "../../helpers/validation.js";
 import { envListSchema, locSchema } from "../../schema/common.js";
 
 const pointSchema = zod.strictObject({
@@ -68,7 +69,7 @@ export const checkLocation = (location: LocationComponentOptions, locationStr = 
   const result = useCompiled(locationSchema).safeParse(location);
 
   if (!result.success) {
-    const detail = zod.prettifyError(result.error);
+    const detail = formatZodError(result.error);
     const message = `非法 location 数据在 ${locationStr}: ${detail}`;
 
     console.error(`非法 location 数据在 ${locationStr}:`, detail);

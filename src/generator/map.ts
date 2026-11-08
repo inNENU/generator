@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "upath";
 
 import { generatorConfig } from "../config.js";
+import { formatZodError } from "../helpers/validation.js";
 import { getPageJSON } from "../page/json.js";
 import { checkPageContent } from "../page/schema.js";
 import type {
@@ -141,9 +142,7 @@ export const getMarkersJSON = (
   // 生成结果必须满足自家 schema，避免输出非法数据
   if (!parsed.success) {
     throw new Error(
-      `生成的地图标记点数据不符合 markersDataSchema: ${parsed.error.issues
-        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
-        .join("; ")}`,
+      `生成的地图标记点数据不符合 markersDataSchema:\n${formatZodError(parsed.error)}`,
     );
   }
 
