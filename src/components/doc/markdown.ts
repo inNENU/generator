@@ -18,6 +18,7 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
   )}" alt="" />`;
   const docName = getDocDisplayName(name, url);
   const docNameContent = `<span class="innenu-doc-name">${escapeHtml(docName)}</span>`;
+  const downloadable = doc.downloadable !== false;
 
   return `
 ${
@@ -29,7 +30,11 @@ ${
 </a>
 `
     : `
-<a class="innenu-doc" href="${escapeHtml(url)}" download="${escapeHtml(name)}">
+<a class="innenu-doc" href="${escapeHtml(url)}" ${
+        downloadable
+          ? `download="${escapeHtml(name)}"`
+          : 'target="_blank" rel="noopener noreferrer"'
+      }>
 ${docIcon}
 ${docNameContent}
 </a>

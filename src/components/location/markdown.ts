@@ -29,6 +29,14 @@ export const getLocationMarkdown = (
 
   const { header, points } = location;
 
+  if (points.length > 4) {
+    console.warn(
+      `地点组件最多展示 4 个位置点，已忽略 ${points.length - 4} 个${
+        locationParam ? `（位置: ${locationParam}）` : ""
+      }`,
+    );
+  }
+
   return `\
 ${
   header
