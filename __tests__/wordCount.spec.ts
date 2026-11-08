@@ -95,6 +95,9 @@ describe(getWordNumber, () => {
     expect(getWordNumber("https://example.com/中文")).toBe(2);
     expect(getWordNumber("https://a.com?q=中文")).toBe(2);
     expect(getWordNumber("看 https://example.com/中文 介绍")).toBe(5);
+
+    // 已知限制：非 ASCII 主机名（IDN）整体不匹配 URL 规则，其 ASCII 标签仍按词计入
+    expect(getWordNumber("https://中文.com")).toBe(4);
   });
 
   it("should stop URLs at adjacent CJK punctuation", () => {
