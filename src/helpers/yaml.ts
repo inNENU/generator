@@ -47,28 +47,34 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
   visit(value);
 };
 
-/** 匹配不携带标量的文档标记行（`---`、`...`） */
-const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:\s+#.*)?$/u;
+/**
+ * 匹配位于第 0 列的文档标记行（`---`、`...`）
+ *
+ * 按 YAML 规范，文档标记必须从第 0 列开始，后面只允许空白或注释；缩进的 `...`/`---` 属于普通标量，不是文档标记。
+ */
+const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:\s+(?:#.*)?)?$/u;
 
 /**
  * 判断 YAML 内容是否包含实际文档
  *
- * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容，只有这些行的文件按空文档处理。
+ * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容，只有这些行的文件按空文档处理。 由于文档标记与指令必须位于第 0 列，缩进的
+ * `...`、`---` 会被当作普通标量内容，缩进的 `%foo` 也不再被误判为空文档。
  *
  * @param content YAML 内容
  * @returns 是否包含实际标量内容
  */
-const hasYamlDocument = (content: string): boolean =>
-  content.split("\n").some((line) => {
-    const trimmedLine = line.trim();
+const hasYamlDocument = (content: string): boolean => {
+  // 去掉文件开头的 BOM，避免首行的文档标记被当成普通内容
+  const normalizedContent = content.startsWith("\uFEFF") ? content.slice(1) : content;
 
-    return (
-      trimmedLine !== "" &&
-      !trimmedLine.startsWith("#") &&
-      !trimmedLine.startsWith("%") &&
-      !yamlDocumentMarkerPattern.test(trimmedLine)
-    );
+  return normalizedContent.split("\n").some((line) => {
+    if (line.trim() === "") return false;
+    if (line.trimStart().startsWith("#")) return false;
+    if (line.startsWith("%")) return false;
+
+    return !yamlDocumentMarkerPattern.test(line);
   });
+};
 
 /**
  * 解析 YAML 内容
@@ -277,6 +283,9 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
 /**
  * 将源文件夹下的所有 YAML 文件转换为 Markdown 文件
+ *
+ * 与 `convertYamlFilesToJson` 不同，本函数不把转换函数返回的 `null`/`undefined` 视为“跳过”： 转换函数被声明为返回
+ * `string`，当前消费者都返回 Markdown 文本；若运行时返回 `null`/`undefined`， 写入会失败并计入聚合错误，而不是静默跳过该文件。
  *
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回 Markdown 内容

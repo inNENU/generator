@@ -37,6 +37,22 @@ describe(parseYaml, () => {
     expect(parseYaml("---\n...")).toBeUndefined();
   });
 
+  it("only treats column-0 markers and directives as non-content", () => {
+    expect(parseYaml("%YAML 1.2\n---")).toBeUndefined();
+    expect(parseYaml("%TAG ! tag:example.com,2000:\n---")).toBeUndefined();
+    expect(parseYaml("...\n")).toBeUndefined();
+    expect(parseYaml("... # end of document")).toBeUndefined();
+
+    // 缩进的 `---`/`...` 是普通标量，不是文档标记
+    expect(parseYaml("  ...")).toBe("...");
+    expect(parseYaml("---\n  ---")).toBe("---");
+  });
+
+  it("does not silently treat an indented directive-like line as an empty document", () => {
+    // `%` 指令必须位于第 0 列；缩进的 `%foo` 不是指令，而是非法 YAML，应报错而不是被当作空文档跳过
+    expect(() => parseYaml("  %foo")).toThrow(/YAML 解析失败/u);
+  });
+
   it("keeps explicit empty string scalars", () => {
     expect(parseYaml('""')).toBe("");
     expect(parseYaml("''")).toBe("");
