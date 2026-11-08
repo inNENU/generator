@@ -133,3 +133,46 @@ describe(convertYamlFilesToMarkdown, () => {
     }
   });
 });
+
+describe("yaml alias protection", () => {
+  it("allows normal shared aliases", () => {
+    expect(parseYaml("base: &base { name: 首页 }\ncopy: *base")).toStrictEqual({
+      base: { name: "首页" },
+      copy: { name: "首页" },
+    });
+  });
+
+  it("rejects documents with too many aliases", () => {
+    const aliases = Array.from({ length: 101 }, () => "*base").join(",");
+
+    expect(() => parseYaml(`base: &base 1\nlist: [${aliases}]`, "bomb.yml")).toThrow(
+      /YAML 解析失败/u,
+    );
+  });
+
+  it("rejects self-referential aliases", () => {
+    expect(() => parseYaml("node: &node\n  self: *node", "cycle.yml")).toThrow(/循环引用/u);
+  });
+
+  it("rejects exponential alias expansion", () => {
+    const level = (previous: string): string =>
+      `  - [${Array.from({ length: 10 }, () => `*${previous}`).join(",")}]`;
+
+    const content = [
+      "l0: &l0 [1,1,1,1,1,1,1,1,1,1]",
+      "l1: &l1",
+      level("l0"),
+      "l2: &l2",
+      level("l1"),
+      "l3: &l3",
+      level("l2"),
+      "l4: &l4",
+      level("l3"),
+      "l5: &l5",
+      level("l4"),
+      "root: *l5",
+    ].join("\n");
+
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/展开后过大/u);
+  });
+});
