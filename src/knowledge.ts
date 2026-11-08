@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dump, JSON_SCHEMA, load } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
 
-import { getFileList } from "./helpers/index.js";
+import { formatZodError, getFileList } from "./helpers/index.js";
+import { pageConfigSchema } from "./page/schema.js";
 import { getPageText } from "./page/text.js";
 import type { UrlConverter } from "./page/text.js";
 import type { PageConfig } from "./typings.js";
@@ -21,6 +22,34 @@ export interface KnowledgeContentOptions {
    */
   mode?: "web" | "miniapp";
 }
+
+/**
+ * 读取并校验页面配置
+ *
+ * 解析失败或不符合 `pageConfigSchema` 时输出带文件路径的错误并返回 `null`，避免单页问题中断整批转换。
+ *
+ * @param sourceFilename 页面 YAML 文件路径
+ * @param displayPath 报错中展示的相对路径
+ * @returns 校验后的页面配置，失败时返回 null
+ */
+const loadPageConfig = (sourceFilename: string, displayPath: string): PageConfig | null => {
+  try {
+    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
+    const parsed = pageConfigSchema.safeParse(load(content, { schema: JSON_SCHEMA }));
+
+    if (!parsed.success) {
+      console.error(`${displayPath} 页面配置校验失败:\n${formatZodError(parsed.error)}`);
+
+      return null;
+    }
+
+    return parsed.data;
+  } catch (err) {
+    console.error(`${displayPath} 读取或解析失败:`, err);
+
+    return null;
+  }
+};
 
 /**
  * 生成知识库内容，将源文件夹下的 YAML 页面转换为 Markdown 文本
@@ -42,21 +71,23 @@ export const generateKnowledgeContent = (
   fileList.forEach((filePath) => {
     const filePathRelative = relative("./", filePath.replace(/\.yml$/u, ""));
     const sourceFilename = resolve(sourceFolder, filePath);
+    const data = loadPageConfig(sourceFilename, filePath);
 
-    const content = readFileSync(sourceFilename, { encoding: "utf-8" });
-
-    const data = load(content, { schema: JSON_SCHEMA }) as PageConfig;
-
-    if (data.aiIgnore) return;
-
-    const text = getPageText(data, filePathRelative, options);
+    if (!data || data.aiIgnore) return;
 
     const targetFilename = resolve(distFolder, filePath.replace(/\.yml$/u, ".md"));
-    const targetDirname = dirname(targetFilename);
 
-    if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
+    try {
+      const text = getPageText(data, filePathRelative, options);
 
-    writeFileSync(targetFilename, text, { encoding: "utf-8" });
+      const targetDirname = dirname(targetFilename);
+
+      if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
+
+      writeFileSync(targetFilename, text, { encoding: "utf-8" });
+    } catch (err) {
+      console.error(`${filePathRelative} 生成知识库 Markdown 失败:`, err);
+    }
   });
 };
 
@@ -209,12 +240,9 @@ export const generateKnowledgeIndex = (
   const index = fileList
     .map((filePath) => {
       const sourceFilename = resolve(sourceFolder, filePath);
+      const data = loadPageConfig(sourceFilename, filePath);
 
-      const content = readFileSync(sourceFilename, { encoding: "utf-8" });
-
-      const data = load(content, { schema: JSON_SCHEMA }) as PageConfig;
-
-      if (data.aiIgnore) return null;
+      if (!data || data.aiIgnore) return null;
 
       const path = filePath.replace(/\.yml$/u, "");
 
