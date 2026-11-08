@@ -139,18 +139,23 @@ export const getIconLink = (icon?: string): string | null => {
 };
 
 /**
- * 将文件路径解析为相对于当前工作目录的路径
+ * 将文件路径解析为项目内的规范路径
  *
  * @param filePath 文件路径
- * @returns 相对路径
+ * @returns 规范路径
  */
-export const resolvePath = (filePath: string): string =>
-  path
-    .relative(
-      process.cwd(),
-      path.resolve(filePath.replace(/\/\//u, "/").replace(/^\//u, "").replace(/\/$/u, "/index")),
-    )
-    .replaceAll(path.sep, "/");
+export const resolvePath = (filePath: string): string => {
+  const [pathname] = filePath.split(/[?#]/u);
+  const normalized = path.posix.normalize(pathname.replaceAll("\\", "/").replace(/^\/+/u, ""));
+  const resolved = normalized === "." ? "" : normalized;
+
+  if (resolved === ".." || resolved.startsWith("../"))
+    throw new Error(`路径不能超出项目目录: ${filePath}`);
+
+  if (!resolved) return "index";
+
+  return resolved.endsWith("/") ? `${resolved}index` : resolved;
+};
 
 /**
  * 解析页面跳转路径
