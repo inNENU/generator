@@ -230,7 +230,7 @@ export const getPageJSON = (
 
     if (!page.content) throw new Error(`${pagePath}.content 不存在内容`);
 
-    if (!Array.isArray(page.content)) throw new Error(`${pagePath}.content 应为数组`);
+    if (!Array.isArray(page.content)) throw new TypeError(`${pagePath}.content 应为数组`);
 
     const { id = pagePath, author, cite, content, time } = page;
 
