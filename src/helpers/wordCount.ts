@@ -4,37 +4,43 @@ import path from "node:path";
 import type { ComponentOptions, PageConfig } from "../page/schema.js";
 import { getFileList } from "./getFileList.js";
 
-/**
- * 从内容中提取拉丁单词
- *
- * @param content 需要提取拉丁单词的内容
- * @returns 内容中的拉丁单词数组，若没有则返回 null
- */
-const getLatinWords = (content: string): RegExpMatchArray | null =>
-  // \u00C0-\u024F 是拉丁补充字母，可能用于法语等语言
-  // \u0400-\u04FF 是西里尔字母，用于俄语
-  content.match(/[\w\d\s,.\u00C0-\u024F\u0400-\u04FF]+/giu);
+const urlPattern = /(?:https?:\/\/|www\.)\S+/giu;
+/** 站内资源别名链接：`$img/a.png`、`$video/demo.mp4`、`$file/doc.pdf` 等 */
+const aliasLinkPattern = /\$[\w-]+\/[^\s)"'<>\]}]+/gu;
+const cjkPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
+const wordPattern = /[\p{L}\p{N}]+(?:['\u2019-][\p{L}\p{N}]+)*/gu;
+const emojiPattern = /\p{Extended_Pictographic}/u;
 
 /**
- * 从内容中提取中文字符
+ * 统计内容中的 emoji 数量
  *
- * @param content 需要提取中文字符的内容
- * @returns 内容中的中文字符数组，若没有则返回 null
+ * @param content 需要统计的内容
+ * @returns Emoji 数量（按 grapheme 计，一个组合 emoji 算 1）
  */
-const getChinese = (content: string): RegExpMatchArray | null => content.match(/[\u4E00-\u9FD5]/gu);
+const getEmojiNumber = (content: string): number => {
+  const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+
+  return [...segmenter.segment(content)].filter(({ segment }) => emojiPattern.test(segment)).length;
+};
 
 /**
  * 统计字符串的字数
  *
+ * 按字统计 CJK/日文假名/韩文，按词统计拉丁/西里尔等语言，emoji 按 grapheme 计 1； 链接（http(s)://、www. 与 `$img/...` 等站内别名）不计入字数。
+ *
  * @param content 需要统计字数的内容
- * @returns 内容中的字数，同时统计拉丁单词与中文字符
+ * @returns 内容中的字数
  */
-export const getWordNumber = (content: string): number =>
-  (getLatinWords(content)?.reduce(
-    (accumulator, word) =>
-      accumulator + (word.trim() === "" ? 0 : word.trim().split(/\s+/u).length),
-    0,
-  ) ?? 0) + (getChinese(content)?.length ?? 0);
+export const getWordNumber = (content: string): number => {
+  if (!content) return 0;
+
+  const withoutUrls = content.replaceAll(urlPattern, " ").replaceAll(aliasLinkPattern, " ");
+  const cjkNumber = withoutUrls.match(cjkPattern)?.length ?? 0;
+  const withoutCjk = withoutUrls.replaceAll(cjkPattern, " ");
+  const wordNumber = withoutCjk.match(wordPattern)?.length ?? 0;
+
+  return wordNumber + cjkNumber + getEmojiNumber(withoutUrls);
+};
 
 /**
  * 提取 JSON 值中的文本

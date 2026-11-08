@@ -47,6 +47,38 @@ describe(getWordNumber, () => {
   it("should handle Cyrillic characters", () => {
     expect(getWordNumber("Привет мир")).toBe(2);
   });
+
+  it("should count words split by punctuation", () => {
+    expect(getWordNumber("hello,world")).toBe(2);
+  });
+
+  it("should count emoji as graphemes", () => {
+    expect(getWordNumber("😀😀")).toBe(2);
+    expect(getWordNumber("👨‍👩‍👧")).toBe(1);
+  });
+
+  it("should count Japanese and Korean characters", () => {
+    expect(getWordNumber("こんにちは")).toBe(5);
+    expect(getWordNumber("안녕하세요")).toBe(5);
+  });
+
+  it("should count CJK extension characters", () => {
+    expect(getWordNumber("𠀀𠀁")).toBe(2);
+  });
+
+  it("should not count URLs", () => {
+    expect(getWordNumber("https://example.com/source")).toBe(0);
+    expect(getWordNumber("www.example.com")).toBe(0);
+    expect(getWordNumber("看 https://example.com/abc 介绍")).toBe(3);
+  });
+
+  it("should not count $ alias links", () => {
+    expect(getWordNumber("$img/a.png")).toBe(0);
+    expect(getWordNumber("$video/demo.mp4")).toBe(0);
+    expect(getWordNumber("$file/doc.pdf")).toBe(0);
+    expect(getWordNumber("看 $img/a.png 介绍")).toBe(3);
+    expect(getWordNumber("图片 ![图]($img/a.png)")).toBe(3);
+  });
 });
 
 describe(getJSONValue, () => {
@@ -573,10 +605,10 @@ describe(getJSONWordCount, () => {
 
       process.chdir(testDir);
 
-      // 原始行为：getJSONWordCount 统计 JSON 中的全部文本（包括引用来源与图片链接）。
-      // 拼接后的内容为 " 测试 https://example.com/source  img $img/a.png"，
-      // 即 测试(2) + https/example.com/source(3) + img(1) + img(1) + a.png(1) = 8。
-      expect(getJSONWordCount(".")).toBe(8);
+      // getJSONWordCount 统计 JSON 中的全部文本，但 URL 与 $ 别名不计入字数。
+      // 拼接后的内容为 " 测试 https://example.com/source img $img/a.png"，
+      // 即 测试(2) + tag 的 img(1) = 3；src 的 $img/a.png 不计入。
+      expect(getJSONWordCount(".")).toBe(3);
 
       // 应多于只统计正文的 getFolderPageWordCount（仅标题 测试 计入）
       expect(getJSONWordCount(".")).toBeGreaterThan(getFolderPageWordCount("."));
