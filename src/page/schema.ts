@@ -6,11 +6,23 @@ import {
   audioSchema,
   cardSchema,
   carouselSchema,
+  checkAccount,
+  checkAction,
+  checkAudio,
   checkCard,
+  checkCarousel,
+  checkDoc,
+  checkFooter,
   checkFunctionalList,
   checkGrid,
+  checkImage,
   checkList,
+  checkLocation,
+  checkPhone,
+  checkTable,
   checkText,
+  checkTitle,
+  checkVideo,
   docSchema,
   footerSchema,
   functionalListSchema,
@@ -68,6 +80,99 @@ export const pageContentSchema = zod.array(componentSchema).min(1, "页面内容
 });
 
 /**
+ * 检查单个组件
+ *
+ * 除 zod 结构校验外，部分组件还包含路径存在性、表格列数等语义检查，必须按组件类型逐个执行。
+ *
+ * @param component 组件配置
+ * @param location 组件所在位置
+ * @param pageId 当前页面 ID
+ * @returns 校验问题列表
+ */
+const checkComponent = (
+  component: ComponentOptions,
+  location: string,
+  pageId: string,
+): string[] => {
+  switch (component.tag) {
+    case "account": {
+      return checkAccount(component, location);
+    }
+
+    case "action": {
+      return checkAction(component, location);
+    }
+
+    case "audio": {
+      return checkAudio(component, location);
+    }
+
+    case "card": {
+      return checkCard(component, location, pageId);
+    }
+
+    case "carousel": {
+      return checkCarousel(component, location);
+    }
+
+    case "doc": {
+      return checkDoc(component, location);
+    }
+
+    case "footer": {
+      return checkFooter(component, location);
+    }
+
+    case "functional-list": {
+      return checkFunctionalList(component, location, pageId);
+    }
+
+    case "grid": {
+      return checkGrid(component, location, pageId);
+    }
+
+    case "img": {
+      return checkImage(component, location);
+    }
+
+    case "list": {
+      return checkList(component, location, pageId);
+    }
+
+    case "location": {
+      return checkLocation(component, location);
+    }
+
+    case "phone": {
+      return checkPhone(component, location);
+    }
+
+    case "table": {
+      return checkTable(component, location);
+    }
+
+    case "text":
+    case "p":
+    case "ol":
+    case "ul": {
+      return checkText(component, location, pageId);
+    }
+
+    case "title": {
+      return checkTitle(component, location);
+    }
+
+    case "video": {
+      return checkVideo(component, location);
+    }
+
+    default: {
+      return [];
+    }
+  }
+};
+
+/**
  * 检查页面内容
  *
  * @param content 页面内容
@@ -80,29 +185,27 @@ export const checkPageContent = (
   location: string,
   pageId = "",
 ): string[] => {
+  // 结构损坏时下面的 flatMap、in 运算等会抛出 TypeError，先确认内容整体是数组
+  if (!Array.isArray(content)) {
+    const message = `${location} 页面内容应为组件数组`;
+
+    console.error(message);
+
+    return [message];
+  }
+
   const result = useCompiled(pageContentSchema).safeParse(content);
-  const issues = result.success ? [] : collectZodIssues(location, "发现非法页面内容", result.error);
 
-  content.forEach((component, index) => {
-    const componentLocation = `${location} page.content[${index}]`;
+  // 页面内容整体不合法时不再逐组件做语义检查：损坏的组件（如 null、items 为非数组）
+  // 会让校验函数在遍历时抛出 TypeError，掩盖真正的校验问题。
+  if (!result.success) return collectZodIssues(location, "发现非法页面内容", result.error);
 
-    if (component.tag === "grid") issues.push(...checkGrid(component, componentLocation, pageId));
-    else if (component.tag === "list")
-      issues.push(...checkList(component, componentLocation, pageId));
-    else if (component.tag === "functional-list")
-      issues.push(...checkFunctionalList(component, componentLocation, pageId));
-    else if (component.tag === "card")
-      issues.push(...checkCard(component, componentLocation, pageId));
-    else if (
-      component.tag === "text" ||
-      component.tag === "p" ||
-      component.tag === "ol" ||
-      component.tag === "ul"
-    )
-      issues.push(...checkText(component, componentLocation, pageId));
-  });
+  const issues = content.flatMap((component, index) =>
+    checkComponent(component, `${location} page.content[${index}]`, pageId),
+  );
 
-  return issues;
+  // 多个组件可能产生相同的问题（如同一个缺失路径），去重后再返回
+  return [...new Set(issues)];
 };
 
 export const pageTitleSchema = zod

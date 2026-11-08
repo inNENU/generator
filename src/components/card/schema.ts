@@ -134,7 +134,14 @@ export const checkCard = (card: CardComponentOptions, location = "", pageId = ""
     : collectZodIssues(location, "发现非法 card 数据", result.error);
 
   // 检查跳转路径是否存在（排除小程序路径）
-  if (pageId && "path" in card && !("appId" in card))
+  if (
+    pageId &&
+    card &&
+    typeof card === "object" &&
+    "path" in card &&
+    typeof card.path === "string" &&
+    !("appId" in card)
+  )
     issues.push(...checkPagePath(card.path, pageId, location));
 
   return issues;

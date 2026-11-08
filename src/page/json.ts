@@ -20,7 +20,7 @@ import { getTextJSON } from "../components/text/json.js";
 import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
 import { generatorConfig } from "../config.js";
-import { ValidationError } from "../helpers/validation.js";
+import { ValidationError, runValidation } from "../helpers/validation.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
@@ -260,22 +260,24 @@ export const getPageJSON = (
   try {
     if (!page) throw new Error(`${pagePath} 不存在内容`);
 
-    if (!page.content) throw new Error(`${pagePath}.content 不存在内容`);
-
-    if (!Array.isArray(page.content)) throw new TypeError(`${pagePath}.content 应为数组`);
-
     const { id = pagePath, author, cite, content, time } = page;
 
     if (check) {
-      const contentIssues = checkPageContent(content, pagePath, id);
+      runValidation(`${pagePath} 页面校验失败`, () => {
+        const contentIssues = checkPageContent(content, pagePath, id);
 
-      if (contentIssues.length)
-        throw new ValidationError(`${pagePath} 页面内容校验失败`, contentIssues);
+        if (contentIssues.length)
+          throw new ValidationError(`${pagePath} 页面内容校验失败`, contentIssues);
 
-      const configIssues = checkPageConfig(page, pagePath, options);
+        const configIssues = checkPageConfig(page, pagePath, options);
 
-      if (configIssues.length)
-        throw new ValidationError(`${pagePath} 页面配置校验失败`, configIssues);
+        if (configIssues.length)
+          throw new ValidationError(`${pagePath} 页面配置校验失败`, configIssues);
+      });
+    } else {
+      if (!content) throw new Error(`${pagePath}.content 不存在内容`);
+
+      if (!Array.isArray(content)) throw new TypeError(`${pagePath}.content 应为数组`);
     }
 
     const pageData: PageData = {
