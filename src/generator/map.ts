@@ -13,7 +13,15 @@ import type {
   MarkersConfig,
   MarkersData,
 } from "../schema/index.js";
-import { checkMapPageConfig, checkMarkerConfig } from "../schema/index.js";
+import {
+  checkMapPageConfig,
+  checkMarkerConfig,
+  checkMarkersConfig,
+  markersDataSchema,
+} from "../schema/index.js";
+
+/** 内置「全部」分类的保留 path */
+const ALL_CATEGORY_PATH = "all";
 
 /**
  * 处理地图页面数据
@@ -56,7 +64,7 @@ export const getMarkerJSON = (
   marker: MarkerConfig,
   folder: string,
   category: string,
-  { id = 0, check = true }: { id?: number; check?: boolean } = {},
+  { id = 1, check = true }: { id?: number; check?: boolean } = {},
 ): MarkerData => {
   if (check) checkMarkerConfig(marker);
 
@@ -90,18 +98,30 @@ export const getMarkersJSON = (
   folder: string,
   { check = true }: { check?: boolean } = {},
 ): MarkersData => {
+  if (check) checkMarkersConfig(data, folder);
+
   const categories = Object.keys(data);
 
+  // "all" 是内置「全部」分类的保留 path：用户分类与之同名时，
+  // markers.all 会被重复累积，分类列表也会出现重复项
+  if (categories.includes(ALL_CATEGORY_PATH)) {
+    throw new Error(
+      `地图标记点分类 path "${ALL_CATEGORY_PATH}" 为保留名（内置「全部」分类），` +
+        `请重命名该分类后再生成${folder ? `，位置: ${folder}` : ""}`,
+    );
+  }
+
   const categoryConfig = [
-    { path: "all", name: "全部" },
+    { path: ALL_CATEGORY_PATH, name: "全部" },
     ...categories.map((category) => ({
       path: category,
       name: data[category].name,
     })),
   ];
 
-  let id = 0;
-  const markers = { all: [] } as Record<string, MarkerData[]>;
+  // marker id 从 1 开始分配（markerDataSchema 要求 id 为正整数）
+  let id = 1;
+  const markers = { [ALL_CATEGORY_PATH]: [] } as Record<string, MarkerData[]>;
 
   categories.forEach((category) => {
     markers[category] = data[category].content.map((marker) => {
@@ -112,8 +132,20 @@ export const getMarkersJSON = (
       return getMarkerJSON(marker, folder, category, { id: markerId, check });
     });
 
-    markers.all = [...markers.all, ...markers[category]];
+    markers[ALL_CATEGORY_PATH] = [...markers[ALL_CATEGORY_PATH], ...markers[category]];
   });
 
-  return { category: categoryConfig, marker: markers };
+  const result = { category: categoryConfig, marker: markers };
+  const parsed = markersDataSchema.safeParse(result);
+
+  // 生成结果必须满足自家 schema，避免输出非法数据
+  if (!parsed.success) {
+    throw new Error(
+      `生成的地图标记点数据不符合 markersDataSchema: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}`,
+    );
+  }
+
+  return parsed.data;
 };
