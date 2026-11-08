@@ -1,4 +1,12 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -174,5 +182,89 @@ describe("yaml alias protection", () => {
     ].join("\n");
 
     expect(() => parseYaml(content, "bomb.yml")).toThrow(/展开后过大/u);
+  });
+});
+
+describe("yaml conversion output", () => {
+  it("writes falsy conversion results and leaves no temp files", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-falsy-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      writeFileSync(path.join(source, "a.yml"), "a: 1");
+
+      convertYamlFilesToJson(source, target, () => false);
+
+      expect(readFileSync(path.join(target, "a.json"), "utf-8")).toBe("false");
+      expect(readdirSync(target).some((file) => file.endsWith(".tmp"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("removes stale json outputs when a source file is deleted", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-stale-json-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      writeFileSync(path.join(source, "a.yml"), "a: 1");
+      writeFileSync(path.join(source, "b.yml"), "b: 2");
+
+      convertYamlFilesToJson(source, target, (data) => data);
+
+      rmSync(path.join(source, "b.yml"));
+      writeFileSync(path.join(source, "c.yml"), "c: 3");
+
+      convertYamlFilesToJson(source, target, (data) => data);
+
+      expect(readdirSync(target).sort()).toStrictEqual(["a.json", "c.json"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("removes stale README output for a deleted index.yml", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-stale-md-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(path.join(source, "guide"), { recursive: true });
+
+      writeFileSync(path.join(source, "guide", "index.yml"), "title: 指南");
+
+      convertYamlFilesToMarkdown(source, () => "# 指南", target);
+
+      expect(readFileSync(path.join(target, "guide", "README.md"), "utf-8")).toBe("# 指南");
+
+      rmSync(path.join(source, "guide", "index.yml"));
+      convertYamlFilesToMarkdown(source, () => "# 指南", target);
+
+      expect(existsSync(path.join(target, "guide", "README.md"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not delete unrelated files when source equals target", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-same-dir-"));
+
+    try {
+      writeFileSync(path.join(root, "a.yml"), "a: 1");
+      writeFileSync(path.join(root, "manual.json"), "{}");
+
+      convertYamlFilesToJson(root, root, (data) => data);
+
+      expect(existsSync(path.join(root, "manual.json"))).toBe(true);
+      expect(existsSync(path.join(root, "a.json"))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

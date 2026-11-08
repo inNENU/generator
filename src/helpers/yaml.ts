@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
 import { JSON_SCHEMA, load } from "js-yaml";
 import { resolve, relative, dirname, join } from "upath";
@@ -141,6 +141,62 @@ export const checkYamlFiles = <T = unknown>(
 };
 
 /**
+ * 原子写入文件：先写临时文件再 rename，避免中途失败留下半截内容
+ *
+ * @param filename 目标文件路径
+ * @param content 文件内容
+ */
+const writeFileAtomically = (filename: string, content: string): void => {
+  const tempFilename = `${filename}.${process.pid}.tmp`;
+
+  try {
+    writeFileSync(tempFilename, content, { encoding: "utf-8" });
+    renameSync(tempFilename, filename);
+  } catch (err) {
+    rmSync(tempFilename, { force: true });
+    throw err;
+  }
+};
+
+/**
+ * 清理目标文件夹中源文件已不存在的旧输出
+ *
+ * 仅在源与目标文件夹不同时执行，避免误删与生成无关的文件。
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹
+ * @param extension 目标文件扩展名
+ */
+const removeStaleOutputs = (
+  sourceFolder: string,
+  targetFolder: string,
+  extension: ".json" | ".md",
+): void => {
+  if (resolve(sourceFolder) === resolve(targetFolder)) return;
+  if (!existsSync(targetFolder)) return;
+
+  for (const filePath of getFileList(targetFolder, extension.slice(1))) {
+    const targetFilename = resolve(targetFolder, filePath);
+    const sourceBase = filePath.endsWith(extension)
+      ? filePath.slice(0, -extension.length)
+      : filePath;
+    const candidates = [`${sourceBase}.yml`, `${sourceBase}.yaml`];
+
+    if (extension === ".md" && /(?:^|\/)README\.md$/u.test(filePath)) {
+      const dirnamePrefix = filePath.replace(/README\.md$/u, "");
+      candidates.push(`${dirnamePrefix}index.yml`, `${dirnamePrefix}index.yaml`);
+    }
+
+    const hasSource = candidates.some((candidate) => existsSync(resolve(sourceFolder, candidate)));
+
+    if (!hasSource) {
+      rmSync(targetFilename, { force: true });
+      console.warn(`已移除陈旧的输出文件: ${targetFilename}`);
+    }
+  }
+};
+
+/**
  * 将源文件夹下的所有 YAML 文件转换为 JSON 文件
  *
  * @param sourceFolder 源文件夹
@@ -175,12 +231,10 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
       const result = convertFunction(parsed, yamlRelativePath);
 
-      if (result) {
+      if (result !== void 0) {
         if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
-        writeFileSync(targetFilename, JSON.stringify(result), {
-          encoding: "utf-8",
-        });
+        writeFileAtomically(targetFilename, JSON.stringify(result));
       }
     } catch (err) {
       errors.push(
@@ -193,6 +247,8 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
   if (errors.length > 0)
     throw new AggregateError(errors, `YAML 转 JSON 失败（${errors.length} 个文件）`);
+
+  removeStaleOutputs(sourceFolder, targetFolder, ".json");
 };
 
 /**
@@ -232,7 +288,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
 
       if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
-      writeFileSync(targetFilename, result, { encoding: "utf-8" });
+      writeFileAtomically(targetFilename, result);
     } catch (err) {
       errors.push(
         new Error(`YAML 转 Markdown 失败: ${sourceFilename}`, {
@@ -244,6 +300,8 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
 
   if (errors.length > 0)
     throw new AggregateError(errors, `YAML 转 Markdown 失败（${errors.length} 个文件）`);
+
+  removeStaleOutputs(sourceFolder, targetFolder, ".md");
 };
 
 export interface YamlInfo<Value = unknown> {
