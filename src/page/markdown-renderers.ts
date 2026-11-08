@@ -167,6 +167,60 @@ ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
 `;
     }
 
+    case "functional-list": {
+      const { header, items, footer } = component;
+
+      // 与 list / grid 分支一致：条目级 env 不参与文本管线过滤（组件级 env 已在入口处处理），
+      // 以免知识库漏掉仅在小程序 / App 中展示的说明性条目。
+      const renderedItems = items
+        .map((item) => {
+          const itemDesc = item.desc ? ` - ${escapeHtml(item.desc)}` : "";
+          // 小程序模式补充结构信息，便于 AI 还原组件；网页模式只保留纯文本。
+          const iconHint =
+            mode === "miniapp" && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
+
+          // 公众号 / 公众号文章：站点渲染为外链，文本管线保留为 Markdown 链接。
+          if ("action" in item) {
+            if (item.action === "official")
+              return `- [${escapeHtml(item.text)}](https://open.weixin.qq.com/qr/code?username=${escapeHtml(item.username)})${itemDesc}${iconHint}`;
+
+            if (item.action === "article")
+              return `- [${escapeHtml(item.text)}](${item.url})${itemDesc}${iconHint}`;
+
+            // 视频号资料 / 视频没有可直接访问的网页地址，至少保留条目文字。
+            return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}`;
+          }
+
+          // url 条目：与 list / grid 分支一致，交给 urlConverter 转换，未转换时丢弃。
+          if ("url" in item && item.url) {
+            const converted = toUrlConversion(urlConverter(item.url));
+
+            if (!converted) return null;
+
+            if (mode === "miniapp")
+              return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}（小程序：\`${converted.miniapp}\`）`;
+
+            return `- ${escapeHtml(item.text)}${itemDesc}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+          }
+
+          const pathHint =
+            mode === "miniapp" && "path" in item && item.path
+              ? `（path: ${escapeHtml(item.path)}）`
+              : "";
+
+          return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}${pathHint}`;
+        })
+        .filter((item): item is string => item != null)
+        .join("\n");
+
+      return `\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
+${renderedItems}
+
+${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
+`;
+    }
+
     case "card": {
       const { title: cardTitle, desc: cardDesc, logo } = component;
 
