@@ -20,6 +20,7 @@ import { getTextJSON } from "../components/text/json.js";
 import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
 import { generatorConfig } from "../config.js";
+import { ValidationError } from "../helpers/validation.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
@@ -37,7 +38,11 @@ export const getPageContent = (
   { id = pagePath, check = true }: { id?: string; check?: boolean } = {},
 ): ComponentOptions[] => {
   try {
-    if (check) checkPageContent(content, pagePath, id);
+    if (check) {
+      const issues = checkPageContent(content, pagePath, id);
+
+      if (issues.length) throw new ValidationError(`${pagePath} 页面内容校验失败`, issues);
+    }
 
     return content.map((element, index) => {
       const { tag } = element;
@@ -114,15 +119,15 @@ export const getPageContent = (
         }
 
         default: {
-          console.error(
+          throw new Error(
             `${pagePath} page.content[${index}] 存在非法 tag ${tag as unknown as string}`,
           );
-
-          return element;
         }
       }
     });
   } catch (err) {
+    if (err instanceof ValidationError) throw err;
+
     throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
   }
 };
@@ -158,8 +163,6 @@ export const getPageJSON = (
 ): PageData => {
   const { check = true } = options;
 
-  if (check) checkPageConfig(page, pagePath, options);
-
   try {
     if (!page) throw new Error(`${pagePath} 不存在内容`);
 
@@ -168,12 +171,25 @@ export const getPageJSON = (
     if (!Array.isArray(page.content)) throw new Error(`${pagePath}.content 应为数组`);
 
     const { id = pagePath, author, cite, content, time, ...others } = page;
+
+    if (check) {
+      const contentIssues = checkPageContent(content, pagePath, id);
+
+      if (contentIssues.length)
+        throw new ValidationError(`${pagePath} 页面内容校验失败`, contentIssues);
+
+      const configIssues = checkPageConfig(page, pagePath, options);
+
+      if (configIssues.length)
+        throw new ValidationError(`${pagePath} 页面配置校验失败`, configIssues);
+    }
+
     const pageData: PageData = {
       ...others,
       id,
       ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
       cite: typeof cite === "string" ? [cite] : (cite ?? []),
-      content: getPageContent(content, pagePath, { id, check }),
+      content: getPageContent(content, pagePath, { id, check: false }),
     };
 
     if (!pageData.cite?.length) delete pageData.cite;
@@ -214,6 +230,8 @@ export const getPageJSON = (
 
     return pageData;
   } catch (err) {
+    if (err instanceof ValidationError) throw err;
+
     throw new Error(`${pagePath} 页面处理失败: ${(err as Error).message}`, { cause: err });
   }
 };

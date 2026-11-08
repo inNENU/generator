@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema, styleSchema } from "../../schema/common.js";
 
 export const titleSchema = zod
@@ -31,9 +32,8 @@ export interface TitleComponentData extends Omit<TitleComponentOptions, "style">
   style?: string;
 }
 
-export const checkTitle = (title: TitleComponentOptions, location = ""): void => {
+export const checkTitle = (title: TitleComponentOptions, location = ""): string[] => {
   const result = useCompiled(titleSchema).safeParse(title);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 title 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 title 数据", result.error);
 };

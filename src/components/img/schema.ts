@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema, imageModeSchema, imgSchema } from "../../schema/common.js";
 
 export const imageSchema = zod
@@ -72,9 +73,8 @@ export const imageSchema = zod
 
 export type ImageComponentOptions = zod.infer<typeof imageSchema>;
 
-export const checkImage = (image: ImageComponentOptions, location = ""): void => {
+export const checkImage = (image: ImageComponentOptions, location = ""): string[] => {
   const result = useCompiled(imageSchema).safeParse(image);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 image 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 image 数据", result.error);
 };

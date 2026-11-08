@@ -25,6 +25,7 @@ import {
   videoSchema,
 } from "../components/schema.js";
 import { useCompiled } from "../helpers/compile.js";
+import { collectZodIssues } from "../helpers/validation.js";
 import { iconSchema } from "../schema/common.js";
 
 export const componentSchema = zod
@@ -65,33 +66,36 @@ export const pageContentSchema = zod.array(componentSchema).min(1, "页面内容
  * @param content 页面内容
  * @param location 内容所在位置
  * @param pageId 当前页面 ID
+ * @returns 校验问题列表
  */
 export const checkPageContent = (
   content: ComponentOptions[],
   location: string,
   pageId = "",
-): void => {
+): string[] => {
   const result = useCompiled(pageContentSchema).safeParse(content);
-
-  if (!result.success)
-    console.error(`${location} 发现非法页面内容:`, zod.prettifyError(result.error));
+  const issues = result.success ? [] : collectZodIssues(location, "发现非法页面内容", result.error);
 
   content.forEach((component, index) => {
     const componentLocation = `${location} page.content[${index}]`;
 
-    if (component.tag === "grid") checkGrid(component, componentLocation, pageId);
-    else if (component.tag === "list") checkList(component, componentLocation, pageId);
+    if (component.tag === "grid") issues.push(...checkGrid(component, componentLocation, pageId));
+    else if (component.tag === "list")
+      issues.push(...checkList(component, componentLocation, pageId));
     else if (component.tag === "functional-list")
-      checkFunctionalList(component, componentLocation, pageId);
-    else if (component.tag === "card") checkCard(component, componentLocation, pageId);
+      issues.push(...checkFunctionalList(component, componentLocation, pageId));
+    else if (component.tag === "card")
+      issues.push(...checkCard(component, componentLocation, pageId));
     else if (
       component.tag === "text" ||
       component.tag === "p" ||
       component.tag === "ol" ||
       component.tag === "ul"
     )
-      checkText(component, componentLocation, pageId);
+      issues.push(...checkText(component, componentLocation, pageId));
   });
+
+  return issues;
 };
 
 export const pageTitleSchema = zod
@@ -307,18 +311,25 @@ export interface CheckPageConfigOptions {
  * @param config 页面配置
  * @param location 配置所在位置
  * @param options 检查选项
+ * @returns 校验问题列表
  */
 export const checkPageConfig = (
   config: PageConfig,
   location = "",
   options: CheckPageConfigOptions = {},
-): void => {
+): string[] => {
   const result = useCompiled(pageConfigSchema).safeParse(config);
+  const issues = result.success ? [] : collectZodIssues(location, "发现非法页面配置", result.error);
 
-  if (!result.success)
-    console.error(`${location} 发现非法页面配置:`, zod.prettifyError(result.error));
+  if (options.iconRequired && !config.icon) {
+    const message = `${location} 页面缺少图标`;
 
-  if (options.iconRequired && !config.icon) console.error(`${location} 页面缺少图标`);
+    console.error(message);
+
+    issues.push(message);
+  }
+
+  return issues;
 };
 
 /**
@@ -326,10 +337,10 @@ export const checkPageConfig = (
  *
  * @param data 页面数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkPageData = (data: PageData, location = ""): void => {
+export const checkPageData = (data: PageData, location = ""): string[] => {
   const result = useCompiled(pageDataSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法页面数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法页面数据", result.error);
 };

@@ -1,3 +1,4 @@
+import { ValidationError } from "../helpers/validation.js";
 import type { PageIndexes } from "../schema/index.js";
 import { checkPageIndexes } from "../schema/index.js";
 
@@ -9,7 +10,9 @@ import { checkPageIndexes } from "../schema/index.js";
  * @returns 页面索引数据
  */
 export const getPageIndexesJSON = (data: PageIndexes, location: string): PageIndexes => {
-  checkPageIndexes(data, location);
+  const issues = checkPageIndexes(data, location);
+
+  if (issues.length) throw new ValidationError(`${location} 页面索引校验失败`, issues);
 
   return data;
 };

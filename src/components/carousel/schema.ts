@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema, imageModeSchema, imgSchema, styleSchema } from "../../schema/common.js";
 
 export const carouselSchema = zod
@@ -148,9 +149,8 @@ export interface CarouselComponentData extends Omit<CarouselComponentOptions, "s
   style?: string;
 }
 
-export const checkCarousel = (carousel: CarouselComponentOptions, location = ""): void => {
+export const checkCarousel = (carousel: CarouselComponentOptions, location = ""): string[] => {
   const result = useCompiled(carouselSchema).safeParse(carousel);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 carousel 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 carousel 数据", result.error);
 };

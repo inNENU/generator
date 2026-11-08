@@ -74,6 +74,7 @@ exports[`getFileList > should return a list of files in the specified directory 
   "helpers/oss.ts",
   "helpers/promiseQueue.ts",
   "helpers/svg.ts",
+  "helpers/validation.ts",
   "helpers/wordCount.ts",
   "helpers/yaml.ts",
   "page/index.ts",

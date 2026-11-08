@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "upath";
 
 import { getFileList } from "../helpers/getFileList.js";
+import { ValidationError } from "../helpers/validation.js";
 import type { MusicList } from "../schema/index.js";
 import { checkMusicList } from "../schema/index.js";
 import type { LyricData } from "./typings.js";
@@ -16,7 +17,11 @@ import type { LyricData } from "./typings.js";
  * @returns 音乐列表数据
  */
 export const getMusicListJSON = (data: MusicList, location: string, check = true): MusicList => {
-  if (check) checkMusicList(data, location);
+  if (check) {
+    const issues = checkMusicList(data, location);
+
+    if (issues.length) throw new ValidationError(`${location} 音乐列表校验失败`, issues);
+  }
 
   return data;
 };

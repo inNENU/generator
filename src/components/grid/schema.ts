@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -122,16 +123,19 @@ export type GridComponentItemOptions =
 
 export type GridComponentOptions = zod.infer<typeof gridSchema>;
 
-export const checkGrid = (grid: GridComponentOptions, location = "", pageId = ""): void => {
+export const checkGrid = (grid: GridComponentOptions, location = "", pageId = ""): string[] => {
   const result = useCompiled(gridSchema).safeParse(grid);
-
-  if (!result.success)
-    console.error(`${location} 发现非法 grid 数据:`, zod.prettifyError(result.error));
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 grid 数据", result.error);
 
   if (pageId) {
     grid.items.forEach((item) => {
       // 检查跳转路径是否存在（排除小程序路径）
-      if ("path" in item && !("appId" in item)) checkPagePath(item.path, pageId, location);
+      if ("path" in item && !("appId" in item))
+        issues.push(...checkPagePath(item.path, pageId, location));
     });
   }
+
+  return issues;
 };

@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema, fileSchema } from "../../schema/common.js";
 
 export const audioSchema = zod
@@ -63,9 +64,8 @@ export const audioSchema = zod
 
 export type AudioComponentOptions = zod.infer<typeof audioSchema>;
 
-export const checkAudio = (audio: AudioComponentOptions, location = ""): void => {
+export const checkAudio = (audio: AudioComponentOptions, location = ""): string[] => {
   const result = useCompiled(audioSchema).safeParse(audio);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 audio 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 audio 数据", result.error);
 };

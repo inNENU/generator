@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../helpers/compile.js";
+import { collectZodIssues } from "../helpers/validation.js";
 import { httpsLinkSchema, imgSchema } from "./common.js";
 
 export const wechatAccountInfoSchema = zod
@@ -101,12 +102,12 @@ export type QQAccounts = zod.infer<typeof qqAccountsSchema>;
  *
  * @param data QQ 账号数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkQQAccounts = (data: QQAccounts, location: string): void => {
+export const checkQQAccounts = (data: QQAccounts, location: string): string[] => {
   const result = useCompiled(qqAccountsSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 QQ 账号数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 QQ 账号数据", result.error);
 };
 
 export const wechatAccountGroupSchema = zod
@@ -135,12 +136,12 @@ export type WechatAccounts = zod.infer<typeof wechatAccountsSchema>;
  *
  * @param data 微信公众号账号数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkWechatAccounts = (data: WechatAccounts, location: string): void => {
+export const checkWechatAccounts = (data: WechatAccounts, location: string): string[] => {
   const result = useCompiled(wechatAccountsSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法微信公众号数据", result.error);
 };
 
 export const wechatArticleSchema = zod
@@ -219,10 +220,10 @@ export type WechatAccountData = zod.infer<typeof wechatAccountDataSchema>;
  *
  * @param data 微信公众号账号详情数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkWechatAccountData = (data: WechatAccountData, location: string): void => {
+export const checkWechatAccountData = (data: WechatAccountData, location: string): string[] => {
   const result = useCompiled(wechatAccountDataSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法微信公众号数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法微信公众号数据", result.error);
 };

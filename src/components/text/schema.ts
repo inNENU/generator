@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -160,13 +161,15 @@ export interface TextComponentData extends Omit<TextComponentOptions, "style" | 
   style?: string;
 }
 
-export const checkText = (text: TextComponentOptions, location = "", pageId = ""): void => {
+export const checkText = (text: TextComponentOptions, location = "", pageId = ""): string[] => {
   const result = useCompiled(textComponentSchema).safeParse(text);
-
-  if (!result.success)
-    console.error(`${location} 发现非法 text 数据:`, zod.prettifyError(result.error));
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 text 数据", result.error);
 
   // 检查跳转路径是否存在（排除小程序路径）
   if (pageId && "path" in text && text.path && !("appId" in text))
-    checkPagePath(text.path, pageId, location);
+    issues.push(...checkPagePath(text.path, pageId, location));
+
+  return issues;
 };

@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../helpers/compile.js";
+import { collectZodIssues } from "../helpers/validation.js";
 import { pageConfigSchema, pageDataSchema } from "../page/schema.js";
 import { imgSchema, locSchema } from "./common.js";
 
@@ -143,12 +144,12 @@ export type MarkersData = zod.infer<typeof markersDataSchema>;
  *
  * @param config 地图页面配置
  * @param location 配置所在位置
+ * @returns 校验问题列表
  */
-export const checkMapPageConfig = (config: MapPageConfig, location = ""): void => {
+export const checkMapPageConfig = (config: MapPageConfig, location = ""): string[] => {
   const result = useCompiled(mapPageConfigSchema).safeParse(config);
 
-  if (!result.success)
-    console.error(`${location} 发现非法地图页面配置:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法地图页面配置", result.error);
 };
 
 /**
@@ -156,12 +157,12 @@ export const checkMapPageConfig = (config: MapPageConfig, location = ""): void =
  *
  * @param data 地图页面数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkMapPageData = (data: MapPageData, location = ""): void => {
+export const checkMapPageData = (data: MapPageData, location = ""): string[] => {
   const result = useCompiled(mapPageDataSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法地图页面数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法地图页面数据", result.error);
 };
 
 /**
@@ -169,12 +170,12 @@ export const checkMapPageData = (data: MapPageData, location = ""): void => {
  *
  * @param marker 标记点配置
  * @param location 配置所在位置
+ * @returns 校验问题列表
  */
-export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => {
+export const checkMarkerConfig = (marker: MarkerConfig, location = ""): string[] => {
   const result = useCompiled(markerConfigSchema).safeParse(marker);
 
-  if (!result.success)
-    console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法标记点配置", result.error);
 };
 
 /**
@@ -182,12 +183,12 @@ export const checkMarkerConfig = (marker: MarkerConfig, location = ""): void => 
  *
  * @param markers 标记点配置集
  * @param location 配置所在位置
+ * @returns 校验问题列表
  */
-export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void => {
+export const checkMarkersConfig = (markers: MarkersConfig, location = ""): string[] => {
   const result = useCompiled(markersConfigSchema).safeParse(markers);
 
-  if (!result.success)
-    console.error(`${location} 发现非法标记点配置:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法标记点配置", result.error);
 };
 
 /**
@@ -195,10 +196,10 @@ export const checkMarkersConfig = (markers: MarkersConfig, location = ""): void 
  *
  * @param data 标记点数据
  * @param location 数据所在位置
+ * @returns 校验问题列表
  */
-export const checkMarkersData = (data: MarkersData, location = ""): void => {
+export const checkMarkersData = (data: MarkersData, location = ""): string[] => {
   const result = useCompiled(markersDataSchema).safeParse(data);
 
-  if (!result.success)
-    console.error(`${location} 发现非法标记点数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法标记点数据", result.error);
 };

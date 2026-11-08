@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema, fileSchema } from "../../schema/common.js";
 
 export const docSchema = zod
@@ -42,9 +43,8 @@ export interface DocComponentData extends DocComponentOptions {
   url: string;
 }
 
-export const checkDoc = (doc: DocComponentOptions, location = ""): void => {
+export const checkDoc = (doc: DocComponentOptions, location = ""): string[] => {
   const result = useCompiled(docSchema).safeParse(doc);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 doc 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 doc 数据", result.error);
 };
