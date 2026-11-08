@@ -33,8 +33,30 @@ export const tableSchema = zod
 
 export type TableComponentOptions = zod.infer<typeof tableSchema>;
 
+/**
+ * 检查表格数据
+ *
+ * @param table 表格数据
+ * @param location 表格所在位置
+ * @returns 校验问题列表
+ */
 export const checkTable = (table: TableComponentOptions, location = ""): string[] => {
   const result = useCompiled(tableSchema).safeParse(table);
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 table 数据", result.error);
 
-  return result.success ? [] : collectZodIssues(location, "发现非法 table 数据", result.error);
+  if (result.success) {
+    const columnCount = table.header.length;
+
+    table.body.forEach((row, index) => {
+      if (row.length !== columnCount) {
+        issues.push(
+          `${location} 表格第 ${index + 1} 行列数不一致：期望 ${columnCount} 列，实际 ${row.length} 列`,
+        );
+      }
+    });
+  }
+
+  return issues;
 };
