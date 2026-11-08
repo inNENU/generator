@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema } from "../../schema/common.js";
 
 export const tableSchema = zod
@@ -32,9 +33,8 @@ export const tableSchema = zod
 
 export type TableComponentOptions = zod.infer<typeof tableSchema>;
 
-export const checkTable = (table: TableComponentOptions, location = ""): void => {
+export const checkTable = (table: TableComponentOptions, location = ""): string[] => {
   const result = useCompiled(tableSchema).safeParse(table);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 table 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 table 数据", result.error);
 };

@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -345,35 +346,39 @@ export type ButtonListComponentItemOptions = zod.infer<typeof buttonListItemSche
 export type FunctionalListComponentItemOptions = zod.infer<typeof functionalListItemSchema>;
 export type FunctionalListComponentOptions = zod.infer<typeof functionalListSchema>;
 
-export const checkList = (list: ListComponentOptions, location = "", pageId = ""): void => {
+export const checkList = (list: ListComponentOptions, location = "", pageId = ""): string[] => {
   const result = useCompiled(listSchema).safeParse(list);
-
-  if (!result.success)
-    console.error(`${location} 发现非法 list 数据:`, zod.prettifyError(result.error));
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 list 数据", result.error);
 
   if (pageId) {
     list.items.forEach((item) => {
       // 检查跳转路径是否存在
-      if ("path" in item && item.path) checkPagePath(item.path, pageId, location);
+      if ("path" in item && item.path) issues.push(...checkPagePath(item.path, pageId, location));
     });
   }
+
+  return issues;
 };
 
 export const checkFunctionalList = (
   functionalList: FunctionalListComponentOptions,
   location = "",
   pageId = "",
-): void => {
+): string[] => {
   const result = useCompiled(functionalListSchema).safeParse(functionalList);
-
-  if (!result.success)
-    console.error(`${location} 发现非法 functional list 数据:`, zod.prettifyError(result.error));
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 functional list 数据", result.error);
 
   if (pageId) {
     functionalList.items.forEach((item) => {
       // 检查跳转路径是否存在（排除小程序路径）
       if ("path" in item && item.path && !("appId" in item))
-        checkPagePath(item.path, pageId, location);
+        issues.push(...checkPagePath(item.path, pageId, location));
     });
   }
+
+  return issues;
 };

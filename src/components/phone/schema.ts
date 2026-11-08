@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import { envListSchema } from "../../schema/common.js";
 
 export const phoneNumberSchema = zod.union(
@@ -183,9 +184,8 @@ export interface PhoneComponentData extends Omit<
   postCode?: string;
 }
 
-export const checkPhone = (phone: PhoneComponentOptions, location = ""): void => {
+export const checkPhone = (phone: PhoneComponentOptions, location = ""): string[] => {
   const result = useCompiled(phoneSchema).safeParse(phone);
 
-  if (!result.success)
-    console.error(`${location} 发现非法 phone 数据:`, zod.prettifyError(result.error));
+  return result.success ? [] : collectZodIssues(location, "发现非法 phone 数据", result.error);
 };

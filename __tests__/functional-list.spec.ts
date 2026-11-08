@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { ValidationError } from "../src/helpers/validation.js";
 import { getPageJSON } from "../src/page/json.js";
 import type { PageConfig } from "../src/page/schema.js";
 
@@ -69,7 +70,7 @@ describe(getPageJSON, () => {
       ],
     } as unknown as PageConfig;
 
-    getPageJSON(page, "guide/about", [], { check: true });
+    expect(() => getPageJSON(page, "guide/about", [], { check: true })).toThrow(ValidationError);
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("发现非法"), expect.any(String));
 

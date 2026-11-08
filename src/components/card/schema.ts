@@ -1,6 +1,7 @@
 import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
+import { collectZodIssues } from "../../helpers/validation.js";
 import {
   channelProfileSchema,
   channelVideoSchema,
@@ -126,12 +127,15 @@ export type CardComponentOptions =
   | ArticleCardComponentOptions
   | VideoCardComponentOptions;
 
-export const checkCard = (card: CardComponentOptions, location = "", pageId = ""): void => {
+export const checkCard = (card: CardComponentOptions, location = "", pageId = ""): string[] => {
   const result = useCompiled(cardSchema).safeParse(card);
-
-  if (!result.success)
-    console.error(`${location} 发现非法 card 数据:`, zod.prettifyError(result.error));
+  const issues = result.success
+    ? []
+    : collectZodIssues(location, "发现非法 card 数据", result.error);
 
   // 检查跳转路径是否存在（排除小程序路径）
-  if (pageId && "path" in card && !("appId" in card)) checkPagePath(card.path, pageId, location);
+  if (pageId && "path" in card && !("appId" in card))
+    issues.push(...checkPagePath(card.path, pageId, location));
+
+  return issues;
 };

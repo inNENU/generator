@@ -64,9 +64,17 @@ export const locationSchema = zod
 export type LocationConfig = zod.infer<typeof pointSchema>;
 export type LocationComponentOptions = zod.infer<typeof locationSchema>;
 
-export const checkLocation = (location: LocationComponentOptions, locationStr = ""): void => {
+export const checkLocation = (location: LocationComponentOptions, locationStr = ""): string[] => {
   const result = useCompiled(locationSchema).safeParse(location);
 
-  if (!result.success)
-    console.error(`非法 location 数据在 ${locationStr}:`, zod.prettifyError(result.error));
+  if (!result.success) {
+    const detail = zod.prettifyError(result.error);
+    const message = `非法 location 数据在 ${locationStr}: ${detail}`;
+
+    console.error(`非法 location 数据在 ${locationStr}:`, detail);
+
+    return [message];
+  }
+
+  return [];
 };

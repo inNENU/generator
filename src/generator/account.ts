@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "upath";
 
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
+import { ValidationError } from "../helpers/validation.js";
 import type { QQAccounts, WechatAccountData, WechatAccounts } from "../schema/index.js";
 import { checkQQAccounts, checkWechatAccountData, checkWechatAccounts } from "../schema/index.js";
 
@@ -42,7 +43,11 @@ const decodeText = (text: string): string => {
  * @returns QQ 账号数据
  */
 export const getQQAccountsJSON = (data: QQAccounts, location: string, check = true): QQAccounts => {
-  if (check) checkQQAccounts(data, location);
+  if (check) {
+    const issues = checkQQAccounts(data, location);
+
+    if (issues.length) throw new ValidationError(`${location} QQ 账号校验失败`, issues);
+  }
 
   return data;
 };
@@ -60,7 +65,11 @@ export const getWechatAccountsJSON = (
   location: string,
   check = true,
 ): WechatAccounts => {
-  if (check) checkWechatAccounts(data, location);
+  if (check) {
+    const issues = checkWechatAccounts(data, location);
+
+    if (issues.length) throw new ValidationError(`${location} 微信公众号账号校验失败`, issues);
+  }
 
   return data;
 };
@@ -78,7 +87,11 @@ export const getWechatAccountDataJSON = (
   location: string,
   check = true,
 ): WechatAccountData => {
-  if (check) checkWechatAccountData(data, location);
+  if (check) {
+    const issues = checkWechatAccountData(data, location);
+
+    if (issues.length) throw new ValidationError(`${location} 微信公众号账号详情校验失败`, issues);
+  }
 
   return data;
 };

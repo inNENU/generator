@@ -60,17 +60,22 @@ export const getHTMLPath = (filePath: string): string =>
  *
  * @param link 文件链接
  * @param location 文件所在位置
+ * @returns 校验问题列表
  */
-export const checkFile = (link?: string, location = ""): void => {
+export const checkFile = (link?: string, location = ""): string[] => {
   if (typeof link === "string" && link.startsWith("$")) {
     const [localPath] = link.replace(/^\$/u, "./").split("?");
 
     if (!existsSync(localPath)) {
-      console.error(
-        `${link.startsWith("$img") ? "Image" : "File"} ${localPath} not exist${location ? ` in ${location}` : ""}.`,
-      );
+      const message = `${link.startsWith("$img") ? "Image" : "File"} ${localPath} not exist${location ? ` in ${location}` : ""}.`;
+
+      console.error(message);
+
+      return [message];
     }
   }
+
+  return [];
 };
 
 /**
@@ -92,17 +97,26 @@ export const getFileLink = (link?: string): string | null => {
  *
  * @param icon 图标
  * @param location 图标所在位置
+ * @returns 校验问题列表
  */
-export const checkIcon = (icon?: string, location = ""): void => {
+export const checkIcon = (icon?: string, location = ""): string[] => {
   if (icon) {
-    if (icon.startsWith("$")) {
-      checkFile(icon, location);
-    } else if (!/^https?:\/\//u.test(icon) && !icon.includes(".")) {
+    if (icon.startsWith("$")) return checkFile(icon, location);
+
+    if (!/^https?:\/\//u.test(icon) && !icon.includes(".")) {
       const iconPath = `./data/icon/${icon}.svg`;
 
-      if (!existsSync(iconPath)) console.error(`图标 ${icon} 在 ${location} 中不存在`);
+      if (!existsSync(iconPath)) {
+        const message = `图标 ${icon} 在 ${location} 中不存在`;
+
+        console.error(message);
+
+        return [message];
+      }
     }
   }
+
+  return [];
 };
 
 /**
@@ -159,12 +173,20 @@ export const resolvePagePath = (targetPath: string, pageId: string): string => {
  * @param targetPath 跳转路径
  * @param pageId 当前页面 ID
  * @param location 路径所在位置
+ * @returns 校验问题列表
  */
-export const checkPagePath = (targetPath: string, pageId: string, location = ""): void => {
+export const checkPagePath = (targetPath: string, pageId: string, location = ""): string[] => {
   const resolvedPath = resolvePagePath(targetPath, pageId);
 
-  if (!existsSync(`./pages/${resolvedPath}.yml`))
-    console.error(`路径 ${resolvedPath} 在 ${location} 中不存在`);
+  if (!existsSync(`./pages/${resolvedPath}.yml`)) {
+    const message = `路径 ${resolvedPath} 在 ${location} 中不存在`;
+
+    console.error(message);
+
+    return [message];
+  }
+
+  return [];
 };
 
 /**
