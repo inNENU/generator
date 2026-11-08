@@ -1,21 +1,7 @@
-// oxlint-disable import/max-dependencies
-import { getAccountMarkdown } from "../components/account/markdown.js";
-import { getActionMarkdown } from "../components/action/markdown.js";
-import { getAudioMarkdown } from "../components/audio/markdown.js";
-import { getCardMarkdown } from "../components/card/markdown.js";
-import { getDocMarkdown } from "../components/doc/markdown.js";
-import { getGridMarkdown } from "../components/grid/markdown.js";
-import { getImgMarkdown } from "../components/img/markdown.js";
-import { getListMarkdown } from "../components/list/markdown.js";
-import { getLocationMarkdown } from "../components/location/markdown.js";
-import { getPhoneMarkdown } from "../components/phone/markdown.js";
-import { getTableMarkdown } from "../components/table/markdown.js";
-import { getTextMarkdown } from "../components/text/markdown.js";
-import { getTitleMarkdown } from "../components/title/markdown.js";
-import { getVideoMarkdown } from "../components/video/markdown.js";
 import { getYamlValue } from "../helpers/index.js";
-import type { MarkdownOptions, UrlHandler } from "../typings.js";
+import type { MarkdownOptions } from "../typings.js";
 import { getIconLink } from "../utils.js";
+import { renderComponentMarkdown } from "./markdown-renderers.js";
 import type { PageConfig } from "./schema.js";
 
 /**
@@ -26,7 +12,7 @@ import type { PageConfig } from "./schema.js";
  * @returns Markdown 内容
  */
 export const getPageMarkdown = (page: PageConfig, options: MarkdownOptions = {}): string => {
-  const { location = "", urlConverter = (): ReturnType<UrlHandler> => null } = options;
+  const { location = "" } = options;
 
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
@@ -89,46 +75,14 @@ isOriginal: true
 
     const blocks: string[] = [];
 
-    // oxlint-disable-next-line complexity
     pageContents.forEach((component, index) => {
-      const { env, tag } = component;
       const componentLocation = `${location} page.content[${index}]`;
+      const block = renderComponentMarkdown(component, {
+        ...options,
+        location: componentLocation,
+      });
 
-      if (!env || env.includes("web")) {
-        // 处理图片
-        if (tag === "img") blocks.push(getImgMarkdown(component, componentLocation));
-        // 设置标题
-        else if (tag === "title") blocks.push(getTitleMarkdown(component, componentLocation));
-        // 设置文字
-        else if (tag === "text" || tag === "p" || tag === "ul" || tag === "ol")
-          blocks.push(getTextMarkdown(component, componentLocation));
-        // 设置列表组件
-        else if (tag === "list" || tag === "functional-list")
-          blocks.push(getListMarkdown(component, { location: componentLocation, urlConverter }));
-        // 设置网格组件
-        else if (tag === "grid")
-          blocks.push(getGridMarkdown(component, { location: componentLocation, urlConverter }));
-        // 检测文档
-        else if (tag === "doc") blocks.push(getDocMarkdown(component, componentLocation));
-        // 设置电话
-        else if (tag === "phone") blocks.push(getPhoneMarkdown(component, componentLocation));
-        // 检测音频
-        else if (tag === "card")
-          blocks.push(getCardMarkdown(component, { location: componentLocation, urlConverter }));
-        // 检测音频
-        else if (tag === "audio") blocks.push(getAudioMarkdown(component, componentLocation));
-        // 检测视频
-        else if (tag === "video") blocks.push(getVideoMarkdown(component, componentLocation));
-        // 检测动作
-        else if (tag === "action")
-          blocks.push(getActionMarkdown(component, componentLocation, options));
-        // 检测账号
-        else if (tag === "account") blocks.push(getAccountMarkdown(component, componentLocation));
-        // 检测地点
-        else if (tag === "location") blocks.push(getLocationMarkdown(component, componentLocation));
-        // 表格
-        else if (tag === "table") blocks.push(getTableMarkdown(component, componentLocation));
-      }
+      if (block) blocks.push(block);
     });
 
     if (desc) {

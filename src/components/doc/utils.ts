@@ -25,3 +25,15 @@ export const getDocIcon = (url: string): string => {
                 ? docType
                 : "document";
 };
+
+/**
+ * 获得文档显示名
+ *
+ * 保留现有行为：以 URL 最后一个 `.` 后的内容作为扩展名。
+ *
+ * @param name 文档名称
+ * @param url 文档地址
+ * @returns 带扩展名的文档显示名
+ */
+export const getDocDisplayName = (name: string, url: string): string =>
+  `${name}.${url.split(".").pop() ?? ""}`;

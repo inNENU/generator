@@ -1,0 +1,420 @@
+// oxlint-disable import/max-dependencies
+import { getAccountMarkdown } from "../components/account/markdown.js";
+import { getActionMarkdown } from "../components/action/markdown.js";
+import { getAudioMarkdown } from "../components/audio/markdown.js";
+import { getCardMarkdown } from "../components/card/markdown.js";
+import { getDocMarkdown } from "../components/doc/markdown.js";
+import { getDocDisplayName } from "../components/doc/utils.js";
+import { getGridMarkdown } from "../components/grid/markdown.js";
+import { getImgMarkdown } from "../components/img/markdown.js";
+import { getListMarkdown } from "../components/list/markdown.js";
+import { getLocationMarkdown, getLocationMarkerUrl } from "../components/location/markdown.js";
+import { getPhoneMarkdown } from "../components/phone/markdown.js";
+import { getTableMarkdown } from "../components/table/markdown.js";
+import { getTextMarkdown } from "../components/text/markdown.js";
+import { getTitleMarkdown } from "../components/title/markdown.js";
+import { getVideoMarkdown } from "../components/video/markdown.js";
+import type { MarkdownMode, UrlHandler } from "../typings.js";
+import { escapeHtml, getFileLink } from "../utils.js";
+import type { ComponentOptions } from "./schema.js";
+
+/** URL 转换结果 */
+interface UrlConversion {
+  /** 小程序端跳转形式 */
+  miniapp: string;
+  /** 网页端地址 */
+  web: string;
+}
+
+/** 组件 URL 转换器 */
+type ComponentUrlConverter = (url: string) => string | UrlConversion | null | undefined;
+
+/** 组件 Markdown 渲染选项 */
+export interface ComponentMarkdownOptions {
+  /** 输出方言：`vuepress` 生成站点 Markdown，`text` 生成知识库文本 Markdown */
+  dialect?: "vuepress" | "text";
+  /** 组件位置，用于错误信息 */
+  location?: string;
+  /** 渲染模式 */
+  mode?: MarkdownMode;
+  /** URL 转换器，可返回单一地址或双端地址 */
+  urlConverter?: ComponentUrlConverter;
+}
+
+/**
+ * 将 URL 转换器返回值统一为双端形式
+ *
+ * @param converted URL 转换器返回值
+ * @returns 双端地址，未转换时返回 `null`
+ */
+const toUrlConversion = (
+  converted: string | UrlConversion | null | undefined,
+): UrlConversion | null => {
+  if (!converted) return null;
+
+  return typeof converted === "string" ? { miniapp: converted, web: converted } : converted;
+};
+
+/**
+ * 生成文本管线中的段落 / 列表 Markdown
+ *
+ * @param component 文本组件
+ * @param marker 列表标记，空字符串表示普通段落
+ * @param mode 渲染模式
+ * @returns Markdown 内容
+ */
+const renderTextBlock = (
+  component: Extract<ComponentOptions, { tag: "text" | "p" | "ul" | "ol" }>,
+  marker: "" | "- " | "1. ",
+  mode: MarkdownMode,
+): string => {
+  const texts = Array.isArray(component.text)
+    ? component.text
+    : component.text
+      ? [component.text]
+      : [];
+  const header = typeof component.header === "string" ? component.header : "";
+  const type = "type" in component ? component.type : "none";
+
+  if (mode === "miniapp" && type && type !== "none") {
+    const typeName = type === "danger" ? "caution" : type;
+
+    return `::: ${typeName}${header ? ` ${escapeHtml(header)}` : ""}\n\n${texts
+      .map((item) => `${marker}${escapeHtml(item)}`)
+      .join("\n\n")}\n\n:::\n\n`;
+  }
+
+  const textContent = `${header ? `### ${escapeHtml(header)}\n\n` : ""}${texts
+    .map((item) => `${marker}${escapeHtml(item)}`)
+    .join("\n\n")}`;
+
+  return textContent ? `${textContent}\n\n` : "";
+};
+
+/**
+ * 生成知识库文本管线中的组件 Markdown
+ *
+ * @param component 页面组件
+ * @param options 渲染选项
+ * @returns Markdown 内容
+ */
+// oxlint-disable-next-line max-statements, max-lines-per-function, complexity
+const renderTextComponentMarkdown = (
+  component: ComponentOptions,
+  options: ComponentMarkdownOptions,
+): string => {
+  const { mode = "web", urlConverter = (): null => null } = options;
+
+  switch (component.tag) {
+    case "title": {
+      return `## ${escapeHtml(component.text)}\n\n`;
+    }
+
+    case "text":
+    case "p": {
+      return renderTextBlock(component, "", mode);
+    }
+
+    case "ul": {
+      return renderTextBlock(component, "- ", mode);
+    }
+
+    case "ol": {
+      return renderTextBlock(component, "1. ", mode);
+    }
+
+    case "grid":
+    case "list": {
+      const { header, items, footer } = component;
+
+      const renderedItems = items
+        .map((item) => {
+          // 带 url 的条目：交给 urlConverter 转换（返回 null/undefined 时丢弃）
+          if ("url" in item && item.url) {
+            const converted = toUrlConversion(urlConverter(item.url));
+
+            if (!converted) return null;
+
+            if (mode === "miniapp") {
+              const icon = "icon" in item && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
+
+              return `- ${escapeHtml(item.text)}${icon}（小程序：\`${converted.miniapp}\`）`;
+            }
+
+            return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+          }
+
+          const itemDesc = "desc" in item && item.desc ? ` - ${escapeHtml(item.desc)}` : "";
+
+          if (mode === "miniapp") {
+            const icon = "icon" in item && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
+            const path = "path" in item && item.path ? `（path: ${escapeHtml(item.path)}）` : "";
+
+            return `- ${escapeHtml(item.text)}${itemDesc}${icon}${path}`;
+          }
+
+          return `- ${escapeHtml(item.text)}${itemDesc}`;
+        })
+        .filter((item): item is string => item != null)
+        .join("\n");
+
+      return `\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
+${renderedItems}
+
+${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
+`;
+    }
+
+    case "card": {
+      const { title: cardTitle, desc: cardDesc, logo } = component;
+
+      // 卡片当作列表项渲染：title→text、desc→desc、logo→icon（name/cover 等其他字段丢弃）
+      // url 卡片：与列表项一致，交给 urlConverter 转换（返回 null/undefined 时丢弃）
+      if ("url" in component) {
+        const converted = toUrlConversion(urlConverter(component.url));
+
+        if (!converted) return "";
+
+        if (mode === "miniapp") {
+          const icon = logo ? `（icon: ${escapeHtml(logo)}）` : "";
+
+          return `- ${escapeHtml(cardTitle)}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
+        }
+
+        return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）\n\n`;
+      }
+
+      const itemDesc = cardDesc ? ` - ${escapeHtml(cardDesc)}` : "";
+
+      if (mode === "miniapp") {
+        const icon = logo ? `（icon: ${escapeHtml(logo)}）` : "";
+        const path =
+          "path" in component && component.path ? `（path: ${escapeHtml(component.path)}）` : "";
+
+        return `- ${escapeHtml(cardTitle)}${itemDesc}${icon}${path}\n\n`;
+      }
+
+      // web：path 跳转（其他 markdown 页面）也保留
+      const path =
+        "path" in component && component.path ? `（path: ${escapeHtml(component.path)}）` : "";
+
+      return `- ${escapeHtml(cardTitle)}${itemDesc}${path}\n\n`;
+    }
+
+    case "location": {
+      const { header, points } = component;
+
+      return `\
+${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
+![在腾讯地图中查看](${getLocationMarkerUrl(points)})\n\n`;
+    }
+
+    case "img": {
+      const { src, desc: imgDesc } = component;
+      const imgLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+
+      return `![${escapeHtml(imgDesc ?? "")}](${imgLink})\n\n`;
+    }
+
+    case "carousel": {
+      return `${component.images
+        .map((link) => {
+          const imgLink = mode === "miniapp" ? link : (getFileLink(link) ?? "");
+
+          return `![''](${imgLink})\n\n`;
+        })
+        .join("\n")}\n\n`;
+    }
+
+    case "doc": {
+      const { name, url } = component;
+      const docUrl = mode === "miniapp" ? url : (getFileLink(url) ?? url);
+      const docName = getDocDisplayName(name, url);
+
+      return `- [${escapeHtml(docName)}](${docUrl})\n\n`;
+    }
+
+    case "phone": {
+      const {
+        header = "",
+        fName,
+        lName = "",
+        num,
+        workNum,
+        homeNum,
+        hostNum,
+        nick,
+        org,
+        title: contactTitle,
+        remark,
+        province = "",
+        city = "",
+        street = "",
+        postCode,
+        mail,
+        site,
+      } = component;
+
+      return `\
+#### ${escapeHtml(header || `${lName}${fName} 联系方式`)}
+
+- 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
+- 电话: [${escapeHtml(String(num))}](tel:${num})
+${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
+${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
+${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\
+${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
+${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
+${contactTitle ? `- 职位: ${escapeHtml(contactTitle)}\n` : ""}\
+${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
+${remark ? `- 备注: ${escapeHtml(remark)}\n` : ""}\
+${province || city || street ? `- 地址: ${escapeHtml(province)}${escapeHtml(city)}${escapeHtml(street)}\n` : ""}\
+${postCode ? `- 邮编: ${escapeHtml(String(postCode))}\n` : ""}\
+
+`;
+    }
+
+    case "account": {
+      const { name, detail, desc: accountDesc, logo, qq, wxid, site, mail } = component;
+
+      return `\
+${logo ? `![${escapeHtml(name)}](${mode === "miniapp" ? logo : (getFileLink(logo) ?? "")})\n\n` : ""}\
+${name ? `- 名称: ${escapeHtml(name)}\n` : ""}\
+${detail ? `- 详情: ${escapeHtml(detail)}\n` : ""}\
+${accountDesc ? `- 描述: ${escapeHtml(accountDesc)}\n` : ""}\
+${qq ? `- QQ: ${escapeHtml(String(qq))}\n` : ""}\
+${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
+${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
+${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+
+`;
+    }
+
+    case "audio": {
+      const { src, name } = component;
+      const audioLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+
+      return `[音频${name ? `: ${escapeHtml(name)}` : ""}](${audioLink})\n\n`;
+    }
+
+    case "video": {
+      const { src, title: videoTitle } = component;
+      const videoLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+
+      return `[视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}](${videoLink})\n\n`;
+    }
+
+    default: {
+      return "";
+    }
+  }
+};
+
+/**
+ * 生成站点管线中的组件 Markdown
+ *
+ * @param component 页面组件
+ * @param options 渲染选项
+ * @returns Markdown 内容
+ */
+const renderVuePressComponentMarkdown = (
+  component: ComponentOptions,
+  options: ComponentMarkdownOptions,
+): string => {
+  const { location = "", urlConverter = (): null => null } = options;
+
+  // 站点管线只认字符串地址；若调用方传入双端转换器，网页端取 web 形式。
+  const webUrlConverter: UrlHandler = (url) => {
+    const converted = urlConverter(url);
+
+    return typeof converted === "string" ? converted : (converted?.web ?? null);
+  };
+
+  switch (component.tag) {
+    case "img": {
+      return getImgMarkdown(component, location);
+    }
+
+    case "title": {
+      return getTitleMarkdown(component, location);
+    }
+
+    case "text":
+    case "p":
+    case "ul":
+    case "ol": {
+      return getTextMarkdown(component, location);
+    }
+
+    case "list":
+    case "functional-list": {
+      return getListMarkdown(component, { location, urlConverter: webUrlConverter });
+    }
+
+    case "grid": {
+      return getGridMarkdown(component, { location, urlConverter: webUrlConverter });
+    }
+
+    case "doc": {
+      return getDocMarkdown(component, location);
+    }
+
+    case "phone": {
+      return getPhoneMarkdown(component, location);
+    }
+
+    case "card": {
+      return getCardMarkdown(component, { location, urlConverter: webUrlConverter });
+    }
+
+    case "audio": {
+      return getAudioMarkdown(component, location);
+    }
+
+    case "video": {
+      return getVideoMarkdown(component, location);
+    }
+
+    case "account": {
+      return getAccountMarkdown(component, location);
+    }
+
+    case "location": {
+      return getLocationMarkdown(component, location);
+    }
+
+    default: {
+      return "";
+    }
+  }
+};
+
+/**
+ * 渲染单个页面组件
+ *
+ * 两条页面管线共用此入口：站点管线输出 VuePress Markdown，知识库文本管线输出 便于 AI 检索的简化 Markdown。`action` 与 `table`
+ * 两种组件两端产物一致， 直接在入口处分派，避免再次漂移。
+ *
+ * @param component 页面组件
+ * @param options 渲染选项
+ * @returns Markdown 内容
+ */
+export const renderComponentMarkdown = (
+  component: ComponentOptions,
+  options: ComponentMarkdownOptions = {},
+): string => {
+  if (component.env && !component.env.includes("web")) return "";
+
+  const { location = "", mode = "web", urlConverter } = options;
+
+  if (component.tag === "action")
+    return getActionMarkdown(component, location, { mode, urlConverter });
+
+  if (component.tag === "table") return getTableMarkdown(component, location);
+
+  return options.dialect === "text"
+    ? renderTextComponentMarkdown(component, options)
+    : renderVuePressComponentMarkdown(component, options);
+};

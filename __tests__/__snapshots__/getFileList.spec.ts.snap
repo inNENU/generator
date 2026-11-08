@@ -80,6 +80,7 @@ exports[`getFileList > should return a list of files in the specified directory 
   "helpers/yaml.ts",
   "page/index.ts",
   "page/json.ts",
+  "page/markdown-renderers.ts",
   "page/markdown.ts",
   "page/schema.ts",
   "page/text.ts",
