@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { join } from "upath";
+
 import { generatorConfig } from "./config.js";
 
 /**
@@ -186,7 +188,7 @@ export const checkPagePath = (
 
   if (!resolvedPath) return [];
 
-  if (!existsSync(`./pages/${resolvedPath}.yml`)) {
+  if (!existsSync(join(generatorConfig.pageFolder, `${resolvedPath}.yml`))) {
     const message = `路径 ${resolvedPath} 在 ${location} 中不存在`;
 
     console.error(message);

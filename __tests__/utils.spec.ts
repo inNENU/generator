@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
+import { describe, expect, it, vi } from "vitest";
+
+import { config, generatorConfig } from "../src/config.js";
 import {
+  checkPagePath,
   convertStyle,
   getAssetIconLink,
   getHTMLPath,
@@ -90,5 +96,39 @@ describe(resolvePath, () => {
     const result = resolvePath("/guide/intro");
 
     expect(result).not.toMatch(/^\//u);
+  });
+});
+
+describe(checkPagePath, () => {
+  it("should resolve page files from the configured page folder", () => {
+    const pageFolder = mkdtempSync(path.join(tmpdir(), "innenu-check-page-"));
+    const originalConfig = { ...generatorConfig };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      config({
+        assets: "",
+        icon: "",
+        mapFolder: "",
+        mapKey: "",
+        pageFolder,
+      });
+
+      mkdirSync(path.join(pageFolder, "guide"), { recursive: true });
+      writeFileSync(path.join(pageFolder, "guide", "foo.yml"), "title: foo\n");
+
+      expect(checkPagePath("guide/foo", "index", "test")).toStrictEqual([]);
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      const issues = checkPagePath("guide/missing", "index", "test");
+
+      expect(issues).toHaveLength(1);
+      expect(issues[0]).toContain("guide/missing");
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("guide/missing"));
+    } finally {
+      errorSpy.mockRestore();
+      Object.assign(generatorConfig, originalConfig);
+      rmSync(pageFolder, { recursive: true, force: true });
+    }
   });
 });
