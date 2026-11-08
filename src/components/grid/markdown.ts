@@ -17,7 +17,7 @@ export const getGridMarkdown = (
 ${
   header
     ? `\
-#### ${header} {.innenu-grid-header}
+#### ${escapeHtml(header)} {.innenu-grid-header}
 
 `
     : ""
@@ -39,7 +39,7 @@ ${items
 
     const textContent = `\
 <div class="innenu-grid-text">
-${text.replaceAll("\n", "<br />")}
+${escapeHtml(text).replaceAll("\n", "<br />")}
 </div>
 `;
 
@@ -99,7 +99,7 @@ ${
   footer
     ? `\
 <div class="innenu-grid-footer">
-${footer}
+${escapeHtml(footer)}
 </div>
 `
     : ""

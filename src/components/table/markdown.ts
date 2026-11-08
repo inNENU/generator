@@ -1,5 +1,8 @@
+import { escapeHtml } from "../../utils.js";
 import type { TableComponentOptions } from "./schema.js";
 import { checkTable } from "./schema.js";
+
+const formatCell = (cell: string): string => escapeHtml(cell).replaceAll("|", String.raw`\|`);
 
 export const getTableMarkdown = (table: TableComponentOptions, location = ""): string => {
   if (table.env && !table.env.includes("web")) return "";
@@ -9,12 +12,10 @@ export const getTableMarkdown = (table: TableComponentOptions, location = ""): s
   const { caption, header, body } = table;
 
   return `\
-${caption ? `### ${caption}\n\n` : ""}\
-| ${header.map((item) => item.replaceAll("|", String.raw`\|`)).join(" | ")} |
+${caption ? `### ${escapeHtml(caption)}\n\n` : ""}\
+| ${header.map((cell) => formatCell(cell)).join(" | ")} |
 | ${header.map(() => ":-:").join(" | ")} |
-| ${body
-    .map((item) => item.map((cell) => cell.replaceAll("|", String.raw`\|`)).join(" | "))
-    .join(" |\n| ")} |
+| ${body.map((item) => item.map((cell) => formatCell(cell)).join(" | ")).join(" |\n| ")} |
 
 `;
 };

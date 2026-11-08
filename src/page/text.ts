@@ -4,7 +4,7 @@ import { getActionMarkdown } from "../components/action/markdown.js";
 import { getTableMarkdown } from "../components/table/markdown.js";
 import { generatorConfig } from "../config.js";
 import type { PageConfig } from "../typings.js";
-import { getFileLink } from "../utils.js";
+import { escapeHtml, getFileLink } from "../utils.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
 /**
@@ -56,9 +56,9 @@ export const getPageText = (
     // 不输出 cite：AI 无网络搜索能力，来源只能是小程序页面，不引用外部网址
 
     return `\
-# ${title}
+# ${escapeHtml(title)}
 
-${desc ? `> 描述: ${desc}\n\n` : ""}\
+${desc ? `> 描述: ${escapeHtml(desc)}\n\n` : ""}\
 ${content
   // oxlint-disable-next-line complexity
   .map((component, index) => {
@@ -68,7 +68,7 @@ ${content
 
     switch (component.tag) {
       case "title": {
-        return `## ${component.text}\n\n`;
+        return `## ${escapeHtml(component.text)}\n\n`;
       }
 
       case "text":
@@ -87,10 +87,10 @@ ${content
         ) {
           const typeName = component.type === "danger" ? "caution" : component.type;
 
-          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.join("\n\n")}\n\n:::\n\n`;
+          return `::: ${typeName}${component.header ? ` ${escapeHtml(component.header)}` : ""}\n\n${texts.map((item) => escapeHtml(item)).join("\n\n")}\n\n:::\n\n`;
         }
 
-        const textContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.join("\n\n")}`;
+        const textContent = `${component.header ? `### ${escapeHtml(component.header)}\n\n` : ""}${texts.map((item) => escapeHtml(item)).join("\n\n")}`;
 
         return textContent ? `${textContent}\n\n` : "";
       }
@@ -110,10 +110,10 @@ ${content
         ) {
           const typeName = component.type === "danger" ? "caution" : component.type;
 
-          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.map((item) => `- ${item}`).join("\n\n")}\n\n:::\n\n`;
+          return `::: ${typeName}${component.header ? ` ${escapeHtml(component.header)}` : ""}\n\n${texts.map((item) => `- ${escapeHtml(item)}`).join("\n\n")}\n\n:::\n\n`;
         }
 
-        const ulContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `- ${item}`).join("\n\n")}`;
+        const ulContent = `${component.header ? `### ${escapeHtml(component.header)}\n\n` : ""}${texts.map((item) => `- ${escapeHtml(item)}`).join("\n\n")}`;
 
         return ulContent ? `${ulContent}\n\n` : "";
       }
@@ -133,10 +133,10 @@ ${content
         ) {
           const typeName = component.type === "danger" ? "caution" : component.type;
 
-          return `::: ${typeName}${component.header ? ` ${component.header}` : ""}\n\n${texts.map((item) => `1. ${item}`).join("\n\n")}\n\n:::\n\n`;
+          return `::: ${typeName}${component.header ? ` ${escapeHtml(component.header)}` : ""}\n\n${texts.map((item) => `1. ${escapeHtml(item)}`).join("\n\n")}\n\n:::\n\n`;
         }
 
-        const olContent = `${component.header ? `### ${component.header}\n\n` : ""}${texts.map((item) => `1. ${item}`).join("\n\n")}`;
+        const olContent = `${component.header ? `### ${escapeHtml(component.header)}\n\n` : ""}${texts.map((item) => `1. ${escapeHtml(item)}`).join("\n\n")}`;
 
         return olContent ? `${olContent}\n\n` : "";
       }
@@ -154,33 +154,34 @@ ${content
               if (!converted) return null;
 
               if (mode === "miniapp") {
-                const icon = "icon" in item && item.icon ? `（icon: ${item.icon}）` : "";
+                const icon =
+                  "icon" in item && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
 
-                return `- ${item.text}${icon}（小程序：\`${converted.miniapp}\`）`;
+                return `- ${escapeHtml(item.text)}${icon}（小程序：\`${converted.miniapp}\`）`;
               }
 
-              return `- ${item.text}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+              return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
             }
 
-            const itemDesc = "desc" in item && item.desc ? ` - ${item.desc}` : "";
+            const itemDesc = "desc" in item && item.desc ? ` - ${escapeHtml(item.desc)}` : "";
 
             if (mode === "miniapp") {
-              const icon = "icon" in item && item.icon ? `（icon: ${item.icon}）` : "";
-              const path = "path" in item && item.path ? `（path: ${item.path}）` : "";
+              const icon = "icon" in item && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
+              const path = "path" in item && item.path ? `（path: ${escapeHtml(item.path)}）` : "";
 
-              return `- ${item.text}${itemDesc}${icon}${path}`;
+              return `- ${escapeHtml(item.text)}${itemDesc}${icon}${path}`;
             }
 
-            return `- ${item.text}${itemDesc}`;
+            return `- ${escapeHtml(item.text)}${itemDesc}`;
           })
           .filter((item): item is string => item != null)
           .join("\n");
 
         return `\
-${header ? `#### ${header}\n\n` : ""}\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
 ${renderedItems}
 
-${footer ? `> ${footer}\n\n` : ""}\
+${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
 `;
       }
 
@@ -195,34 +196,36 @@ ${footer ? `> ${footer}\n\n` : ""}\
           if (!converted) return null;
 
           if (mode === "miniapp") {
-            const icon = logo ? `（icon: ${logo}）` : "";
+            const icon = logo ? `（icon: ${escapeHtml(logo)}）` : "";
 
-            return `- ${cardTitle}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
+            return `- ${escapeHtml(cardTitle)}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
           }
 
-          return `- ${cardTitle}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）\n\n`;
+          return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）\n\n`;
         }
 
-        const itemDesc = cardDesc ? ` - ${cardDesc}` : "";
+        const itemDesc = cardDesc ? ` - ${escapeHtml(cardDesc)}` : "";
 
         if (mode === "miniapp") {
-          const icon = logo ? `（icon: ${logo}）` : "";
-          const path = "path" in component && component.path ? `（path: ${component.path}）` : "";
+          const icon = logo ? `（icon: ${escapeHtml(logo)}）` : "";
+          const path =
+            "path" in component && component.path ? `（path: ${escapeHtml(component.path)}）` : "";
 
-          return `- ${cardTitle}${itemDesc}${icon}${path}\n\n`;
+          return `- ${escapeHtml(cardTitle)}${itemDesc}${icon}${path}\n\n`;
         }
 
         // web：path 跳转（其他 markdown 页面）也保留
-        const path = "path" in component && component.path ? `（path: ${component.path}）` : "";
+        const path =
+          "path" in component && component.path ? `（path: ${escapeHtml(component.path)}）` : "";
 
-        return `- ${cardTitle}${itemDesc}${path}\n\n`;
+        return `- ${escapeHtml(cardTitle)}${itemDesc}${path}\n\n`;
       }
 
       case "location": {
         const { header, points } = component;
 
         return `\
-${header ? `#### ${header}位置\n\n` : ""}\
+${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
 ![在腾讯地图中查看](https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
           // 最多 4 个点
           .slice(0, 4)
@@ -237,7 +240,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
         const { src, desc: imgDesc } = component;
         const imgLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
-        return `![${imgDesc ?? ""}](${imgLink})\n\n`;
+        return `![${escapeHtml(imgDesc ?? "")}](${imgLink})\n\n`;
       }
 
       case "carousel": {
@@ -256,7 +259,7 @@ ${header ? `#### ${header}位置\n\n` : ""}\
         // oxlint-disable-next-line typescript/no-non-null-assertion
         const docName = `${name}.${url.split(".").pop()!}`;
 
-        return `- [${docName}](${docUrl})\n\n`;
+        return `- [${escapeHtml(docName)}](${docUrl})\n\n`;
       }
 
       case "table": {
@@ -285,21 +288,21 @@ ${header ? `#### ${header}位置\n\n` : ""}\
         } = component;
 
         return `\
-#### ${header || `${lName}${fName} 联系方式`}
+#### ${escapeHtml(header || `${lName}${fName} 联系方式`)}
 
-- 姓名: ${lName}${fName}
-- 电话: [${num}](tel:${num})
-${workNum ? `- 工作电话: ${workNum}\n` : ""}\
-${hostNum ? `- 公司电话: ${hostNum}\n` : ""}\
-${homeNum ? `- 家庭电话: ${homeNum}\n` : ""}\
-${site ? `- 网站: <${site}>\n` : ""}\
-${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
-${org ? `- 组织: ${org}\n` : ""}\
-${contactTitle ? `- 职位: ${contactTitle}\n` : ""}\
-${nick ? `- 昵称: ${nick}\n` : ""}\
-${remark ? `- 备注: ${remark}\n` : ""}\
-${province || city || street ? `- 地址: ${province}${city}${street}\n` : ""}\
-${postCode ? `- 邮编: ${postCode}\n` : ""}\
+- 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
+- 电话: [${escapeHtml(String(num))}](tel:${num})
+${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
+${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
+${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\
+${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
+${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
+${contactTitle ? `- 职位: ${escapeHtml(contactTitle)}\n` : ""}\
+${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
+${remark ? `- 备注: ${escapeHtml(remark)}\n` : ""}\
+${province || city || street ? `- 地址: ${escapeHtml(province)}${escapeHtml(city)}${escapeHtml(street)}\n` : ""}\
+${postCode ? `- 邮编: ${escapeHtml(String(postCode))}\n` : ""}\
 
 `;
       }
@@ -315,14 +318,14 @@ ${postCode ? `- 邮编: ${postCode}\n` : ""}\
         const { name, detail, desc: accountDesc, logo, qq, wxid, site, mail } = component;
 
         return `\
-${logo ? `![${name}](${mode === "miniapp" ? logo : (getFileLink(logo) ?? "")})\n\n` : ""}\
-${name ? `- 名称: ${name}\n` : ""}\
-${detail ? `- 详情: ${detail}\n` : ""}\
-${accountDesc ? `- 描述: ${accountDesc}\n` : ""}\
-${qq ? `- QQ: ${qq}\n` : ""}\
+${logo ? `![${escapeHtml(name)}](${mode === "miniapp" ? logo : (getFileLink(logo) ?? "")})\n\n` : ""}\
+${name ? `- 名称: ${escapeHtml(name)}\n` : ""}\
+${detail ? `- 详情: ${escapeHtml(detail)}\n` : ""}\
+${accountDesc ? `- 描述: ${escapeHtml(accountDesc)}\n` : ""}\
+${qq ? `- QQ: ${escapeHtml(String(qq))}\n` : ""}\
 ${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
-${site ? `- 网站: <${site}>\n` : ""}\
-${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
+${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
+${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
 
 `;
       }
@@ -331,14 +334,14 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
         const { src, name } = component;
         const audioLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
-        return `[音频${name ? `: ${name}` : ""}](${audioLink})\n\n`;
+        return `[音频${name ? `: ${escapeHtml(name)}` : ""}](${audioLink})\n\n`;
       }
 
       case "video": {
         const { src, title: videoTitle } = component;
         const videoLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
 
-        return `[视频${videoTitle ? `: ${videoTitle}` : ""}](${videoLink})\n\n`;
+        return `[视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}](${videoLink})\n\n`;
       }
 
       default: {

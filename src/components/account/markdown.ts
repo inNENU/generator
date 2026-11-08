@@ -18,18 +18,18 @@ export const getAccountMarkdown = (account: AccountComponentOptions, location = 
   <img class="innenu-account-background" src="${escapeHtml(logo ?? "")}" alt="${escapeHtml(name)}" loading="lazy" no-view />
   <div class="innenu-account-content">
     <img class="innenu-account-logo" src="${escapeHtml(logo ?? "")}" alt="${escapeHtml(name)}" loading="lazy" no-view />
-    <div class="innenu-account-name">${name}</div>
+    <div class="innenu-account-name">${escapeHtml(name)}</div>
 ${
   detail
     ? `\
-    <div class="innenu-account-detail">${detail}</div>
+    <div class="innenu-account-detail">${escapeHtml(detail)}</div>
 `
     : ""
 }\
 ${
   desc
     ? `\
-    <div class="innenu-account-description">${desc}</div>
+    <div class="innenu-account-description">${escapeHtml(desc)}</div>
 `
     : ""
 }\

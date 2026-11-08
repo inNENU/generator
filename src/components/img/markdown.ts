@@ -17,7 +17,7 @@ export const getImgMarkdown = (img: ImageComponentOptions, location = ""): strin
   return `\
 <figure>
   <img src="${escapeHtml(src)}" alt="${escapeHtml(desc ?? path.basename(src).replace(/\..+$/u, ""))}" />
-  ${desc ? `<figcaption>${desc}</figcaption>` : ""}
+  ${desc ? `<figcaption>${escapeHtml(desc)}</figcaption>` : ""}
 </figure>
 
 `;
