@@ -120,7 +120,8 @@ isOriginal: true
         // 检测视频
         else if (tag === "video") blocks.push(getVideoMarkdown(component, componentLocation));
         // 检测动作
-        else if (tag === "action") blocks.push(getActionMarkdown(component, componentLocation));
+        else if (tag === "action")
+          blocks.push(getActionMarkdown(component, componentLocation, options));
         // 检测账号
         else if (tag === "account") blocks.push(getAccountMarkdown(component, componentLocation));
         // 检测地点
