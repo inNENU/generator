@@ -36,7 +36,11 @@ export const getMapPageJSON = (
   }
 
   // 校验已由上方完成，getPageJSON 内不再重复检查，仅做纯转换
-  return getPageJSON(data, filePath, [], { check: false });
+  const pageData: MapPageData = getPageJSON(data, filePath, [], { check: false });
+
+  if (data.photo) pageData.photo = data.photo;
+
+  return pageData;
 };
 
 /**
