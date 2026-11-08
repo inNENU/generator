@@ -90,6 +90,36 @@ describe(getWordNumber, () => {
     expect(getWordNumber("介绍 https://example.com/a%20b?q=1#frag 完毕")).toBe(4);
   });
 
+  it("should stop URLs at CJK characters inside path and query", () => {
+    // 中文路径/查询串同样在首个汉字处截断，截断后的汉字按正文计入
+    expect(getWordNumber("https://example.com/中文")).toBe(2);
+    expect(getWordNumber("https://a.com?q=中文")).toBe(2);
+    expect(getWordNumber("看 https://example.com/中文 介绍")).toBe(5);
+  });
+
+  it("should stop URLs at adjacent CJK punctuation", () => {
+    // 全角句号/分号属于排除集：URL 在标点前截止，标点本身不是文字，不计入
+    expect(getWordNumber("https://example.com。")).toBe(0);
+    expect(getWordNumber("见 https://example.com。然后")).toBe(3);
+    expect(getWordNumber("https://example.com；继续")).toBe(2);
+  });
+
+  it("should pin the known tradeoff for ASCII punctuation and emoji adjacent to URLs", () => {
+    // 已知限制：半角 ) 与 emoji 不在排除集中，会被 URL 一并吞掉（URL 不计字数）；
+    // 只有紧随其后的中文仍能正常计入。此用例固定现状，避免调整排除集时无意回归。
+    expect(getWordNumber("（https://example.com)中")).toBe(1);
+    expect(getWordNumber("详见(https://example.com)的说明")).toBe(5);
+    expect(getWordNumber("https://example.com😀")).toBe(0);
+    expect(getWordNumber("看 https://example.com😀 介绍")).toBe(3);
+  });
+
+  it("should count Bopomofo by character like other CJK scripts", () => {
+    // Bopomofo 只在 URL 排除集里时，正文「ㄅㄆㄇ」会被当成 1 个拉丁词；统一为按字计
+    expect(getWordNumber("ㄅㄆㄇ")).toBe(3);
+    expect(getWordNumber("注音 ㄅㄆㄇ 说明")).toBe(7);
+    expect(getWordNumber("https://a.comㄅㄆㄇ")).toBe(3);
+  });
+
   it("should return 0 for input containing only a URL", () => {
     expect(getWordNumber("https://example.com/a?b=1#c")).toBe(0);
     expect(getWordNumber("（https://example.com）")).toBe(0);
