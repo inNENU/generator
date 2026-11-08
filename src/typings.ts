@@ -1,12 +1,17 @@
 /** URL 处理器，返回处理后的路径，返回 null 表示不展示 */
 export type UrlHandler = (url: string) => string | null | undefined;
 
+/** Markdown 渲染模式 */
+export type MarkdownMode = "web" | "miniapp";
+
 /** Markdown 生成选项 */
 export interface MarkdownOptions {
   /** 内容位置 */
   location?: string;
   /** URL 转换器（见 `UrlHandler`） */
   urlConverter?: UrlHandler;
+  /** 渲染模式（影响支持双端输出的组件，如 action） */
+  mode?: MarkdownMode;
 }
 
 export type * from "./components/schema.js";
