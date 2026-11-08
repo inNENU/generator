@@ -34,8 +34,10 @@ jobs:
         run: pnpm run lint:check
 
       - name: Unit test
-        run: pnpm run test
+        run: pnpm run test:coverage
 
       - name: Upload coverage
         if: github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage/lcov.info
