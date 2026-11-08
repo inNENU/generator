@@ -88,6 +88,14 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 };
 
 /**
+ * 匹配会被 YAML 解析成非字符串的纯标量
+ *
+ * 例如 `123`、`true`、`null`、`0x1A`、`2024-01-01` 直接写进 frontmatter 会变成 number/boolean/null/Date。
+ */
+const ambiguousScalarPattern =
+  /^(?:~|null|true|false|yes|no|on|off|[-+]?(?:\d[\d_]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|0x[\da-f]+|0o[0-7]+|0b[01]+|[-+]?\.(?:inf|nan)|\d{4}-\d{2}-\d{2}(?:[Tt ].*)?)$/iu;
+
+/**
  * 获取 YAML 值
  *
  * @param content 内容
@@ -100,7 +108,8 @@ export const getYamlValue = (content: string): string => {
       /^[-?:](?:\s|$)/u.test(content) ||
       /:\s| #|:$/u.test(content) ||
       /[\r\n]/u.test(content) ||
-      /^\s|\s$/u.test(content));
+      /^\s|\s$/u.test(content) ||
+      ambiguousScalarPattern.test(content));
 
   return needsQuote
     ? `"${content
