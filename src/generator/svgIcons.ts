@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { resolve } from "upath";
 
-import { convertSVGToBase64DataURI, getFileList } from "../helpers/index.js";
+import { convertSVGToDataURI, getFileList } from "../helpers/index.js";
 
 /**
  * 生成 SVG 图标文件
@@ -37,11 +37,11 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
 
       iconStore[category] ??= {};
 
-      iconStore[category][iconName] = convertSVGToBase64DataURI(svgContent);
+      iconStore[category][iconName] = convertSVGToDataURI(svgContent);
     } else {
       const targetFilename = resolve(targetFolder, filePath.replace(/\.svg$/u, ""));
 
-      writeFileSync(targetFilename, convertSVGToBase64DataURI(svgContent), {
+      writeFileSync(targetFilename, convertSVGToDataURI(svgContent), {
         encoding: "utf-8",
       });
     }

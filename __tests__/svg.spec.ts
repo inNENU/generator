@@ -3,45 +3,31 @@ import { describe, expect, it } from "vitest";
 import { convertSVGToBase64DataURI, convertSVGToDataURI } from "../src/helpers/svg.js";
 
 describe(convertSVGToDataURI, () => {
-  it("should convert simple SVG to data URI", () => {
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+  it("should keep the SVG readable through percent-encoding", () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle r="5"/></svg>';
     const result = convertSVGToDataURI(svg);
-
-    expect(result).toBe(
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E",
-    );
-  });
-
-  it("should escape double quotes", () => {
-    const svg = '<svg attr="value"></svg>';
-    const result = convertSVGToDataURI(svg);
-
-    expect(result).toContain("attr='value'");
-    expect(result).not.toContain('"');
-  });
-
-  it("should escape angle brackets", () => {
-    const svg = "<svg></svg>";
-    const result = convertSVGToDataURI(svg);
-
-    expect(result).toContain("%3C");
-    expect(result).toContain("%3E");
-    expect(result).not.toContain("<");
-    expect(result).not.toContain(">");
-  });
-
-  it("should escape hash symbols", () => {
-    const svg = '<svg fill="#000"></svg>';
-    const result = convertSVGToDataURI(svg);
-
-    expect(result).toContain("%23000");
-    expect(result).not.toContain("#");
-  });
-
-  it("should start with correct prefix", () => {
-    const result = convertSVGToDataURI("<svg></svg>");
 
     expect(result).toMatch(/^data:image\/svg\+xml,/u);
+    expect(decodeURIComponent(result.slice("data:image/svg+xml,".length))).toBe(svg);
+  });
+
+  it("should percent-encode XML special characters and URI delimiters", () => {
+    const result = convertSVGToDataURI('<svg fill="#000" data-x="a&b">100%</svg>');
+
+    expect(result).toMatch(/^data:image\/svg\+xml,/u);
+
+    for (const encoded of ["%3C", "%3E", "%23", "%25", "%22", "%26"])
+      expect(result).toContain(encoded);
+
+    expect(result).not.toMatch(/[<>#"]/u);
+  });
+
+  it("should round-trip non-ASCII text", () => {
+    const svg = "<svg><text>café 东北师范大学</text></svg>";
+
+    expect(decodeURIComponent(convertSVGToDataURI(svg).slice("data:image/svg+xml,".length))).toBe(
+      svg,
+    );
   });
 });
 
