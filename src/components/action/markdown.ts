@@ -1,4 +1,4 @@
-import { getFileLink } from "../../utils.js";
+import { escapeHtml, getFileLink } from "../../utils.js";
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
 
@@ -30,11 +30,13 @@ export const getActionMarkdown = (
       content,
     );
 
-  const body = isLink ? `[${header ?? content}](${content})` : `\`\`\`text\n${content}\n\`\`\``;
+  const body = isLink
+    ? `[${escapeHtml(header ?? content)}](${content})`
+    : `\`\`\`text\n${content}\n\`\`\``;
 
   if (options.mode === "miniapp") {
     return `\
-${header ? `#### ${header}\n\n` : ""}\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
 ::: action
 ${body}
 :::
@@ -43,7 +45,7 @@ ${body}
   }
 
   return `\
-${header ? `#### ${header}\n\n` : ""}\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
 ${body}
 `;
 };

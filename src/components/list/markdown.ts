@@ -16,7 +16,7 @@ export const getListMarkdown = (
 ${
   header
     ? `\
-#### ${header} {.innenu-list-header}
+#### ${escapeHtml(header)} {.innenu-list-header}
 
 `
     : ""
@@ -39,14 +39,14 @@ ${items
 
     const textContent = `\
 <div class="innenu-list-text">
-${text.replaceAll("\n", "<br />")}
+${escapeHtml(text).replaceAll("\n", "<br />")}
 </div>
 `;
 
     const descContent = desc
       ? `\
 <div class="innenu-list-desc">
-${desc}
+${escapeHtml(desc)}
 </div>
 `
       : "";
@@ -109,7 +109,7 @@ ${
   footer
     ? `\
 <div class="innenu-list-footer">
-${footer}
+${escapeHtml(footer)}
 </div>
 `
     : ""

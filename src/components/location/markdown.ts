@@ -1,4 +1,5 @@
 import { generatorConfig } from "../../config.js";
+import { escapeHtml } from "../../utils.js";
 import type { LocationComponentOptions } from "./schema.js";
 import { checkLocation } from "./schema.js";
 
@@ -16,7 +17,7 @@ export const getLocationMarkdown = (
 ${
   header
     ? `\
-#### ${header}
+#### ${escapeHtml(header)}
 
 `
     : ""

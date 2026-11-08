@@ -1,4 +1,4 @@
-import { getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
+import { escapeHtml, getMarkdownPath, indentMarkdownListItem } from "../../utils.js";
 import type { TextComponentOptions } from "./schema.js";
 import { checkText } from "./schema.js";
 
@@ -24,20 +24,20 @@ ${
 ${
   shouldUseContainer
     ? `::: ${text.type === "danger" ? "caution" : text.type}${
-        typeof header === "string" ? ` ${header}` : ""
+        typeof header === "string" ? ` ${escapeHtml(header)}` : ""
       }`
     : typeof header === "string"
-      ? `### ${header}`
+      ? `### ${escapeHtml(header)}`
       : ""
 }
 ${
   (text.text ?? [])
     .map((item) =>
       tag === "ul"
-        ? `- ${indentMarkdownListItem(item, 3)}`
+        ? `- ${indentMarkdownListItem(escapeHtml(item), 3)}`
         : tag === "ol"
-          ? `1. ${indentMarkdownListItem(item, 3)}`
-          : item,
+          ? `1. ${indentMarkdownListItem(escapeHtml(item), 3)}`
+          : escapeHtml(item),
     )
     .join("\n\n") || ""
 }

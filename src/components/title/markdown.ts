@@ -13,11 +13,11 @@ export const getTitleMarkdown = (component: TitleComponentOptions, location = ""
 
   return style
     ? `\
-## <span style="${escapeHtml(style)}">${text}</span>
+## <span style="${escapeHtml(style)}">${escapeHtml(text)}</span>
 
 `
     : `\
-## ${component.text}
+## ${escapeHtml(component.text)}
 
 `;
 };

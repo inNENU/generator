@@ -36,16 +36,16 @@ ${
 ${
   name
     ? `\
-    <div class="innenu-card-name">${name}</div>
+    <div class="innenu-card-name">${escapeHtml(name)}</div>
 `
     : ""
 }\
   </div>
-  <div class="innenu-card-title">${title}</div>
+  <div class="innenu-card-title">${escapeHtml(title)}</div>
 ${
   desc
     ? `\
-  <div class="innenu-card-desc">${desc}</div>
+  <div class="innenu-card-desc">${escapeHtml(desc)}</div>
 `
     : ""
 }\

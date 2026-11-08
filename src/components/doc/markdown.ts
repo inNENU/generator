@@ -18,7 +18,7 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
   )}" alt="" />`;
   // oxlint-disable-next-line typescript/no-non-null-assertion
   const docName = `${name}.${url.split(".").pop()!}`;
-  const docNameContent = `<span class="innenu-doc-name">${docName}</span>`;
+  const docNameContent = `<span class="innenu-doc-name">${escapeHtml(docName)}</span>`;
 
   return `
 ${
