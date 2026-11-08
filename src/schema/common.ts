@@ -70,9 +70,18 @@ export const internalFileSchema = zod
     abort: true,
   }) as unknown as zod.ZodString;
 
-export const httpsLinkSchema = zod.url({ protocol: /^https$/u }).meta({
-  description: "HTTPS链接",
-});
+/**
+ * HTTPS 链接
+ *
+ * 额外声明 `^https://` 前缀，使生成的 JSON Schema 保留 HTTPS 约束（`zod.url({ protocol })` 不会输出
+ * `pattern`）。正则忽略大小写，保证与原有 `zod.url` 的运行时行为一致。
+ */
+export const httpsLinkSchema = zod
+  .url({ protocol: /^https$/u })
+  .regex(/^https:\/\//iu)
+  .meta({
+    description: "HTTPS链接",
+  });
 
 export const imgSchema = zod
   .union([httpsLinkSchema, internalImgSchema], {

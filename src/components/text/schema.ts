@@ -109,19 +109,39 @@ const videoTextComponentSchema = zod.strictObject({
   ...channelVideoSchema.shape,
 });
 
+/** 文本组件允许的标签 */
+const textComponentTags = ["text", "p", "ol", "ul"] as const;
+
+/** 文本组件的各种内容形态 */
+const textComponentVariants = [
+  plainTextComponentSchema,
+  hintTextComponentSchema,
+  pathTextComponentSchema,
+  pageTextComponentSchema,
+  officialProfileTextComponentSchema,
+  channelProfileTextComponentSchema,
+  articleTextComponentSchema,
+  videoTextComponentSchema,
+  miniProgramShortLinkTextComponentSchema,
+  miniProgramFullTextComponentSchema,
+] as const;
+
+/**
+ * 文本组件
+ *
+ * 每种内容形态都按 `tag` 展开为字面量，使生成的 JSON Schema 可以按 `tag` 判别。
+ */
 export const textComponentSchema = zod
-  .union([
-    plainTextComponentSchema,
-    hintTextComponentSchema,
-    pathTextComponentSchema,
-    pageTextComponentSchema,
-    officialProfileTextComponentSchema,
-    channelProfileTextComponentSchema,
-    articleTextComponentSchema,
-    videoTextComponentSchema,
-    miniProgramShortLinkTextComponentSchema,
-    miniProgramFullTextComponentSchema,
-  ])
+  .union(
+    textComponentTags.flatMap((tag) =>
+      textComponentVariants.map((variant) =>
+        variant.extend({
+          /** 文字标签 */
+          tag: zod.literal(tag),
+        }),
+      ),
+    ),
+  )
   .meta({
     id: "text-component",
     description: "文本组件",
