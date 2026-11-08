@@ -7,8 +7,8 @@ export const getTextMarkdown = (text: TextComponentOptions, location = ""): stri
 
   checkText(text, location);
 
-  // 处理段落
-  if (typeof text.text === "string") text.text = [text.text];
+  // 处理段落（不修改传入的对象）
+  const texts = typeof text.text === "string" ? [text.text] : (text.text ?? []);
 
   const { align, tag, header } = text;
   const shouldUseContainer = "type" in text && text.type !== "none";
@@ -31,7 +31,7 @@ ${
       : ""
 }
 ${
-  (text.text ?? [])
+  texts
     .map((item) =>
       tag === "ul"
         ? `- ${indentMarkdownListItem(escapeHtml(item), 3)}`

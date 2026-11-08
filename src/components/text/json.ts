@@ -6,12 +6,14 @@ export const getTextJSON = (
   pageId: string,
   location = "",
 ): TextComponentData => {
+  let resolvedPath = "";
+
   if ("path" in text && text.path && !("appId" in text)) {
     // @ts-expect-error: checking for invalid types
     if (text.type === "none" || !text.type)
       console.warn(`${location}: A type must be set when path is set`);
 
-    text.path = resolvePagePath(text.path, pageId);
+    resolvedPath = resolvePagePath(text.path, pageId);
   }
 
   const { style, text: textContent, ...data } = text;
@@ -19,6 +21,7 @@ export const getTextJSON = (
 
   return {
     ...data,
+    ...(resolvedPath ? { path: resolvedPath } : {}),
     text: typeof textContent === "string" ? [textContent] : (textContent ?? []),
     ...(convertedStyle ? { style: convertedStyle } : {}),
   };
