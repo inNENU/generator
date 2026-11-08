@@ -25,15 +25,22 @@ import {
   videoSchema,
 } from "../components/schema.js";
 import { useCompiled } from "../helpers/compile.js";
+import { withDiscriminatorValues } from "../helpers/discriminated-union.js";
 import { collectZodIssues } from "../helpers/validation.js";
 import { iconSchema } from "../schema/common.js";
 
+/** 卡片组件由多个形态组合而成，手动补充 `tag` 判别值 */
+const cardComponentSchema = withDiscriminatorValues(cardSchema, ["card"]);
+
+/** 文本组件由多个形态组合而成，手动补充 `tag` 判别值 */
+const textSchema = withDiscriminatorValues(textComponentSchema, ["text", "p", "ol", "ul"]);
+
 export const componentSchema = zod
-  .union([
+  .discriminatedUnion("tag", [
     accountSchema,
     actionSchema,
     audioSchema,
-    cardSchema,
+    cardComponentSchema,
     carouselSchema,
     docSchema,
     footerSchema,
@@ -44,7 +51,7 @@ export const componentSchema = zod
     locationSchema,
     phoneSchema,
     tableSchema,
-    textComponentSchema,
+    textSchema,
     titleSchema,
     videoSchema,
   ])

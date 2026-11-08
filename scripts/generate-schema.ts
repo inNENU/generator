@@ -2,9 +2,10 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import type { ZodObject, ZodRecord, ZodUnion, ZodArray } from "zod";
+import type { ZodType } from "zod";
 import { toJSONSchema } from "zod";
 
+import { finalizeJsonSchema } from "../src/helpers/json-schema.js";
 import { componentSchema, pageConfigSchema } from "../src/page/index.js";
 import {
   mapPageConfigSchema,
@@ -29,19 +30,17 @@ if (!existsSync(SCHEMA_DIR)) mkdirSync(SCHEMA_DIR, { recursive: true });
  * @param filename 输出文件名
  * @param title JSON Schema 标题（可选）
  */
-const generateJsonSchema = (
-  schema: ZodObject | ZodRecord | ZodUnion | ZodArray,
-  filename: string,
-  title?: string,
-): void => {
+const generateJsonSchema = (schema: ZodType, filename: string, title?: string): void => {
   try {
-    // 使用 zod 内置的 .schema() 方法生成 JSON Schema
-    const jsonSchema = toJSONSchema(schema, {
-      target: "draft-7",
-    });
+    const jsonSchema = finalizeJsonSchema(
+      toJSONSchema(schema, {
+        target: "draft-07",
+      }),
+      title,
+    );
 
-    // 添加标题和描述
-    if (title) jsonSchema.title = title;
+    if (jsonSchema.$schema !== "http://json-schema.org/draft-07/schema#")
+      throw new Error(`Unexpected JSON Schema version: ${String(jsonSchema.$schema)}`);
 
     const filePath = path.join(SCHEMA_DIR, filename);
 
@@ -49,6 +48,7 @@ const generateJsonSchema = (
     console.log(`✅ Generated ${filename}`);
   } catch (err) {
     console.error(`❌ Failed to generate ${filename}:`, err);
+    process.exitCode = 1;
   }
 };
 
