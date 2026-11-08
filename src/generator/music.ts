@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import { join } from "upath";
+import { dirname, join } from "upath";
 
 import { getFileList } from "../helpers/getFileList.js";
 import { ValidationError } from "../helpers/validation.js";
@@ -86,7 +86,11 @@ export const generateLyrics = (lyricFolder: string, output: string): void => {
 
     if (skippedLines > 0) console.warn(`歌词 ${lyricPath} 中有 ${skippedLines} 行被跳过`);
 
-    writeFileSync(join(output, lyricPath.replace(/lrc$/u, "json")), JSON.stringify(lyricData));
+    const outputPath = join(output, lyricPath.replace(/\.lrc$/u, ".json"));
+
+    // 歌词可能位于源目录的子目录中，输出目录中的对应子目录可能尚不存在
+    mkdirSync(dirname(outputPath), { recursive: true });
+    writeFileSync(outputPath, JSON.stringify(lyricData));
   });
 
   console.info("歌词已生成");

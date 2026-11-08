@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -114,6 +114,54 @@ describe(generateLyrics, () => {
       logSpy.mockRestore();
       infoSpy.mockRestore();
       warnSpy.mockRestore();
+      rmSync(fixture.testDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("generateLyrics 输出路径", () => {
+  it("为源目录子目录中的歌词创建对应的输出子目录", () => {
+    const fixture = createFixture();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    try {
+      // 目录名与文件名中都含有 lrc，只有结尾的扩展名应被替换
+      mkdirSync(path.join(fixture.lyricFolder, "lrc-archive"), { recursive: true });
+
+      expect(() => generate(fixture, "[00:01.00]nested", "lrc-archive/song.lrc")).not.toThrow();
+
+      const lyrics = JSON.parse(
+        readFileSync(path.join(fixture.outputFolder, "lrc-archive", "song.json"), "utf-8"),
+      ) as LyricItem[];
+
+      expect(lyrics).toStrictEqual([{ time: 1, text: "nested" }]);
+      expect(existsSync(path.join(fixture.outputFolder, "json-archive"))).toBe(false);
+    } finally {
+      logSpy.mockRestore();
+      infoSpy.mockRestore();
+      rmSync(fixture.testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("只转换结尾为 .lrc 的文件", () => {
+    const fixture = createFixture();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    try {
+      // 非 .lrc 结尾的文件不应被选中，也不应产生输出
+      writeFileSync(path.join(fixture.lyricFolder, "a.lrc.bak"), "[00:02.00]ignored");
+
+      const lyrics = generate(fixture, "[00:01.00]kept", "lrc.lrc");
+
+      expect(lyrics).toStrictEqual([{ time: 1, text: "kept" }]);
+      expect(existsSync(path.join(fixture.outputFolder, "lrc.json"))).toBe(true);
+      expect(existsSync(path.join(fixture.outputFolder, "a.lrc.json"))).toBe(false);
+      expect(existsSync(path.join(fixture.outputFolder, "a.json"))).toBe(false);
+    } finally {
+      logSpy.mockRestore();
+      infoSpy.mockRestore();
       rmSync(fixture.testDir, { recursive: true, force: true });
     }
   });
