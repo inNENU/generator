@@ -16,7 +16,7 @@ export const getCardMarkdown = (
 
   const { name, desc, title } = card;
 
-  const cardContent = `
+  const cardContent = `\
 ${
   cover
     ? `\

@@ -346,7 +346,11 @@ ${mail ? `- 邮箱: [${mail}](mailto:${mail})\n` : ""}\
       }
     }
   })
-  .join("")}
+  .filter((block): block is string => block != null)
+  // 组件块自身带有尾部空行，统一裁剪后再按一个空行拼接
+  .map((block) => block.replace(/^\n+/u, "").trimEnd())
+  .filter((block) => block !== "")
+  .join("\n\n")}
 `.trim();
   } catch (err) {
     throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
