@@ -6,7 +6,7 @@ interface Config {
   pageFolder: string;
 }
 
-export const generatorConfig: Config = {
+const DEFAULT_CONFIG: Config = {
   assets: "",
   icon: "",
   mapKey: "",
@@ -14,21 +14,30 @@ export const generatorConfig: Config = {
   pageFolder: "page",
 };
 
+export const generatorConfig: Config = { ...DEFAULT_CONFIG };
+
+/**
+ * 恢复生成器默认配置
+ *
+ * 主要供测试在修改配置后清理状态使用；也会清除 `assets` / `icon` 结尾的斜杠。
+ */
+export const resetConfig = (): void => {
+  Object.assign(generatorConfig, DEFAULT_CONFIG);
+};
+
 /**
  * 配置生成器
  *
- * @param assets 资源目录
- * @param icon 图标目录
- * @param mapFolder 地图目录
- * @param mapKey 地图密钥
- * @param pageFolder 页面目录
+ * 只需传入要覆盖的字段，未传入的字段保持当前值（初始为默认值）。`assets` / `icon` 结尾的斜杠会被移除。
+ *
+ * @param nextConfig 配置项，支持部分覆盖
  */
-export const config = ({ assets, icon, mapFolder, mapKey, pageFolder }: Config): void => {
+export const config = (nextConfig: Partial<Config> = {}): void => {
+  const next: Config = { ...generatorConfig, ...nextConfig };
+
   Object.assign(generatorConfig, {
-    assets: assets.replace(/\/$/u, ""),
-    icon: icon.replace(/\/$/u, ""),
-    mapFolder,
-    mapKey,
-    pageFolder,
+    ...next,
+    assets: next.assets.replace(/\/$/u, ""),
+    icon: next.icon.replace(/\/$/u, ""),
   });
 };
