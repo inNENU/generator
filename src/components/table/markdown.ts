@@ -5,7 +5,8 @@ import { checkTable } from "./schema.js";
 const formatCell = (cell: string): string =>
   escapeHtml(cell)
     // 必须先转义反斜杠再转义管道：若先处理管道，输入 `\|` 会变成 `\\|`，
-    // GFM 中 `\\` 还原为字面反斜杠、`|` 沦为列分隔符，导致整行列错位。
+    // 多出的反斜杠会被 cmark-gfm/markdown-it 等解析器静默丢弃；
+    // remark-gfm/micromark 等解析器还可能把 `|` 当作列分隔符，把该单元格拆成额外一列。
     .replaceAll("\\", String.raw`\\`)
     .replaceAll("|", String.raw`\|`)
     .replaceAll(/\r?\n/gu, "<br />");

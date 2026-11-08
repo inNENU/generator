@@ -42,6 +42,14 @@ describe(getTableMarkdown, () => {
     expect(row).toBe(String.raw`| a\\\\b |`);
   });
 
+  it("escapes a literal backslash-pipe pair in header cells", () => {
+    const markdown = getTableMarkdown(createTable([String.raw`a\|b`], [["普通"]]));
+    const headerRow = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    expect(headerRow).toBe(String.raw`| a\\\|b |`);
+  });
+
+  // 额外覆盖：单独的管道字符也必须转义，避免被当作列分隔符。
   it("escapes a lone pipe as a cell character", () => {
     const markdown = getTableMarkdown(createTable(["|"], [["|"]]));
 
