@@ -33,7 +33,7 @@ export const indentMarkdownListItem = (content: string, indent = 0): string =>
     .map((line, index) =>
       index === 0 ? line : `${Array.from({ length: indent }, () => " ").join("")}${line}`,
     )
-    .join("\n\n");
+    .join("\n");
 
 /**
  * 获取文件路径对应的 Markdown 路径

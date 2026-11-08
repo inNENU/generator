@@ -12,7 +12,6 @@ Content\
 `,
         `\
 Text
-
 Content`,
       ],
     ];
@@ -31,7 +30,6 @@ Content\
 `,
         `\
 Text
-
    Content`,
       ],
     ];

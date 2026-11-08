@@ -41,7 +41,7 @@ ${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
 ${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
 ${title ? `- 职位: ${escapeHtml(title)}\n` : ""}\
 ${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
-${remark ? `- 备注: ${escapeHtml(remark)}\n` : ""}\
+${remark ? `- 备注: ${escapeHtml(remark).replaceAll("\n", "\n  ")}\n` : ""}\
 ${province || city || street ? `- 地址: ${escapeHtml(province)}${escapeHtml(city)}${escapeHtml(street)}\n` : ""}\
 ${postCode ? `- 邮编: ${escapeHtml(String(postCode))}\n` : ""}\
 
