@@ -68,6 +68,10 @@ describe(parseYaml, () => {
     expect(parseYaml("... # end\r")).toBeUndefined();
     expect(parseYaml("--- # c\r\n# d\r\n")).toBeUndefined();
     expect(parseYaml("---\r\n")).toBeUndefined();
+
+    // 有实际内容时仍按原有语义解析
+    expect(parseYaml("---\r\ntitle: x\r\n")).toStrictEqual({ title: "x" });
+    expect(parseYaml("title: 首页\r\ncount: 2\r\n")).toStrictEqual({ count: 2, title: "首页" });
   });
 
   it("strips a leading BOM before checking marker-only documents", () => {
@@ -99,6 +103,19 @@ describe(parseYaml, () => {
   it("throws a Chinese error containing the file path", () => {
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/YAML 解析失败/u);
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/pages\/broken\.yml/u);
+
+    const getError = (): unknown => {
+      try {
+        parseYaml("title: [", "pages/broken.yml");
+      } catch (err) {
+        return err;
+      }
+      return undefined;
+    };
+    const error = getError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
 
