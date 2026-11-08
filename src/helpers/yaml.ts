@@ -7,6 +7,46 @@ import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
 
+/** 单个 YAML 文档允许的最大别名节点数 */
+const MAX_YAML_ALIASES = 100;
+
+/** 单个 YAML 文档展开后允许访问的最大节点数，用于阻止别名指数膨胀 */
+const MAX_YAML_EXPANDED_NODES = 100_000;
+
+/**
+ * 校验解析结果可以安全序列化
+ *
+ * 别名会被 js-yaml 解析为共享引用，正常的重复引用可以复用；但自引用会形成环（`JSON.stringify` 会抛错）， 嵌套别名还可能指数级展开（俗称 YAML
+ * 别名炸弹）。这里在返回前做一次带上限的展开遍历。
+ *
+ * @param value 解析结果
+ * @param filePath 文件路径，仅用于错误信息
+ */
+const assertYamlValueSafe = (value: unknown, filePath: string): void => {
+  const ancestors = new Set<object>();
+  let visited = 0;
+
+  const visit = (node: unknown): void => {
+    visited += 1;
+
+    if (visited > MAX_YAML_EXPANDED_NODES)
+      throw new Error(`YAML 文档展开后过大，可能存在别名炸弹（文件: ${filePath}）`);
+
+    if (typeof node !== "object" || node == null) return;
+
+    if (ancestors.has(node)) throw new Error(`YAML 文档存在循环引用（文件: ${filePath}）`);
+
+    ancestors.add(node);
+
+    if (Array.isArray(node)) for (const item of node) visit(item);
+    else for (const item of Object.values(node)) visit(item);
+
+    ancestors.delete(node);
+  };
+
+  visit(value);
+};
+
 /**
  * 判断 YAML 内容是否包含实际文档
  *
@@ -30,7 +70,13 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
   if (!hasYamlDocument(content)) return void 0;
 
   try {
-    return load(content, { schema: JSON_SCHEMA }) as T | undefined;
+    const value = load(content, { maxAliases: MAX_YAML_ALIASES, schema: JSON_SCHEMA }) as
+      | T
+      | undefined;
+
+    if (value !== void 0) assertYamlValueSafe(value, filePath);
+
+    return value;
   } catch (err) {
     const location = filePath ? `（文件: ${filePath}）` : "";
 
