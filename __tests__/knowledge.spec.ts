@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { KnowledgeIndexItem } from "../src/index.js";
 import { config, generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
+import { checkPageContent } from "../src/page/schema.js";
 
 /**
  * 测试用 urlConverter：转换 notice-detail 链接（999999 除外），其他返回 null
@@ -586,7 +587,7 @@ describe("knowledge 索引生成", () => {
       }
     });
 
-    it("path 指向不存在的页面时通过 console.error 报告问题", () => {
+    it("path 指向不存在的页面时由显式校验报告问题", () => {
       setup();
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -611,20 +612,25 @@ describe("knowledge 索引生成", () => {
           ].join("\n"),
         );
 
+        // 生成管线默认宽松（check: false），不会因缺失路径中断
         generateKnowledgeContent("./pages", "./dist", { urlConverter: testUrlConverter });
+        expect(errorSpy).not.toHaveBeenCalled();
 
-        // 缺失的跳转路径必须显式报告，不能静默通过
-        expect(errorSpy).toHaveBeenCalledTimes(1);
-        expect(errorSpy).toHaveBeenCalledWith(
-          "路径 guide/missing 在 guide/cards page.content[0] 中不存在",
-        );
-
-        // 生成流程不中断，问题只通过 console.error 暴露
         const content = readFileSync(path.join(testDir, "dist/guide/cards.md"), {
           encoding: "utf-8",
         });
 
         expect(content).toContain("- 校园卡中心（path: missing）");
+
+        // 需要完整性校验时由调用方显式运行：缺失的跳转路径必须报告，不能静默通过
+        const issues = checkPageContent(
+          [{ tag: "card", title: "校园卡中心", path: "missing" }],
+          "guide/cards",
+          "guide/cards",
+        );
+
+        expect(issues).toContainEqual(expect.stringContaining("路径 guide/missing"));
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("路径 guide/missing"));
       } finally {
         errorSpy.mockRestore();
         // 恢复生成器默认配置
