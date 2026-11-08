@@ -61,6 +61,12 @@ describe(parseYaml, () => {
     expect(parseYaml("  ---\r\n# c\r\n")).toBeUndefined();
   });
 
+  it("keeps content after a stream-leading indented `---`", () => {
+    // 首行缩进的文档标记不能把紧随其后的实际内容一起跳过
+    expect(parseYaml("  ---\n  foo")).toBe("foo");
+    expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
+  });
+
   it("handles CRLF and CR line endings in markers and comments", () => {
     expect(parseYaml("--- # c\r\n")).toBeUndefined();
     expect(parseYaml("--- # c\r")).toBeUndefined();
