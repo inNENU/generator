@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { config, resetConfig } from "../src/config.js";
 import { getPageMarkdown } from "../src/page/markdown.js";
 import type { PageConfig } from "../src/page/schema.js";
 import { getPageText } from "../src/page/text.js";
@@ -157,5 +158,24 @@ describe("page markdown parity", () => {
     const markdown = getPageMarkdown(page, { location: "guide/carousel" });
 
     expect(markdown).not.toContain("https://example.com/wx-only.png");
+  });
+
+  it("carousel 在两条管线中都将 `$` 资源解析为配置的资源地址", () => {
+    config({ assets: "https://assets.example.com" });
+    // 测试环境没有 `$img/a.png`，校验会打印文件缺失错误，测试中静音
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const page = createPage([{ tag: "carousel", images: ["$img/a.png"] }]);
+
+      const markdown = getPageMarkdown(page, { location: "guide/carousel" });
+      const text = getPageText(page, "guide/carousel");
+
+      expect(markdown).toContain("![''](https://assets.example.com/img/a.png)");
+      expect(text).toContain("![''](https://assets.example.com/img/a.png)");
+    } finally {
+      errorSpy.mockRestore();
+      resetConfig();
+    }
   });
 });
