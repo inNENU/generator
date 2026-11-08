@@ -4,7 +4,13 @@ import path from "node:path";
 import type { ComponentOptions, PageConfig } from "../page/schema.js";
 import { getFileList } from "./getFileList.js";
 
-const urlPattern = /(?:https?:\/\/|www\.)\S+/giu;
+/**
+ * 链接匹配：以 `http(s)://` 或 `www.` 开头，遇到空白、CJK 文字或全角标点即终止。
+ *
+ * 不能用 `\S+`：中文正文里的 URL 常与汉字、全角括号或中文标点直接相邻，`\S+` 会把这些字符一并吞掉，导致整句字数少算。URL 本身不计入字数，截断处残留的标点不影响统计。
+ */
+const urlPattern =
+  /(?:https?:\/\/|www\.)[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\u3000-\u303F\uFF00-\uFFEF]+/giu;
 /** 站内资源别名链接：`$img/a.png`、`$video/demo.mp4`、`$file/doc.pdf` 等 */
 const aliasLinkPattern = /\$[\w-]+\/[^\s)"'<>\]}]+/gu;
 const cjkPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;

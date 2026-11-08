@@ -72,6 +72,29 @@ describe(getWordNumber, () => {
     expect(getWordNumber("看 https://example.com/abc 介绍")).toBe(3);
   });
 
+  it("should stop URLs at adjacent CJK text and fullwidth punctuation", () => {
+    // 中文正文里的 URL 常被全角括号包裹：URL 必须在 ） 处终止，后面的中文才会计入
+    expect(getWordNumber("（https://py.nenu.edu.cn）中提出申请，核查学业进展情况")).toBe(13);
+    expect(getWordNumber("研究生须在系统（https://py.nenu.edu.cn）中提出申请")).toBe(12);
+  });
+
+  it("should stop www. URLs at adjacent CJK text and fullwidth punctuation", () => {
+    expect(getWordNumber("详见 www.example.com 的说明")).toBe(5);
+    expect(getWordNumber("www.example.com中文说明")).toBe(4);
+    expect(getWordNumber("（www.example.com）中")).toBe(1);
+  });
+
+  it("should keep normal URLs uncounted at query, fragment, percent-encoding and trailing punctuation", () => {
+    expect(getWordNumber("看 https://example.com/a%20b?q=1#frag.")).toBe(1);
+    expect(getWordNumber("文档见 https://example.com/path#section-2，然后继续")).toBe(7);
+    expect(getWordNumber("介绍 https://example.com/a%20b?q=1#frag 完毕")).toBe(4);
+  });
+
+  it("should return 0 for input containing only a URL", () => {
+    expect(getWordNumber("https://example.com/a?b=1#c")).toBe(0);
+    expect(getWordNumber("（https://example.com）")).toBe(0);
+  });
+
   it("should not count $ alias links", () => {
     expect(getWordNumber("$img/a.png")).toBe(0);
     expect(getWordNumber("$video/demo.mp4")).toBe(0);
