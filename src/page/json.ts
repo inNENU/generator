@@ -146,6 +146,32 @@ export interface GetPageJSONOptions extends CheckPageConfigOptions {
 }
 
 /**
+ * 将页面配置中的可选字段复制到页面数据 (PageData) 上
+ *
+ * @param pageData 页面数据
+ * @param page 页面配置
+ * @param author 页面作者
+ * @param cite 页面引用来源
+ */
+const updateOptionalPageDataFields = (
+  pageData: PageData,
+  page: PageConfig,
+  author: PageConfig["author"],
+  cite: PageConfig["cite"],
+): void => {
+  if (page.icon) pageData.icon = page.icon;
+  if (page.desc) pageData.desc = page.desc;
+  if (author) pageData.author = Array.isArray(author) ? author.join("、") : author;
+  if (cite) pageData.cite = typeof cite === "string" ? [cite] : cite;
+  if (typeof page.grey === "boolean") pageData.grey = page.grey;
+  if (typeof page.outdated === "boolean") pageData.outdated = page.outdated;
+  if (typeof page.shareable === "boolean") pageData.shareable = page.shareable;
+  if (typeof page.qrcode === "string" || typeof page.qrcode === "boolean")
+    pageData.qrcode = page.qrcode;
+  if (typeof page.contact === "boolean") pageData.contact = page.contact;
+};
+
+/**
  * 处理页面数据
  *
  * @param page 页面数据
@@ -170,7 +196,7 @@ export const getPageJSON = (
 
     if (!Array.isArray(page.content)) throw new Error(`${pagePath}.content 应为数组`);
 
-    const { id = pagePath, author, cite, content, time, ...others } = page;
+    const { id = pagePath, author, cite, content, time } = page;
 
     if (check) {
       const contentIssues = checkPageContent(content, pagePath, id);
@@ -185,12 +211,12 @@ export const getPageJSON = (
     }
 
     const pageData: PageData = {
-      ...others,
+      title: page.title,
       id,
-      ...(author ? { author: Array.isArray(author) ? author.join("、") : author } : {}),
-      cite: typeof cite === "string" ? [cite] : (cite ?? []),
       content: getPageContent(content, pagePath, { id, check: false }),
     };
+
+    updateOptionalPageDataFields(pageData, page, author, cite);
 
     if (!pageData.cite?.length) delete pageData.cite;
 
