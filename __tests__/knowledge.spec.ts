@@ -2,10 +2,11 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { KnowledgeIndexItem } from "../src/index.js";
 import { config, generateKnowledgeContent, generateKnowledgeIndex } from "../src/index.js";
+import { checkPageContent } from "../src/page/schema.js";
 
 /**
  * 测试用 urlConverter：转换 notice-detail 链接（999999 除外），其他返回 null
@@ -536,7 +537,18 @@ describe("knowledge 索引生成", () => {
   describe("card 组件", () => {
     it("web 模式保留卡片（标题/描述/path），带 url 走 urlConverter", () => {
       setup();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       try {
+        // path 卡片会校验 cwd 下的页面文件是否存在，将页面目录指向测试 fixtures。
+        config({
+          assets: "",
+          icon: "",
+          mapFolder: "",
+          mapKey: "",
+          pageFolder: "./pages",
+        });
+
         writeFileSync(
           path.join(testDir, "pages/guide/cards.yml"),
           [
@@ -546,7 +558,7 @@ describe("knowledge 索引生成", () => {
             "    title: 校园卡中心",
             "    desc: 办理与挂失",
             "    name: 财务处",
-            "    path: guide/card",
+            "    path: card",
             "  - tag: card",
             "    title: 通知卡片",
             "    url: notice-detail?url=info/1031/255432.htm",
@@ -560,19 +572,87 @@ describe("knowledge 索引生成", () => {
         });
 
         // path 卡片：web 模式也保留 path（跳转到其他 markdown 页面）
-        expect(content).toContain("- 校园卡中心 - 办理与挂失（path: guide/card）");
+        expect(content).toContain("- 校园卡中心 - 办理与挂失（path: card）");
         // url 卡片：urlConverter 转换后输出小程序优先格式
         expect(content).toContain(
           "- 通知卡片（小程序：`notice-detail?url=info/1031/255432.htm`，[网页版](https://m-443.webvpn.nenu.edu.cn/1031/255432.htm)）",
         );
+        // 同目录 card.yml 存在，path 校验不应产生任何错误
+        expect(errorSpy).not.toHaveBeenCalled();
       } finally {
+        errorSpy.mockRestore();
+        // 恢复生成器默认配置
+        config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
+        teardown();
+      }
+    });
+
+    it("path 指向不存在的页面时由显式校验报告问题", () => {
+      setup();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      try {
+        // path 卡片会校验 cwd 下的页面文件是否存在，将页面目录指向测试 fixtures。
+        config({
+          assets: "",
+          icon: "",
+          mapFolder: "",
+          mapKey: "",
+          pageFolder: "./pages",
+        });
+
+        writeFileSync(
+          path.join(testDir, "pages/guide/cards.yml"),
+          [
+            "title: 卡片",
+            "content:",
+            "  - tag: card",
+            "    title: 校园卡中心",
+            "    path: missing",
+          ].join("\n"),
+        );
+
+        // 生成管线默认宽松（check: false），不会因缺失路径中断
+        generateKnowledgeContent("./pages", "./dist", { urlConverter: testUrlConverter });
+        expect(errorSpy).not.toHaveBeenCalled();
+
+        const content = readFileSync(path.join(testDir, "dist/guide/cards.md"), {
+          encoding: "utf-8",
+        });
+
+        expect(content).toContain("- 校园卡中心（path: missing）");
+
+        // 需要完整性校验时由调用方显式运行：缺失的跳转路径必须报告，不能静默通过
+        const issues = checkPageContent(
+          [{ tag: "card", title: "校园卡中心", path: "missing" }],
+          "guide/cards",
+          "guide/cards",
+        );
+
+        expect(issues).toContainEqual(expect.stringContaining("路径 guide/missing"));
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("路径 guide/missing"));
+      } finally {
+        errorSpy.mockRestore();
+        // 恢复生成器默认配置
+        config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
         teardown();
       }
     });
 
     it("带 url 的卡片无法转换时被丢弃", () => {
       setup();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       try {
+        // path 卡片会校验 cwd 下的页面文件是否存在，将页面目录指向测试 fixtures。
+        config({
+          assets: "",
+          icon: "",
+          mapFolder: "",
+          mapKey: "",
+          pageFolder: "./pages",
+        });
+
         writeFileSync(
           path.join(testDir, "pages/guide/cards.yml"),
           [
@@ -591,14 +671,29 @@ describe("knowledge 索引生成", () => {
         });
 
         expect(content).not.toContain("通知卡片");
+        expect(errorSpy).not.toHaveBeenCalled();
       } finally {
+        errorSpy.mockRestore();
+        // 恢复生成器默认配置
+        config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
         teardown();
       }
     });
 
     it("miniapp 模式按列表项渲染（logo 对应 icon），不输出 name", () => {
       setup();
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       try {
+        // path 卡片会校验 cwd 下的页面文件是否存在，将页面目录指向测试 fixtures。
+        config({
+          assets: "",
+          icon: "",
+          mapFolder: "",
+          mapKey: "",
+          pageFolder: "./pages",
+        });
+
         writeFileSync(
           path.join(testDir, "pages/guide/cards.yml"),
           [
@@ -609,7 +704,7 @@ describe("knowledge 索引生成", () => {
             "    desc: 办理与挂失",
             "    name: 财务处",
             "    logo: https://assets.innenu.com/logo.png",
-            "    path: guide/card",
+            "    path: card",
           ].join("\n"),
         );
 
@@ -624,10 +719,14 @@ describe("knowledge 索引生成", () => {
 
         // 完全按列表项渲染：title→text、desc→desc、logo→icon、path 保留；name 被丢弃
         expect(content).toContain(
-          "- 校园卡中心 - 办理与挂失（icon: https://assets.innenu.com/logo.png）（path: guide/card）",
+          "- 校园卡中心 - 办理与挂失（icon: https://assets.innenu.com/logo.png）（path: card）",
         );
         expect(content).not.toContain("财务处");
+        expect(errorSpy).not.toHaveBeenCalled();
       } finally {
+        errorSpy.mockRestore();
+        // 恢复生成器默认配置
+        config({ assets: "", icon: "", mapFolder: "", mapKey: "", pageFolder: "page" });
         teardown();
       }
     });

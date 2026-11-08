@@ -7,8 +7,25 @@ import { describe, expect, it } from "vitest";
 import { getFileList } from "../src/index.js";
 
 describe(getFileList, () => {
-  it("should return a list of files in the specified directory", () => {
-    expect(getFileList("./src")).toMatchSnapshot();
+  it("returns the expected source paths instead of a whole-directory snapshot", () => {
+    const files = getFileList("./src");
+
+    expect(files).toStrictEqual(
+      expect.arrayContaining([
+        "index.ts",
+        "component-schema.ts",
+        "helpers/compile.ts",
+        "helpers/getFileList.ts",
+        "page/markdown-renderers.ts",
+        "page/schema.ts",
+        "schema/common.ts",
+        "schema/map.ts",
+      ]),
+    );
+    // 快照文件不在 src 下，也不应被目录遍历带入结果
+    expect(files).not.toContain("__snapshots__/getFileList.spec.ts.snap");
+    expect(files.some((file) => file.endsWith(".snap"))).toBe(false);
+    for (const file of files) expect(file).not.toMatch(/^\//u);
   });
 
   describe("getFileList path handling", () => {
