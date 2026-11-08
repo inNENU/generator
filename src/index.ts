@@ -7,3 +7,5 @@ export * from "./knowledge.js";
 export * from "./schema/index.js";
 export * from "./page/text.js";
 export * from "./utils.js";
+
+export type { MarkdownMode, MarkdownOptions, UrlHandler } from "./typings.js";
