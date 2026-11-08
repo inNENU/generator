@@ -3,7 +3,7 @@ import { defineConfig } from "tsdown";
 export default defineConfig([
   {
     entry: "./src/index.ts",
-    target: "node20",
+    target: "node22",
     dts: true,
     platform: "node",
     fixedExtension: false,
@@ -12,7 +12,7 @@ export default defineConfig([
   },
   {
     entry: "./src/component-schema.ts",
-    target: "node20",
+    target: "node22",
     dts: true,
     platform: "node",
     fixedExtension: false,
@@ -21,7 +21,7 @@ export default defineConfig([
   },
   {
     entry: "./src/typings.ts",
-    target: "node20",
+    target: "node22",
     dts: true,
     platform: "node",
     fixedExtension: false,
