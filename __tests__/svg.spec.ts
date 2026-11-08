@@ -74,4 +74,29 @@ describe(convertSVGToBase64DataURI, () => {
 
     expect(result).toMatch(/^data:image\/svg\+xml;base64,/u);
   });
+
+  it("should round-trip non-ASCII latin text unchanged", () => {
+    const svg = "<svg><text>café</text></svg>";
+    const result = convertSVGToBase64DataURI(svg);
+    const decoded = Buffer.from(
+      result.replace("data:image/svg+xml;base64,", ""),
+      "base64",
+    ).toString("utf-8");
+
+    expect(decoded).toBe(svg);
+    expect(decoded).toContain("café");
+    expect(decoded).not.toContain("cafÃ©");
+  });
+
+  it("should round-trip Chinese text unchanged", () => {
+    const svg = "<svg><text>东北师范大学</text></svg>";
+    const result = convertSVGToBase64DataURI(svg);
+    const decoded = Buffer.from(
+      result.replace("data:image/svg+xml;base64,", ""),
+      "base64",
+    ).toString("utf-8");
+
+    expect(decoded).toBe(svg);
+    expect(decoded).toContain("东北师范大学");
+  });
 });
