@@ -172,6 +172,39 @@ const updateOptionalPageDataFields = (
 };
 
 /**
+ * 将数字补齐为两位
+ *
+ * @param value 待补齐的数字
+ * @returns 两位字符串
+ */
+const padTwoDigits = (value: number): string => String(value).padStart(2, "0");
+
+/**
+ * 格式化页面时间
+ *
+ * 日期字符串（`YYYY-MM-DD`）只输出日期，避免被解析为 UTC 零点后按本地时区显示成前一天或 08:00； 其他形式按本地时间输出完整的年月日与 `HH:mm:ss`。
+ *
+ * @param time 页面时间（日期字符串或 Date）
+ * @returns 用于展示的时间文本
+ */
+const formatPageTime = (time: string | Date): string => {
+  if (typeof time === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(time)) {
+    const [year, month, day] = time.split("-").map(Number);
+    const dateOnly = new Date(year, month - 1, day);
+
+    return `${dateOnly.getFullYear()} 年 ${dateOnly.getMonth() + 1} 月 ${dateOnly.getDate()} 日`;
+  }
+
+  const date = new Date(time);
+
+  if (Number.isNaN(date.getTime())) throw new TypeError(`无法解析页面时间: ${String(time)}`);
+
+  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 ${padTwoDigits(
+    date.getHours(),
+  )}:${padTwoDigits(date.getMinutes())}:${padTwoDigits(date.getSeconds())}`;
+};
+
+/**
  * 更新页面 YAML 中的最后更新时间
  *
  * 先写入临时文件再原子替换，避免写入中途失败破坏源文件；源文件没有 `time` 字段时跳过写入并输出警告。
@@ -215,7 +248,6 @@ export const updatePageTime = (pageYAMLPath: string): Date => {
  * @param options 处理选项
  * @returns 处理之后的page
  */
-// oxlint-disable-next-line complexity
 export const getPageJSON = (
   page: PageConfig,
   pagePath = "",
@@ -258,15 +290,9 @@ export const getPageJSON = (
 
     if (time) {
       const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
-      const date = changedFiles.has(pageYAMLPath)
-        ? updatePageTime(pageYAMLPath)
-        : new Date(Date.parse(time));
+      const date = changedFiles.has(pageYAMLPath) ? updatePageTime(pageYAMLPath) : time;
 
-      pageData.time = `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日${
-        (date.getHours() !== 0 && date.getHours() !== 8) || date.getMinutes() || date.getSeconds()
-          ? ` ${date.toTimeString().split(" ")[0]}`
-          : ""
-      }`;
+      pageData.time = formatPageTime(date);
     }
 
     if (options.removeFields?.length) {
