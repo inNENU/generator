@@ -5,12 +5,7 @@
  * @returns 转换后的 Data URI
  */
 export const convertSVGToDataURI = (content: string): string =>
-  `data:image/svg+xml,${content
-    .replaceAll("%", "%25")
-    .replaceAll('"', "'")
-    .replaceAll("<", "%3C")
-    .replaceAll(">", "%3E")
-    .replaceAll("#", "%23")}`;
+  `data:image/svg+xml,${encodeURIComponent(content)}`;
 
 /**
  * SVG 转换为 Base64 Data URI
@@ -19,8 +14,4 @@ export const convertSVGToDataURI = (content: string): string =>
  * @returns 转换后的 Base64 Data URI
  */
 export const convertSVGToBase64DataURI = (content: string): string =>
-  `data:image/svg+xml;base64,${Buffer.from(
-    // oxlint-disable-next-line typescript/no-deprecated
-    unescape(encodeURIComponent(content)),
-    "utf-8",
-  ).toString("base64")}`;
+  `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`;
