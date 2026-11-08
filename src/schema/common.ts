@@ -2,8 +2,6 @@ import { existsSync } from "node:fs";
 
 import * as zod from "zod";
 
-zod.config(zod.locales.zhCN());
-
 export const envSchema = zod.enum(["web", "wx", "app"]).meta({
   description: "环境类型",
 });

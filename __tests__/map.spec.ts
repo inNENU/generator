@@ -35,7 +35,8 @@ describe(getMapPageJSON, () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("发现非法地图页面配置"),
-      expect.stringContaining("未知的键"),
+      // Zod 的报错文案随 locale 变化，这里只断言与语言无关的键名
+      expect.stringContaining("bogus"),
     );
 
     errorSpy.mockRestore();
