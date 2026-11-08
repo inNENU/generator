@@ -57,6 +57,53 @@ export const getHTMLPath = (filePath: string): string =>
       ? filePath.slice(0, -5)
       : `${filePath}.html`;
 
+/** 站内资源链接的解析结果 */
+export interface ResolvedAssetLink {
+  /** 资源根目录（如 `img`、`file`，或 `checkAssets` 传入的资源文件夹） */
+  root: string;
+  /** 规范化后的资源路径，不含查询串与锚点 */
+  path: string;
+  /** 查询串与锚点（含起始的 `?` 或 `#`），没有时为空字符串 */
+  suffix: string;
+}
+
+/**
+ * 解析站内资源链接
+ *
+ * 资源链接以 `$` 开头，`$` 后的第一段为资源根目录（如 `$img/cover.png` 的 `img`）。解析时会剥离 `?query` 与 `#hash`、把反斜杠统一为正斜杠并做
+ * POSIX 规范化； 空路径、目录路径以及用 `..` 逃出根目录的链接都会返回 `null`。
+ *
+ * @param link 资源链接
+ * @param root 资源根目录；省略时从链接中推断（已知目录的场景可显式传入）
+ * @returns 解析结果，链接无效时返回 `null`
+ */
+export const resolveAssetLink = (link: string, root?: string): ResolvedAssetLink | null => {
+  if (typeof link !== "string" || !link.startsWith("$")) return null;
+
+  const suffixIndex = link.search(/[?#]/u);
+  const rawLink = (suffixIndex === -1 ? link : link.slice(0, suffixIndex)).trimEnd();
+  const suffix = suffixIndex === -1 ? "" : link.slice(suffixIndex);
+  const body = rawLink.slice(1).replaceAll("\\", "/");
+  const normalizedRoot = (root ?? body.split("/")[0] ?? "")
+    .replaceAll("\\", "/")
+    .replace(/\/+$/u, "");
+
+  if (!normalizedRoot) return null;
+
+  if (body !== normalizedRoot && !body.startsWith(`${normalizedRoot}/`)) return null;
+
+  const resolved = path.posix.normalize(body);
+
+  if (
+    resolved === normalizedRoot ||
+    resolved.endsWith("/") ||
+    !resolved.startsWith(`${normalizedRoot}/`)
+  )
+    return null;
+
+  return { root: normalizedRoot, path: resolved, suffix };
+};
+
 /**
  * 检查文件是否存在
  *
@@ -66,10 +113,20 @@ export const getHTMLPath = (filePath: string): string =>
  */
 export const checkFile = (link?: string, location = ""): string[] => {
   if (typeof link === "string" && link.startsWith("$")) {
-    const [localPath] = link.replace(/^\$/u, "./").split("?");
+    const folder = link.slice(1).split(/[\\/]/u)[0] ?? "";
+    const label = folder === "img" ? "图片" : "文件";
+    const resolved = resolveAssetLink(link);
 
-    if (!existsSync(localPath)) {
-      const message = `${link.startsWith("$img") ? "Image" : "File"} ${localPath} not exist${location ? ` in ${location}` : ""}.`;
+    if (!resolved) {
+      const message = `${label} ${link} 不是有效的资源路径${location ? `（位置: ${location}）` : ""}`;
+
+      console.error(message);
+
+      return [message];
+    }
+
+    if (!existsSync(`./${resolved.path}`)) {
+      const message = `${label} ${link} 不存在${location ? `（位置: ${location}）` : ""}`;
 
       console.error(message);
 
@@ -89,9 +146,13 @@ export const checkFile = (link?: string, location = ""): string[] => {
 export const getFileLink = (link?: string): string | null => {
   if (typeof link !== "string") return null;
 
-  if (link.startsWith("$")) return link.replace(/^\$/u, `${generatorConfig.assets}/`);
+  if (!link.startsWith("$")) return link;
 
-  return link;
+  const resolved = resolveAssetLink(link);
+
+  if (!resolved) return null;
+
+  return `${generatorConfig.assets}/${resolved.path}${resolved.suffix}`;
 };
 
 /**
