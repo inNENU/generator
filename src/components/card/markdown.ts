@@ -66,7 +66,7 @@ ${cardContent}
     }
 
     return "";
-  } else if ("path" in card) {
+  } else if ("path" in card && card.path) {
     return `\
 <RouteLink class="innenu-card" to="${escapeHtml(getHTMLPath(card.path))}">
 ${cardContent}
