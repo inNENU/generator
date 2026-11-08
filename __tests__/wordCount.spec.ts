@@ -47,6 +47,30 @@ describe(getWordNumber, () => {
   it("should handle Cyrillic characters", () => {
     expect(getWordNumber("Привет мир")).toBe(2);
   });
+
+  it("should count words split by punctuation", () => {
+    expect(getWordNumber("hello,world")).toBe(2);
+  });
+
+  it("should count emoji as graphemes", () => {
+    expect(getWordNumber("😀😀")).toBe(2);
+    expect(getWordNumber("👨‍👩‍👧")).toBe(1);
+  });
+
+  it("should count Japanese and Korean characters", () => {
+    expect(getWordNumber("こんにちは")).toBe(5);
+    expect(getWordNumber("안녕하세요")).toBe(5);
+  });
+
+  it("should count CJK extension characters", () => {
+    expect(getWordNumber("𠀀𠀁")).toBe(2);
+  });
+
+  it("should not count URLs", () => {
+    expect(getWordNumber("https://example.com/source")).toBe(0);
+    expect(getWordNumber("www.example.com")).toBe(0);
+    expect(getWordNumber("看 https://example.com/abc 介绍")).toBe(3);
+  });
 });
 
 describe(getJSONValue, () => {
@@ -573,10 +597,10 @@ describe(getJSONWordCount, () => {
 
       process.chdir(testDir);
 
-      // 原始行为：getJSONWordCount 统计 JSON 中的全部文本（包括引用来源与图片链接）。
-      // 拼接后的内容为 " 测试 https://example.com/source  img $img/a.png"，
-      // 即 测试(2) + https/example.com/source(3) + img(1) + img(1) + a.png(1) = 8。
-      expect(getJSONWordCount(".")).toBe(8);
+      // getJSONWordCount 统计 JSON 中的全部文本，但 URL 不计入字数。
+      // 拼接后的内容为 " 测试 https://example.com/source img $img/a.png"，
+      // 即 测试(2) + img(1) + img(1) + a(1) + png(1) = 6。
+      expect(getJSONWordCount(".")).toBe(6);
 
       // 应多于只统计正文的 getFolderPageWordCount（仅标题 测试 计入）
       expect(getJSONWordCount(".")).toBeGreaterThan(getFolderPageWordCount("."));
