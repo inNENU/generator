@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { getLastChangedFiles } from "../src/index.js";
+import { getCurrentChangedFiles, getLastChangedFiles } from "../src/index.js";
 
 /**
  * 在指定目录执行 git 命令
@@ -63,6 +63,40 @@ const withCwd = <T>(dir: string, fn: () => T): T => {
     process.chdir(originalCwd);
   }
 };
+
+describe(getCurrentChangedFiles, () => {
+  it("returns an empty list when the working tree has no changes", () => {
+    const repo = createRepo();
+
+    try {
+      expect(withCwd(repo.dir, () => getCurrentChangedFiles())).toStrictEqual([]);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  it("returns raw CJK, space and control characters in file names", () => {
+    const repo = createRepo();
+
+    try {
+      // 回归：旧实现按行切分 `--name-only` 输出，CJK 路径被 core.quotePath 转义成
+      // `"\344\270\255..."` 这样的带引号假路径，含制表符/换行的名称还会被拆成多行。
+      const changedFiles = ["中文 页面.yml", "空格 名称.yml", "tab\tname.yml", "line\nbreak.yml"];
+
+      changedFiles.forEach((fileName) => {
+        writeFileSync(path.join(repo.dir, fileName), "content\n");
+      });
+      writeFileSync(path.join(repo.dir, "tracked.txt"), "v2\n");
+      git(repo.dir, ["add", "-A"]);
+
+      const result = withCwd(repo.dir, () => getCurrentChangedFiles());
+
+      expect(result.toSorted()).toStrictEqual([...changedFiles, "tracked.txt"].toSorted());
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
 
 describe(getLastChangedFiles, () => {
   it("rejects a ref containing shell metacharacters", () => {

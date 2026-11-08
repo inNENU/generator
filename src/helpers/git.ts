@@ -60,12 +60,17 @@ export interface ChangedFilesInfo {
 /**
  * 获取当前变更的文件列表
  *
- * @returns 变更的文件路径列表
+ * 路径按 `-z` 的 NUL 分隔原样解析：`--name-only` 默认会把 CJK 路径输出为带引号的八进制 转义串，按行切分只能拿到假路径；改用 NUL 分隔后文件名原样返回。
+ *
+ * @returns 变更的文件路径列表；无变更时返回空数组
  */
 export const getCurrentChangedFiles = (): string[] => {
-  const output = runGit(["diff", "--name-only", "HEAD"]).trim();
+  const tokens = runGit(["diff", "--name-only", "-z", "HEAD"]).split("\0");
 
-  return output ? output.split(/\r?\n/u) : [];
+  // `--name-only -z` 的输出以 NUL 结尾，末尾会多出一个空串
+  if (tokens.at(-1) === "") tokens.pop();
+
+  return tokens;
 };
 
 /**
