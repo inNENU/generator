@@ -127,6 +127,10 @@ const parseCoordinate = (raw: string, name: string, limit: number): number | str
 
 export const locSchema = zod
   .string()
+  .regex(
+    /^-?\d+(?:\.\d{1,6})?,-?\d+(?:\.\d{1,6})?$/u,
+    '位置应形如 "纬度,经度"，且每个坐标最多保留 6 位小数',
+  )
   .superRefine((loc, ctx) => {
     const parts = loc.split(",");
 
