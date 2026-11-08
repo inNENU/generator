@@ -4,7 +4,7 @@ Content generator for [inNENU](https://github.com/inNENU), producing the data co
 
 ## Requirements
 
-- Node.js `>=24.22.3`
+- Node.js `>=22.12.0` (supported LTS lines)
 - pnpm `12.18.0` (declared through `devEngines`)
 
 ## Installation
@@ -41,6 +41,12 @@ const pageMarkdown = getPageMarkdown("home", { mode: "web" });
 | `mapFolder`  | Directory containing map pages and marker data                  |
 | `mapKey`     | Tencent map key                                                 |
 | `pageFolder` | Directory containing page YAML files                            |
+
+## Markdown output
+
+Markdown generation targets the VuePress site only. The WeChat miniapp and the native App consume the JSON artifacts, so there is no
+Markdown rendering requirement for them; the `env` field is therefore respected only for `"web"` in the Markdown pipeline (components
+marked for other environments are skipped there by design). Use `getPageJSON` for Mini Program / App content.
 
 ## Entry points
 

@@ -405,6 +405,8 @@ export const renderComponentMarkdown = (
   component: ComponentOptions,
   options: ComponentMarkdownOptions = {},
 ): string => {
+  // Markdown 产物只服务 VuePress 站点；小程序与原生 App 直接消费 JSON，没有 Markdown 渲染需求。
+  // 因此这里只把 "web" 视为可用环境，其他 env（如 wx / app）不参与 Markdown 渲染，属于有意设计而非遗漏。
   if (component.env && !component.env.includes("web")) return "";
 
   const { location = "", mode = "web", urlConverter } = options;
