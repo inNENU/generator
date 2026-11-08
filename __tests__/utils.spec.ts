@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { config, generatorConfig } from "../src/config.js";
 import {
   checkPagePath,
+  escapeHtml,
   convertStyle,
   getAssetIconLink,
   getHTMLPath,
@@ -146,5 +147,13 @@ describe(checkPagePath, () => {
       Object.assign(generatorConfig, originalConfig);
       rmSync(pageFolder, { recursive: true, force: true });
     }
+  });
+});
+
+describe(escapeHtml, () => {
+  it("escapes HTML special characters", () => {
+    expect(escapeHtml(`<a href="x">Tom & Jerry's</a>`)).toBe(
+      "&lt;a href=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;",
+    );
   });
 });
