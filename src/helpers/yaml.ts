@@ -47,23 +47,37 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
   visit(value);
 };
 
+/** 匹配不携带标量的文档标记行（`---`、`...`） */
+const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:\s+#.*)?$/u;
+
 /**
  * 判断 YAML 内容是否包含实际文档
  *
+ * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容，只有这些行的文件按空文档处理。
+ *
  * @param content YAML 内容
- * @returns 是否包含非空、非注释行
+ * @returns 是否包含实际标量内容
  */
 const hasYamlDocument = (content: string): boolean =>
-  content.split("\n").some((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+  content.split("\n").some((line) => {
+    const trimmedLine = line.trim();
+
+    return (
+      trimmedLine !== "" &&
+      !trimmedLine.startsWith("#") &&
+      !trimmedLine.startsWith("%") &&
+      !yamlDocumentMarkerPattern.test(trimmedLine)
+    );
+  });
 
 /**
  * 解析 YAML 内容
  *
- * 空文件或仅包含注释时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
+ * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
  *
  * @param content YAML 内容
  * @param filePath 文件路径，仅用于错误信息
- * @returns 解析结果，空文档为 `undefined`
+ * @returns 解析结果，无标量文档为 `undefined`
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const parseYaml = <T = unknown>(content: string, filePath = ""): T | undefined => {
@@ -210,7 +224,7 @@ const removeStaleOutputs = (
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹，默认为源文件夹
- * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
+ * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值；返回 `null`/`undefined` 时跳过该文件
  * @param processFunction 内容处理函数，在解析前对 YAML 内容进行预处理
  */
 export const convertYamlFilesToJson = <T = unknown, Value = T>(
@@ -240,7 +254,8 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
       const result = convertFunction(parsed, yamlRelativePath);
 
-      if (result !== void 0) {
+      // `null`/`undefined` 表示调用方要求跳过该文件；`""`、`0`、`false` 是有效输出，需要正常写出
+      if (result != null) {
         if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
         writeFileAtomically(targetFilename, JSON.stringify(result));

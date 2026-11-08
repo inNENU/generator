@@ -30,6 +30,18 @@ describe(parseYaml, () => {
     expect(parseYaml("# only a comment\n# another comment")).toBeUndefined();
   });
 
+  it("returns undefined for documents without a scalar", () => {
+    expect(parseYaml("---")).toBeUndefined();
+    expect(parseYaml("---\n")).toBeUndefined();
+    expect(parseYaml("--- # comment only\n# another comment")).toBeUndefined();
+    expect(parseYaml("---\n...")).toBeUndefined();
+  });
+
+  it("keeps explicit empty string scalars", () => {
+    expect(parseYaml('""')).toBe("");
+    expect(parseYaml("''")).toBe("");
+  });
+
   it("parses valid YAML", () => {
     expect(parseYaml("title: 首页\ncount: 2")).toStrictEqual({ count: 2, title: "首页" });
   });
@@ -200,6 +212,65 @@ describe("yaml conversion output", () => {
 
       expect(readFileSync(path.join(target, "a.json"), "utf-8")).toBe("false");
       expect(readdirSync(target).some((file) => file.endsWith(".tmp"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("skips null and undefined conversion results but writes other falsy values", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-skip-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      for (const name of ["null", "undefined", "empty", "zero", "false", "text"])
+        writeFileSync(path.join(source, `${name}.yml`), `name: ${name}`);
+
+      const results: Record<string, unknown> = {
+        null: null,
+        undefined,
+        empty: "",
+        zero: 0,
+        false: false,
+        text: "x",
+      };
+
+      convertYamlFilesToJson(source, target, (_data, filePath) => results[filePath]);
+
+      expect(readdirSync(target).sort()).toStrictEqual([
+        "empty.json",
+        "false.json",
+        "text.json",
+        "zero.json",
+      ]);
+      expect(readFileSync(path.join(target, "empty.json"), "utf-8")).toBe('""');
+      expect(readFileSync(path.join(target, "zero.json"), "utf-8")).toBe("0");
+      expect(readFileSync(path.join(target, "false.json"), "utf-8")).toBe("false");
+      expect(readFileSync(path.join(target, "text.json"), "utf-8")).toBe('"x"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not write an output for a document containing only markers", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-marker-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      writeFileSync(path.join(source, "empty.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      convertYamlFilesToJson(source, target, (data) => data);
+
+      expect(existsSync(path.join(target, "empty.json"))).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("空 YAML 文件已跳过"));
+      warnSpy.mockRestore();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
