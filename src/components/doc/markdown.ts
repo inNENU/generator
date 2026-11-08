@@ -1,7 +1,7 @@
 import { escapeHtml, getAssetIconLink, getFileLink } from "../../utils.js";
 import type { DocComponentOptions } from "./schema.js";
 import { checkDoc } from "./schema.js";
-import { getDocIcon } from "./utils.js";
+import { getDocDisplayName, getDocIcon } from "./utils.js";
 
 export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string => {
   if (doc.env && !doc.env.includes("web")) return "";
@@ -16,8 +16,7 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
   const docIcon = `<img class="innenu-doc-icon" src="${getAssetIconLink(
     getDocIcon(url),
   )}" alt="" />`;
-  // oxlint-disable-next-line typescript/no-non-null-assertion
-  const docName = `${name}.${url.split(".").pop()!}`;
+  const docName = getDocDisplayName(name, url);
   const docNameContent = `<span class="innenu-doc-name">${escapeHtml(docName)}</span>`;
 
   return `

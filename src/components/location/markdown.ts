@@ -3,6 +3,22 @@ import { escapeHtml } from "../../utils.js";
 import type { LocationComponentOptions } from "./schema.js";
 import { checkLocation } from "./schema.js";
 
+/**
+ * 生成腾讯地图标记链接
+ *
+ * @param points 位置点信息
+ * @returns 地图标记链接
+ */
+export const getLocationMarkerUrl = (points: LocationComponentOptions["points"]): string =>
+  `https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
+    // 最多 4 个点
+    .slice(0, 4)
+    .map(
+      ({ loc, name = "位置", detail = "详情" }) =>
+        `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
+    )
+    .join("|")}&key=${generatorConfig.mapKey}&referer=inNENU`;
+
 export const getLocationMarkdown = (
   location: LocationComponentOptions,
   locationParam = "",
@@ -22,16 +38,7 @@ ${
 `
     : ""
 }\
-<iframe class="location-iframe" src="https://apis.map.qq.com/tools/poimarker?type=0&marker=${points
-    // 最多 4 个点
-    .slice(0, 4)
-    .map(
-      ({ loc, name = "位置", detail = "详情" }) =>
-        `coord:${loc};title:${encodeURIComponent(name)};addr:${encodeURIComponent(detail)}`,
-    )
-    .join(
-      "|",
-    )}&key=${generatorConfig.mapKey}&referer=inNENU" frameborder="0" width="100%" height="320px" />
+<iframe class="location-iframe" src="${getLocationMarkerUrl(points)}" frameborder="0" width="100%" height="320px" />
 
 `;
 };
