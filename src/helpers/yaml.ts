@@ -50,15 +50,30 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
 /**
  * 匹配位于第 0 列的文档标记行（`---`、`...`）
  *
- * 按 YAML 规范，文档标记必须从第 0 列开始，后面只允许空白或注释；缩进的 `...`/`---` 属于普通标量，不是文档标记。
+ * 文档标记后只允许空白或注释；这里按单行匹配，调用前已统一换行符并去掉 `\r`，所以 CRLF/CR 文件不会被漏判。
  */
-const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:\s+(?:#.*)?)?$/u;
+const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:[ \t]+(?:#.*)?)?$/u;
+
+/**
+ * 匹配流起始处带缩进的 `---`
+ *
+ * 解析器（js-yaml）会把文件首行缩进的 `---`（可带行尾注释）当作文档开始标记，而不是普通标量；同样的内容出现在第二行及以后才是标量，因此只在首行应用。`...` 没有这个特例。
+ */
+const yamlIndentedStartMarkerPattern = /^[ \t]+---(?:[ \t]+(?:#.*)?)?$/u;
+
+/**
+ * 匹配 YAML 指令行
+ *
+ * 只承认规范定义的 `%YAML`/`%TAG`；其它第 0 列的 `%` 行不是可跳过的内容，交给 js-yaml 判定（可能是非法指令）。
+ */
+const yamlDirectivePattern = /^%(?:YAML|TAG)\b/u;
 
 /**
  * 判断 YAML 内容是否包含实际文档
  *
- * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容，只有这些行的文件按空文档处理。 由于文档标记与指令必须位于第 0 列，缩进的
- * `...`、`---` 会被当作普通标量内容，缩进的 `%foo` 也不再被误判为空文档。
+ * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容。文件开头的 BOM 会先剥离，CRLF/CR 行尾按换行拆分，因此行尾不会影响判断。
+ * 文档标记与指令按规范必须位于第 0 列，缩进的 `...` 属于普通标量；但 js-yaml 会把流起始处缩进的 `---` 当作文档开始标记，这里仅在首行与之保持一致。缩进的 `%foo`
+ * 也不再被误判为空文档。
  *
  * @param content YAML 内容
  * @returns 是否包含实际标量内容
@@ -67,10 +82,13 @@ const hasYamlDocument = (content: string): boolean => {
   // 去掉文件开头的 BOM，避免首行的文档标记被当成普通内容
   const normalizedContent = content.startsWith("\uFEFF") ? content.slice(1) : content;
 
-  return normalizedContent.split("\n").some((line) => {
+  return normalizedContent.split(/\r\n?|\n/u).some((line, index) => {
     if (line.trim() === "") return false;
     if (line.trimStart().startsWith("#")) return false;
-    if (line.startsWith("%")) return false;
+
+    // 拆分时已去掉行尾的 `\r`，标记与注释的匹配因此不受 CRLF/CR 影响
+    if (yamlDirectivePattern.test(line)) return false;
+    if (index === 0 && yamlIndentedStartMarkerPattern.test(line)) return false;
 
     return !yamlDocumentMarkerPattern.test(line);
   });
