@@ -89,6 +89,33 @@ const formatMarkdownUrl = (url: string): string => {
 };
 
 /**
+ * 已警告过的未支持组件 tag
+ *
+ * 以模块级 Set 记录，保证同一个 tag 在进程内只警告一次，避免按页面 / 组件重复刷屏。 生产代码不需要重置；测试通过 `vi.resetModules()` 获取干净模块。
+ */
+const warnedUnsupportedTags = new Set<string>();
+
+/**
+ * 警告未支持的组件 tag
+ *
+ * 公共入口的 schema 会拒绝未知 tag，但 schema 内新增的组件（如当前的 `footer`）或未来新增组件
+ * 忘记注册渲染分支时，会被静默丢弃、产物缺内容却无人察觉。这里只补充一次性警告，仍返回空字符串， 不改变“跳过该组件”的既有行为。
+ *
+ * @param tag 未匹配到渲染分支的组件 tag
+ * @param location 首次出现该组件的位置，便于在多页面项目里定位数据
+ */
+const warnUnsupportedComponentTag = (tag: string, location = ""): void => {
+  if (warnedUnsupportedTags.has(tag)) return;
+
+  warnedUnsupportedTags.add(tag);
+  const where = location ? `（首次出现位置: ${location}）` : "";
+
+  console.warn(
+    `组件 <${tag}> 未支持 Markdown 渲染（未实现对应的渲染分支），已跳过该组件${where}。若为新增组件，请在 markdown-renderers 中注册。`,
+  );
+};
+
+/**
  * 生成文本管线中的段落 / 列表 Markdown
  *
  * @param component 文本组件
@@ -424,6 +451,8 @@ ${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${
     }
 
     default: {
+      warnUnsupportedComponentTag((component as { tag: string }).tag, options.location);
+
       return "";
     }
   }
@@ -507,6 +536,8 @@ const renderVuePressComponentMarkdown = (
     }
 
     default: {
+      warnUnsupportedComponentTag((component as { tag: string }).tag, options.location);
+
       return "";
     }
   }

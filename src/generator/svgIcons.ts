@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { resolve } from "upath";
 
+import { syncGeneratedIconOutputs } from "../helpers/generation-manifest.js";
 import { convertSVGToDataURI, getFileList } from "../helpers/index.js";
 
 // 无原型对象：`__proto__`、`constructor`、`toString` 都是合法的分类名/图标名，
@@ -15,6 +16,9 @@ const createIconRecord = <T>(): Record<string, T> => Object.create(null) as Reco
  * JSON（`{ 图标名: data URI }`）。同一分类内的多个图标是合法布局，会聚合到同一个 JSON。
  *
  * 生成前会先校验布局，遇到无法安全表达的输入（超过一级的嵌套、根图标与分类同名、大小写不敏感的文件系统上重名）直接抛错，避免静默覆盖。
+ *
+ * 生成后会在目标文件夹写入生成清单（`.innenu-generated.svg.<hash>.json`），并据此删除「上次生成、本次已不存在」的图标产物，避免源图标删除后目标文件夹残留陈旧文件。清单之外的文件（手写
+ * JSON、其它工具产物）永远不会被删除；首次运行（无清单）时不做清理，只写入清单。清理不会跟随符号链接，删除前还会确认文件仍在目标文件夹内。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
@@ -100,4 +104,10 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
       encoding: "utf-8",
     });
   });
+
+  syncGeneratedIconOutputs(
+    sourceFolder,
+    targetFolder,
+    [...outputNames.values()].map(({ name }) => name),
+  );
 };
