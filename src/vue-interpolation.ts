@@ -36,8 +36,52 @@ const splitVueBraceRuns = (value: string): string =>
     .replaceAll(vueInterpolationOpenRun, (run) => splitBraceRun(run, "<!-- -->"))
     .replaceAll(vueInterpolationCloseRun, (run) => splitBraceRun(run, "<!-- -->"));
 
-/** 会被 HTML/Markdown 解码成花括号的实体 */
-const decodedBracePattern = /&(?:#(?:0*123|x0*7[bB]);|l(?:cub|brace);|r(?:cub|brace);)/gu;
+/** 会被 HTML/Markdown 解码成花括号的实体（含大写 X、左右花括号两种形式） */
+const decodedBracePattern =
+  /&(?:#(?:0*(?:123|125)|x0*7(?:[bB]|[dD]));|l(?:cub|brace);|r(?:cub|brace);)/giu;
+
+/**
+ * 还原 Markdown 反斜杠转义后的花括号文本
+ *
+ * Markdown 渲染时奇数个反斜杠会转义花括号并去掉转义用的反斜杠，偶数个反斜杠则两两还原为字面反斜杠。 这里按 Markdown 语义把转义序列还原为「2 × floor(n / 2)
+ * 个反斜杠 + 花括号」的源文本（渲染后等价于 1 个反斜杠 + 花括号）， 再统一交给 字面花括号拆分，避免 `\{\{` 在渲染后重新拼成 `{{`。
+ *
+ * @param value 原始 Markdown
+ * @returns 花括号不再依赖 Markdown 转义语义的文本
+ */
+const normalizeEscapedBraces = (value: string): string => {
+  let result = "";
+  let index = 0;
+
+  while (index < value.length) {
+    if (value[index] !== "\\") {
+      result += value[index];
+      index += 1;
+      continue;
+    }
+
+    let end = index;
+
+    while (value[end] === "\\") end += 1;
+
+    const brace = value[end];
+
+    if (brace !== "{" && brace !== "}") {
+      result += value.slice(index, end);
+      index = end;
+      continue;
+    }
+
+    const repeated = Math.floor((end - index) / 2);
+
+    const backslashes = String.fromCodePoint(0x5c).repeat(repeated * 2);
+
+    result += `${backslashes}${brace}`;
+    index = end + 1;
+  }
+
+  return result;
+};
 
 /** 会被 URL 解码成花括号的百分号编码 */
 const encodedBracePattern = /%(?:7[bB]|7[dD])/gu;
@@ -63,7 +107,7 @@ const neutralizeDecodedBraces = (value: string): string =>
  * @returns 中和后的 Markdown
  */
 export const escapeVueInterpolation = (value: string): string =>
-  neutralizeDecodedBraces(value)
+  normalizeEscapedBraces(neutralizeDecodedBraces(value))
     .split("\n")
     .map((line) => splitVueBraceRuns(line))
     .join("\n");

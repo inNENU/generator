@@ -100,6 +100,18 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
+  it("中和反斜杠转义与数字实体形式的花括号", () => {
+    const payloads = [
+      String.raw`\{\{7*7\}\}`,
+      String.raw`\\{\\{7*7\\}\\}`,
+      "&#X7B;&#X7B;7*7&#X7D;&#X7D;",
+      "&#X7B;{7*7&#125;}",
+      String.raw`\}&#123;7*7\{&#125;`,
+    ];
+
+    for (const desc of payloads) expect(renderText("x", desc)).not.toMatch(/\{\{7\*7\}\}/u);
+  });
+
   it("对已含注释的文本保持幂等（不会二次拆开）", () => {
     const markdown = renderText("{<!-- -->{7*7}<!-- -->}");
 
