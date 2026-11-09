@@ -3,6 +3,7 @@ import { getAccountMarkdown } from "../components/account/markdown.js";
 import { getActionMarkdown } from "../components/action/markdown.js";
 import { getAudioMarkdown } from "../components/audio/markdown.js";
 import { getCardMarkdown } from "../components/card/markdown.js";
+import { getCarouselMarkdown } from "../components/carousel/markdown.js";
 import { getDocMarkdown } from "../components/doc/markdown.js";
 import { getDocDisplayName } from "../components/doc/utils.js";
 import { getGridMarkdown } from "../components/grid/markdown.js";
@@ -15,7 +16,7 @@ import { getTextMarkdown } from "../components/text/markdown.js";
 import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
 import type { MarkdownMode, UrlHandler } from "../typings.js";
-import { escapeHtml, getFileLink } from "../utils.js";
+import { escapeContainerBodySyntax, escapeHtml, getFileLink } from "../utils.js";
 import type { ComponentOptions } from "./schema.js";
 
 /** URL 转换结果 */
@@ -56,6 +57,21 @@ const toUrlConversion = (
 };
 
 /**
+ * 生成 Markdown 链接目标
+ *
+ * 站点管线把地址放进 HTML 属性，只需做 `escapeHtml`；文本管线把地址放进 Markdown 链接目标，空格和括号会提前截断目标。 这里沿用同一套 HTML
+ * 转义，并在地址含空白、括号或尖括号时用 `<...>` 包裹（CommonMark 允许尖括号目标包含这些字符）。
+ *
+ * @param url 原始地址
+ * @returns Markdown 链接目标
+ */
+const formatMarkdownUrl = (url: string): string => {
+  const escaped = escapeHtml(url);
+
+  return /[\s()<>]/u.test(url) ? `<${escaped}>` : escaped;
+};
+
+/**
  * 生成文本管线中的段落 / 列表 Markdown
  *
  * @param component 文本组件
@@ -63,25 +79,6 @@ const toUrlConversion = (
  * @param mode 渲染模式
  * @returns Markdown 内容
  */
-/**
- * 转义容器正文中的块级 Markdown 语法
- *
- * 提示框正文会原样嵌入 `::: type` 容器；正文行首若出现 `:::`、围栏代码或标题语法，会提前闭合容器或跳出提示框样式。
- * 逐行给这些行首加上反斜杠转义，渲染结果仍是原文字符，但不再被解析为块级语法。
- *
- * @param text 已做 HTML 转义的正文
- * @returns 转义后的正文
- */
-const escapeContainerBodySyntax = (text: string): string =>
-  text
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^(?<indent> {0,3})(?<fence>:{3,}|```|~~~)/u, String.raw`$<indent>\$<fence>`)
-        .replace(/^(?<indent> {0,3})(?<heading>#{1,6})(?=\s)/u, String.raw`$<indent>\$<heading>`),
-    )
-    .join("\n");
-
 const renderTextBlock = (
   component: Extract<ComponentOptions, { tag: "text" | "p" | "ul" | "ol" }>,
   marker: "" | "- " | "1. ",
@@ -176,6 +173,63 @@ const renderTextComponentMarkdown = (
         })
         .filter((item): item is string => item != null)
         .join("\n");
+
+      return `\
+${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
+${renderedItems}
+
+${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
+`;
+    }
+
+    case "functional-list": {
+      const { header, items, footer } = component;
+
+      // 与 list / grid 分支一致：条目级 env 不参与文本管线过滤（组件级 env 已在入口处处理），
+      // 以免知识库漏掉仅在小程序 / App 中展示的说明性条目。
+      const renderedItems = items
+        .map((item) => {
+          const itemDesc = item.desc ? ` - ${escapeHtml(item.desc)}` : "";
+          // 小程序模式补充结构信息，便于 AI 还原组件；网页模式只保留纯文本。
+          const iconHint =
+            mode === "miniapp" && item.icon ? `（icon: ${escapeHtml(item.icon)}）` : "";
+
+          // 公众号 / 公众号文章：站点渲染为外链，文本管线保留为 Markdown 链接。
+          if ("action" in item) {
+            if (item.action === "official")
+              return `- [${escapeHtml(item.text)}](${formatMarkdownUrl(`https://open.weixin.qq.com/qr/code?username=${item.username}`)})${itemDesc}${iconHint}`;
+
+            if (item.action === "article")
+              return `- [${escapeHtml(item.text)}](${formatMarkdownUrl(item.url)})${itemDesc}${iconHint}`;
+
+            // 视频号资料 / 视频没有可直接访问的网页地址，至少保留条目文字。
+            return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}`;
+          }
+
+          // url 条目：与 list / grid 分支一致，交给 urlConverter 转换，未转换时丢弃。
+          if ("url" in item && item.url) {
+            const converted = toUrlConversion(urlConverter(item.url));
+
+            if (!converted) return null;
+
+            if (mode === "miniapp")
+              return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}（小程序：\`${converted.miniapp}\`）`;
+
+            return `- ${escapeHtml(item.text)}${itemDesc}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+          }
+
+          const pathHint =
+            mode === "miniapp" && "path" in item && item.path
+              ? `（path: ${escapeHtml(item.path)}）`
+              : "";
+
+          return `- ${escapeHtml(item.text)}${itemDesc}${iconHint}${pathHint}`;
+        })
+        .filter((item): item is string => item != null)
+        .join("\n");
+
+      // 所有条目都因 urlConverter 返回 null 被丢弃时整块不输出，避免留下只有标题（或页脚）的悬空块。
+      if (!renderedItems) return "";
 
       return `\
 ${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
@@ -354,6 +408,10 @@ const renderVuePressComponentMarkdown = (
   switch (component.tag) {
     case "img": {
       return getImgMarkdown(component, location);
+    }
+
+    case "carousel": {
+      return getCarouselMarkdown(component, location);
     }
 
     case "title": {

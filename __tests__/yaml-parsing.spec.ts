@@ -55,14 +55,58 @@ describe(parseYaml, () => {
     expect(parseYaml("...\n")).toBeUndefined();
     expect(parseYaml("... # end of document")).toBeUndefined();
 
-    // 缩进的 `---`/`...` 是普通标量，不是文档标记
+    // 缩进的 `...` 以及出现在后续行的缩进 `---` 是普通标量，不是文档标记
     expect(parseYaml("  ...")).toBe("...");
     expect(parseYaml("---\n  ---")).toBe("---");
+    expect(parseYaml("\n  ---")).toBe("---");
+    expect(parseYaml("# c\n  ---")).toBe("---");
+  });
+
+  it("treats a stream-leading indented `---` as a document marker", () => {
+    // js-yaml 会把文件首行缩进的 `---` 当作文档开始标记，这里与之保持一致
+    expect(parseYaml("  ---")).toBeUndefined();
+    expect(parseYaml(" ---")).toBeUndefined();
+    expect(parseYaml("    ---")).toBeUndefined();
+    expect(parseYaml("\t---")).toBeUndefined();
+    expect(parseYaml("  ---\r\n")).toBeUndefined();
+    expect(parseYaml("  --- # c")).toBeUndefined();
+    expect(parseYaml("  ---\r\n# c\r\n")).toBeUndefined();
+  });
+
+  it("keeps content after a stream-leading indented `---`", () => {
+    // 首行缩进的文档标记不能把紧随其后的实际内容一起跳过
+    expect(parseYaml("  ---\n  foo")).toBe("foo");
+    expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
+  });
+
+  it("handles CRLF and CR line endings in markers and comments", () => {
+    expect(parseYaml("--- # c\r\n")).toBeUndefined();
+    expect(parseYaml("--- # c\r")).toBeUndefined();
+    expect(parseYaml("... # end\r\n")).toBeUndefined();
+    expect(parseYaml("... # end\r")).toBeUndefined();
+    expect(parseYaml("--- # c\r\n# d\r\n")).toBeUndefined();
+    expect(parseYaml("---\r\n")).toBeUndefined();
+
+    // 有实际内容时仍按原有语义解析
+    expect(parseYaml("---\r\ntitle: x\r\n")).toStrictEqual({ title: "x" });
+    expect(parseYaml("title: 首页\r\ncount: 2\r\n")).toStrictEqual({ count: 2, title: "首页" });
+  });
+
+  it("strips a leading BOM before checking marker-only documents", () => {
+    expect(parseYaml("\uFEFF---")).toBeUndefined();
+    expect(parseYaml("\uFEFF---\r\n")).toBeUndefined();
+    expect(parseYaml("\uFEFF--- # c\r\n")).toBeUndefined();
   });
 
   it("does not silently treat an indented directive-like line as an empty document", () => {
     // `%` 指令必须位于第 0 列；缩进的 `%foo` 不是指令，而是非法 YAML，应报错而不是被当作空文档跳过
     expect(() => parseYaml("  %foo")).toThrow(/YAML 解析失败/u);
+  });
+
+  it("only treats %YAML and %TAG directives as non-content", () => {
+    // 其它 `%` 行不再仅凭前缀被跳过，交给 js-yaml 判定：缺少 `---` 时是非法 YAML
+    expect(() => parseYaml("%foo")).toThrow(/YAML 解析失败/u);
+    expect(parseYaml("%foo\n---\ntitle: x")).toStrictEqual({ title: "x" });
   });
 
   it("keeps explicit empty string scalars", () => {
@@ -77,6 +121,19 @@ describe(parseYaml, () => {
   it("throws a Chinese error containing the file path", () => {
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/YAML 解析失败/u);
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/pages\/broken\.yml/u);
+
+    const getError = (): unknown => {
+      try {
+        parseYaml("title: [", "pages/broken.yml");
+      } catch (err) {
+        return err;
+      }
+      return undefined;
+    };
+    const error = getError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
 

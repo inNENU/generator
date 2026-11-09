@@ -4,7 +4,7 @@ import * as zod from "zod";
 import { accountSchema } from "../src/component-schema.js";
 import { finalizeJsonSchema } from "../src/helpers/json-schema.js";
 import { pageConfigSchema, pageContentSchema } from "../src/page/schema.js";
-import { httpsLinkSchema } from "../src/schema/common.js";
+import { fileSchema, httpsLinkSchema, imgSchema } from "../src/schema/common.js";
 
 type JsonSchema = zod.core.JSONSchema.JSONSchema;
 type Definitions = Record<string, JsonSchema>;
@@ -168,5 +168,25 @@ describe("生成的 JSON Schema", () => {
     expect(httpsLinkSchema.safeParse("https://example.com").success).toBe(true);
     expect(httpsLinkSchema.safeParse("HTTPS://EXAMPLE.COM").success).toBe(true);
     expect(httpsLinkSchema.safeParse("http://example.com").success).toBe(false);
+  });
+
+  it("imgSchema 的 JSON Schema 保留站内图片 pattern", () => {
+    const { anyOf } = zod.toJSONSchema(imgSchema, { target: "draft-07" });
+    const branches = anyOf!;
+
+    expect(branches).toHaveLength(2);
+    expect(branches[0].pattern).toBe(String.raw`^https:\/\/`);
+    expect(branches[1].pattern).toContain(String.raw`^\$img`);
+    expect(branches[1].pattern).toContain("png|jpg|jpeg");
+    expect(branches[1].pattern).toContain("[?#]");
+  });
+
+  it("fileSchema 的 JSON Schema 保留站内文件 pattern", () => {
+    const { anyOf } = zod.toJSONSchema(fileSchema, { target: "draft-07" });
+    const branches = anyOf!;
+
+    expect(branches).toHaveLength(2);
+    expect(branches[0].pattern).toBe(String.raw`^https:\/\/`);
+    expect(branches[1].pattern).toContain(String.raw`^\$file`);
   });
 });

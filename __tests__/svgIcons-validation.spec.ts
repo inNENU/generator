@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { generateSvgIcons } from "../src/generator/svgIcons.js";
+import { isCaseSensitiveFs } from "./caseSensitivity.js";
 
 const SVG = '<svg><path d="M0 0h1v1H0z"/></svg>';
 
@@ -48,4 +49,24 @@ describe("generateSvgIcons 布局校验", () => {
 
       expect(() => generateSvgIcons(sourceFolder, targetFolder)).toThrow(/不支持深层嵌套图标生成/u);
     }));
+
+  it.skipIf(!isCaseSensitiveFs)("两个根图标仅大小写不同时抛错", () =>
+    withFolders((sourceFolder, targetFolder) => {
+      writeFileSync(path.join(sourceFolder, "add.svg"), SVG);
+      writeFileSync(path.join(sourceFolder, "Add.svg"), SVG);
+
+      expect(() => generateSvgIcons(sourceFolder, targetFolder)).toThrow(/图标输出名冲突/u);
+    }),
+  );
+
+  it.skipIf(!isCaseSensitiveFs)("仅大小写不同的分类目录也抛错", () =>
+    withFolders((sourceFolder, targetFolder) => {
+      mkdirSync(path.join(sourceFolder, "weather"));
+      mkdirSync(path.join(sourceFolder, "Weather"));
+      writeFileSync(path.join(sourceFolder, "weather", "sun.svg"), SVG);
+      writeFileSync(path.join(sourceFolder, "Weather", "moon.svg"), SVG);
+
+      expect(() => generateSvgIcons(sourceFolder, targetFolder)).toThrow(/图标输出名冲突/u);
+    }),
+  );
 });

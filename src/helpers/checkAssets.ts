@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { join } from "upath";
 
+import { resolveAssetLink } from "../utils.js";
 import { getFileList } from "./getFileList.js";
 import { ValidationError } from "./validation.js";
 import { YAML_EXTENSIONS } from "./yamlPath.js";
@@ -14,15 +15,6 @@ import { YAML_EXTENSIONS } from "./yamlPath.js";
  */
 const escapeRegExp = (value: string): string =>
   value.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
-
-/**
- * 移除资源引用中的查询串与锚点
- *
- * @param link 原始引用
- * @returns 不含 `?query` 与 `#hash` 的引用
- */
-const stripUrlSuffix = (link: string): string =>
-  link.replaceAll(/[?#].*$/gu, "").replaceAll(/\r$/gu, "");
 
 /**
  * 复制忽略规则，移除会影响 `test()` 状态的 `g`/`y` 标志
@@ -77,7 +69,11 @@ export const checkAssets = (
     .forEach((path) => {
       [...readFileSync(path, { encoding: "utf-8" }).matchAll(assetRegExp)].forEach(
         ([, assetLink]) => {
-          assets.delete(stripUrlSuffix(assetLink));
+          const resolved = assetFolders
+            .map((folder) => resolveAssetLink(`$${assetLink}`, folder))
+            .find((result) => result != null);
+
+          if (resolved) assets.delete(resolved.path);
         },
       );
     });
