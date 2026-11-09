@@ -1,3 +1,4 @@
+import { sanitizeUrl } from "../../helpers/url.js";
 import { escapeHtml, getAssetIconLink, getFileLink } from "../../utils.js";
 import type { AccountComponentOptions } from "./schema.js";
 import { checkAccount } from "./schema.js";
@@ -8,10 +9,12 @@ export const getAccountMarkdown = (account: AccountComponentOptions, location = 
   checkAccount(account, location);
 
   // `$` alias resolve and file check
-  const logo = getFileLink(account.logo);
-  const qqcode = getFileLink(account.qqcode);
+  const logo = sanitizeUrl(getFileLink(account.logo));
+  const qqcode = sanitizeUrl(getFileLink(account.qqcode));
 
   const { name, detail, desc, qq, wxid, site, mail } = account;
+  const siteUrl = sanitizeUrl(site);
+  const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
 
   return `\
 <div class="innenu-account">
@@ -58,18 +61,18 @@ ${
     : ""
 }\
 ${
-  site
+  siteUrl
     ? `\
-    <a class="innenu-account-action no-external-link-icon" href="${escapeHtml(site)}" target="_blank">
+    <a class="innenu-account-action no-external-link-icon" href="${escapeHtml(siteUrl)}" target="_blank">
       <img class="innenu-account-icon" src="${getAssetIconLink("web")}" alt="" no-view />
     </a>
 `
     : ""
 }\
 ${
-  mail
+  mailUrl
     ? `\
-    <a class="innenu-account-action no-external-link-icon" href="mailto:${escapeHtml(mail)}">
+    <a class="innenu-account-action no-external-link-icon" href="${escapeHtml(mailUrl)}">
       <img class="innenu-account-icon" src="${getAssetIconLink("mail")}" alt="" no-view />
     </a>
 `

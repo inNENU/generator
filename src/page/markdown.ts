@@ -1,4 +1,5 @@
 import { getYamlValue } from "../helpers/index.js";
+import { sanitizeUrl } from "../helpers/url.js";
 import { ValidationError } from "../helpers/validation.js";
 import type { MarkdownOptions } from "../typings.js";
 import { getIconLink } from "../utils.js";
@@ -35,7 +36,7 @@ title: ${getYamlValue(title)}
 `;
 
   if (icon) {
-    const iconLink = getIconLink(icon);
+    const iconLink = sanitizeUrl(getIconLink(icon));
 
     if (iconLink) {
       frontmatter += `\

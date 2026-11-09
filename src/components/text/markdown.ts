@@ -1,3 +1,4 @@
+import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { EscapeContainerBodySyntaxOptions } from "../../utils.js";
 import {
   escapeContainerBodySyntax,
@@ -41,6 +42,33 @@ const renderTextBodyItem = (
 const getTextBodyEscapeOptions = (shouldUseContainer: boolean): EscapeContainerBodySyntaxOptions =>
   shouldUseContainer ? { fence: "unclosed", heading: false } : { fence: false, heading: false };
 
+/**
+ * 生成正文组件的“查看详情”链接
+ *
+ * @param text 正文组件
+ * @returns Markdown 链接行，地址不安全或缺失时为空串
+ */
+const getActionContent = (text: TextComponentOptions): string => {
+  if ("action" in text) {
+    if (text.action === "official")
+      return `- [查看详情](https://open.weixin.qq.com/qr/code?username=${text.username})\n\n`;
+
+    if (text.action !== "article") return "";
+
+    const url = sanitizeUrl(text.url);
+
+    return url ? `- [查看详情](${url})\n\n` : "";
+  }
+
+  if ("path" in text && text.path) {
+    const safePath = getSafeUrl(getMarkdownPath(text.path));
+
+    return safePath?.kind === "relative" ? `- [查看详情](${safePath.url})\n\n` : "";
+  }
+
+  return "";
+};
+
 export const getTextMarkdown = (text: TextComponentOptions, location = ""): string => {
   if (text.env && !text.env.includes("web")) return "";
 
@@ -51,6 +79,7 @@ export const getTextMarkdown = (text: TextComponentOptions, location = ""): stri
 
   const { align, tag, header } = text;
   const shouldUseContainer = "type" in text && text.type !== "none";
+  const actionContent = getActionContent(text);
 
   // 普通正文保留标题与围栏语义，容器正文仅在围栏未成对时转义，避免正常代码块被拍平。
   const bodyEscapeOptions = getTextBodyEscapeOptions(shouldUseContainer);
@@ -74,17 +103,7 @@ ${
 }
 ${texts.map((item) => renderTextBodyItem(item, tag, bodyEscapeOptions)).join("\n\n") || ""}
 
-${
-  "action" in text
-    ? text.action === "official"
-      ? `- [查看详情](https://open.weixin.qq.com/qr/code?username=${text.username})\n\n`
-      : text.action === "article"
-        ? `- [查看详情](${text.url})\n\n`
-        : ""
-    : "path" in text && text.path
-      ? `- [查看详情](${getMarkdownPath(text.path)})\n\n`
-      : ""
-}\
+${actionContent}\
 ${shouldUseContainer ? ":::\n\n" : ""}\
 ${align ? `::::\n\n` : ""}\
 `;

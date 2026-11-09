@@ -1,3 +1,4 @@
+import { sanitizeUrl } from "../../helpers/url.js";
 import { escapeHtml, getFileLink } from "../../utils.js";
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
@@ -51,14 +52,16 @@ export const getActionMarkdown = (
         : converted.web
     : (getFileLink(rawContent) ?? rawContent);
 
+  const safeContent = sanitizeUrl(content);
   const isLink =
-    /^https?:\/\//u.test(content) ||
-    /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?::\d{1,5})?$/u.test(
-      content,
-    );
+    safeContent != null &&
+    (/^https?:\/\//u.test(safeContent) ||
+      /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?::\d{1,5})?$/u.test(
+        safeContent,
+      ));
 
   const body = isLink
-    ? `[${escapeHtml(header ?? content)}](${content})`
+    ? `[${escapeHtml(header ?? safeContent)}](${safeContent})`
     : `\`\`\`text\n${content}\n\`\`\``;
 
   if (options.mode === "miniapp") {

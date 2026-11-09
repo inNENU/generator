@@ -1,3 +1,4 @@
+import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
 import type { GridComponentOptions } from "./schema.js";
@@ -29,7 +30,7 @@ ${items
     if ("env" in item && item.env && !item.env.includes("web")) return null;
 
     const { icon, text } = item;
-    const resolvedIcon = getIconLink(icon);
+    const resolvedIcon = sanitizeUrl(getIconLink(icon));
 
     const iconContent = resolvedIcon
       ? `\
@@ -56,7 +57,11 @@ ${gridItemContent}
       }
 
       if (item.action === "article") {
-        return `<a class="innenu-grid-item" href="${escapeHtml(item.url)}" target="_blank">
+        const articleUrl = sanitizeUrl(item.url);
+
+        if (!articleUrl) return "";
+
+        return `<a class="innenu-grid-item" href="${escapeHtml(articleUrl)}" target="_blank">
 ${gridItemContent}
 </a>`;
       }
@@ -65,15 +70,19 @@ ${gridItemContent}
     }
 
     if ("path" in item && item.path) {
-      return `<RouteLink class="innenu-grid-item" to="${escapeHtml(getHTMLPath(item.path))}">
+      const safePath = getSafeUrl(getHTMLPath(item.path));
+
+      if (safePath?.kind !== "relative") return "";
+
+      return `<RouteLink class="innenu-grid-item" to="${escapeHtml(safePath.url)}">
 ${gridItemContent}
 </RouteLink>`;
     }
 
     if ("url" in item && item.url) {
-      const resolvedUrl = urlConverter(item.url);
+      const resolvedUrl = sanitizeUrl(urlConverter(item.url));
 
-      if (resolvedUrl == null) return "";
+      if (!resolvedUrl) return "";
 
       return resolvedUrl.startsWith("/")
         ? `<RouteLink class="innenu-grid-item" to="${escapeHtml(resolvedUrl)}">

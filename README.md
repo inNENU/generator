@@ -48,6 +48,10 @@ Markdown generation targets the VuePress site only. The WeChat miniapp and the n
 Markdown rendering requirement for them; the `env` field is therefore respected only for `"web"` in the Markdown pipeline (components
 marked for other environments are skipped there by design). Use `getPageJSON` for Mini Program / App content.
 
+Link destinations are validated before rendering. Relative paths and anchors, `http:`, `https:`, `mailto:` and telephone `tel:` URLs
+are allowed; other schemes such as `javascript:` or `data:` are dropped, or rendered as non-clickable text when the surrounding
+component still needs to show its label.
+
 ## Entry points
 
 - `innenu-generator`: full public API (page, component, schema, helpers, generators).
