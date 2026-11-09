@@ -179,6 +179,12 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     ["desc 大写 AMP 前缀", '![a](x "&AMP;#123;&AMP;#123;7*7&AMP;#125;&AMP;#125;")'],
     ["desc 十六进制前导零 & 链", '![a](x "&#x00026;#123;7*7&#x00026;#125;")'],
     ["desc 裸 & 与实体混排", '![a](x "R&D &#123;&#123;7*7&#125;&#125;")'],
+    ["desc 双反斜杠 title", String.raw`![a](x "\\{\\{7*7\\}\\}")`],
+    ["desc 三反斜杠 title", String.raw`![a](x "\\\{\\\{7*7\\\}\\\}")`],
+    ["desc 双反斜杠单引号 title", String.raw`![a](x '\\{\\{7*7\\}\\}')`],
+    ["desc 双反斜杠圆括号 title", String.raw`![a](x (\\{\\{7*7\\}\\}))`],
+    ["desc 双反斜杠 refdef title", `![a][r]\n\n[r]: x "${String.raw`\\{\\{7*7\\}\\}`}"`],
+    ["desc 双反斜杠 linkImage", `[![a](x "${String.raw`\\{\\{7*7\\}\\}`}")](y)`],
   ];
 
   it("保留 figure 标题中的裸 & 文本", () => {

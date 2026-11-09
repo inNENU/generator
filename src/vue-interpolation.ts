@@ -220,10 +220,7 @@ const normalizeEscapedBraces = (value: string): string => {
       continue;
     }
 
-    const repeated = Math.floor((end - index) / 2);
-    const backslashes = String.fromCodePoint(0x5c).repeat(repeated * 2);
-
-    result += `${backslashes}${brace}`;
+    result += brace === "{" ? "{<!-- -->" : "}<!-- -->";
     index = end + 1;
   }
 
