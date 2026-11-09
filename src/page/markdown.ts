@@ -1,5 +1,5 @@
 import { getYamlValue } from "../helpers/index.js";
-import { ValidationError } from "../helpers/validation.js";
+import { ValidationError, runValidation } from "../helpers/validation.js";
 import type { MarkdownOptions } from "../typings.js";
 import { getIconLink } from "../utils.js";
 import { renderComponentMarkdown } from "./markdown-renderers.js";
@@ -92,18 +92,21 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
 
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
-  if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
-
-  if (check) {
-    const issues = [
-      ...checkPageConfig(page, location),
-      ...checkPageContent(page.content, location, location),
-    ];
-
-    if (issues.length) throw new ValidationError(`${location} 页面校验失败`, issues);
-  }
-
   try {
+    // 先确认页面结构可用，再执行可选校验；校验实现本身抛出的异常由 runValidation 统一包装为 ValidationError
+    if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
+
+    if (check) {
+      runValidation(`${location} 页面校验失败`, () => {
+        const issues = [
+          ...checkPageConfig(page, location),
+          ...checkPageContent(page.content, location, location),
+        ];
+
+        if (issues.length) throw new ValidationError(`${location} 页面校验失败`, issues);
+      });
+    }
+
     const { desc, content: pageContents } = page;
     const frontmatter = buildFrontmatter(page);
 

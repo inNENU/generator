@@ -1,4 +1,4 @@
-import { ValidationError } from "../helpers/validation.js";
+import { ValidationError, runValidation } from "../helpers/validation.js";
 import type { PageConfig } from "../typings.js";
 import { escapeHtml } from "../utils.js";
 import { renderComponentMarkdown } from "./markdown-renderers.js";
@@ -64,16 +64,18 @@ export const getPageText = (
   try {
     if (!page) throw new Error(`${pagePath} doesn't contain anything`);
 
-    if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
-
     if (options.check) {
-      const issues = [
-        ...checkPageConfig(page, pagePath),
-        ...checkPageContent(page.content, pagePath, pagePath),
-      ];
+      runValidation(`${pagePath} 页面校验失败`, () => {
+        const issues = [
+          ...checkPageConfig(page, pagePath),
+          ...checkPageContent(page.content, pagePath, pagePath),
+        ];
 
-      if (issues.length) throw new ValidationError(`${pagePath} 页面校验失败`, issues);
+        if (issues.length) throw new ValidationError(`${pagePath} 页面校验失败`, issues);
+      });
     }
+
+    if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
 
     const { title, desc, content } = page;
 
