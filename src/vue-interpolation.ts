@@ -349,18 +349,26 @@ const collectListItemFenceLines = (
  * @param lines 全部行
  * @param htmlBlockLines 原始 HTML 块行号
  * @param topLevelFenceLines 顶层围栏行号
+ * @param listFenceLines 列表围栏行号（这些行属于列表围栏正文，不能被当成引用块围栏的开头）
  * @returns 围栏代码块行号
  */
 const collectBlockquoteFenceLines = (
   lines: string[],
   htmlBlockLines: Set<number>,
   topLevelFenceLines: Set<number>,
+  listFenceLines: Set<number>,
 ): { lines: Set<number>; protectedLines: Set<number> } => {
   const result = new Set<number>();
   const protectedLines = new Set<number>();
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index) || topLevelFenceLines.has(index)) continue;
+    if (
+      htmlBlockLines.has(index) ||
+      topLevelFenceLines.has(index) ||
+      // 列表围栏正文不会被解析；其中的行不能被当成引用块围栏的开头。
+      listFenceLines.has(index)
+    )
+      continue;
 
     const fence = getFenceInfo(stripBlockquotePrefix(lines[index]));
 
@@ -1251,17 +1259,39 @@ const maskMarkdownSyntax = (
   const rawTextLines = collectHtmlRawTextLines(lines);
   const tableBlockLines = collectTableBlockLines(lines);
   const topLevelFenceLines = collectTopLevelFenceLines(lines, htmlBlockLines);
-  const blockquoteFenceInfo = collectBlockquoteFenceLines(
-    lines,
-    htmlBlockLines,
-    topLevelFenceLines,
-  );
-  const listFenceInfo = collectListItemFenceLines(
-    lines,
-    htmlBlockLines,
-    topLevelFenceLines,
-    blockquoteFenceInfo.lines,
-  );
+  // 列表围栏与引用块围栏可能互相包含对方形态的行；两类收集器交替剔除对方的命中行，
+  // 直到稳定，避免「围栏正文里的闭合行被当作新围栏开头」这类误判。
+  let blockquoteFenceInfo = {
+    lines: new Set<number>(),
+    protectedLines: new Set<number>(),
+  };
+  let listFenceInfo = {
+    lines: new Set<number>(),
+    protectedLines: new Set<number>(),
+  };
+
+  for (let round = 0; round < 3; round += 1) {
+    const nextList = collectListItemFenceLines(
+      lines,
+      htmlBlockLines,
+      topLevelFenceLines,
+      blockquoteFenceInfo.lines,
+    );
+    const nextBlockquote = collectBlockquoteFenceLines(
+      lines,
+      htmlBlockLines,
+      topLevelFenceLines,
+      nextList.lines,
+    );
+    const stable =
+      nextList.lines.size === listFenceInfo.lines.size &&
+      nextBlockquote.lines.size === blockquoteFenceInfo.lines.size;
+
+    listFenceInfo = nextList;
+    blockquoteFenceInfo = nextBlockquote;
+
+    if (stable) break;
+  }
 
   const containerProtection = resolveContainerFenceProtection([listFenceInfo, blockquoteFenceInfo]);
   const fenceResult = maskFenceBlocks(lines, htmlBlockLines, containerProtection, stash);

@@ -497,6 +497,40 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(html).not.toContain("{{");
   });
 
+  it("列表围栏缩进闭合行不会保护其后的插值段落", () => {
+    const contents = [
+      "- ```js\n  ```\n{{7*7}}",
+      "- ```js\n  ```\n\n{{7*7}}",
+      "- ```js :no-v-pre\n  ```\n{{7*7}}",
+      "- item\n  - ```js\n    ```\n  {{7*7}}",
+    ];
+
+    for (const content of contents) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
+        location: "probe/list-fence-close",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], content), {
+        location: "probe/list-fence-close-desc",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+      expect(markdownIt.render(markdown)).not.toContain("{{");
+      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
+    }
+
+    // 缩进仍属于合法顶层围栏时，内容保持 v-pre 原文
+    const indented = getPageMarkdown(
+      createPage([{ tag: "text", text: "  ```js\n  {{7*7}}\n  ```" }]),
+      {
+        location: "probe/indented-top-fence",
+      },
+    );
+
+    expect(indented).toContain("{{7*7}}");
+    expect(indented).not.toContain("<!-- -->");
+  });
+
   it("中和超出列表缩进规则与 :no-v-pre 围栏内的伪围栏", () => {
     const pageContents = [
       "-     ```js {{7*7}}",

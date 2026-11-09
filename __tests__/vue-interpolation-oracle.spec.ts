@@ -215,6 +215,29 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("列表围栏缩进闭合行之后的段落不产生插值", () => {
+    const payloads = [
+      "- ```js\n  ```\n{{7*7}}",
+      "- ```js\n  ```\n\n{{7*7}}",
+      "- ```js :no-v-pre\n  ```\n{{7*7}}",
+      "- item\n  - ```js\n    ```\n  {{7*7}}",
+    ];
+
+    for (const text of payloads) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text }]), {
+        location: "oracle/list-fence-close",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], text), {
+        location: "oracle/list-fence-close-desc",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+      expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+      expect(compileTemplate(descMarkdown)).not.toContain("_toDisplayString");
+    }
+  });
+
   it("引用块与列表围栏边界外不产生插值", () => {
     const desces = [
       "> ```js\n> {{7*7}}\n> ```",
