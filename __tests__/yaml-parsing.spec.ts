@@ -30,6 +30,78 @@ describe(parseYaml, () => {
     expect(parseYaml("# only a comment\n# another comment")).toBeUndefined();
   });
 
+  it("returns undefined for documents without a scalar", () => {
+    expect(parseYaml("---")).toBeUndefined();
+    expect(parseYaml("---\n")).toBeUndefined();
+    expect(parseYaml("--- # comment only\n# another comment")).toBeUndefined();
+    expect(parseYaml("---\n...")).toBeUndefined();
+  });
+
+  it("only treats column-0 markers and directives as non-content", () => {
+    expect(parseYaml("%YAML 1.2\n---")).toBeUndefined();
+    expect(parseYaml("%TAG ! tag:example.com,2000:\n---")).toBeUndefined();
+    expect(parseYaml("...\n")).toBeUndefined();
+    expect(parseYaml("... # end of document")).toBeUndefined();
+
+    // 缩进的 `...` 以及出现在后续行的缩进 `---` 是普通标量，不是文档标记
+    expect(parseYaml("  ...")).toBe("...");
+    expect(parseYaml("---\n  ---")).toBe("---");
+    expect(parseYaml("\n  ---")).toBe("---");
+    expect(parseYaml("# c\n  ---")).toBe("---");
+  });
+
+  it("treats a stream-leading indented `---` as a document marker", () => {
+    // js-yaml 会把文件首行缩进的 `---` 当作文档开始标记，这里与之保持一致
+    expect(parseYaml("  ---")).toBeUndefined();
+    expect(parseYaml(" ---")).toBeUndefined();
+    expect(parseYaml("    ---")).toBeUndefined();
+    expect(parseYaml("\t---")).toBeUndefined();
+    expect(parseYaml("  ---\r\n")).toBeUndefined();
+    expect(parseYaml("  --- # c")).toBeUndefined();
+    expect(parseYaml("  ---\r\n# c\r\n")).toBeUndefined();
+  });
+
+  it("keeps content after a stream-leading indented `---`", () => {
+    // 首行缩进的文档标记不能把紧随其后的实际内容一起跳过
+    expect(parseYaml("  ---\n  foo")).toBe("foo");
+    expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
+  });
+
+  it("handles CRLF and CR line endings in markers and comments", () => {
+    expect(parseYaml("--- # c\r\n")).toBeUndefined();
+    expect(parseYaml("--- # c\r")).toBeUndefined();
+    expect(parseYaml("... # end\r\n")).toBeUndefined();
+    expect(parseYaml("... # end\r")).toBeUndefined();
+    expect(parseYaml("--- # c\r\n# d\r\n")).toBeUndefined();
+    expect(parseYaml("---\r\n")).toBeUndefined();
+
+    // 有实际内容时仍按原有语义解析
+    expect(parseYaml("---\r\ntitle: x\r\n")).toStrictEqual({ title: "x" });
+    expect(parseYaml("title: 首页\r\ncount: 2\r\n")).toStrictEqual({ count: 2, title: "首页" });
+  });
+
+  it("strips a leading BOM before checking marker-only documents", () => {
+    expect(parseYaml("\uFEFF---")).toBeUndefined();
+    expect(parseYaml("\uFEFF---\r\n")).toBeUndefined();
+    expect(parseYaml("\uFEFF--- # c\r\n")).toBeUndefined();
+  });
+
+  it("does not silently treat an indented directive-like line as an empty document", () => {
+    // `%` 指令必须位于第 0 列；缩进的 `%foo` 不是指令，而是非法 YAML，应报错而不是被当作空文档跳过
+    expect(() => parseYaml("  %foo")).toThrow(/YAML 解析失败/u);
+  });
+
+  it("only treats %YAML and %TAG directives as non-content", () => {
+    // 其它 `%` 行不再仅凭前缀被跳过，交给 js-yaml 判定：缺少 `---` 时是非法 YAML
+    expect(() => parseYaml("%foo")).toThrow(/YAML 解析失败/u);
+    expect(parseYaml("%foo\n---\ntitle: x")).toStrictEqual({ title: "x" });
+  });
+
+  it("keeps explicit empty string scalars", () => {
+    expect(parseYaml('""')).toBe("");
+    expect(parseYaml("''")).toBe("");
+  });
+
   it("parses valid YAML", () => {
     expect(parseYaml("title: 首页\ncount: 2")).toStrictEqual({ count: 2, title: "首页" });
   });
@@ -37,6 +109,19 @@ describe(parseYaml, () => {
   it("throws a Chinese error containing the file path", () => {
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/YAML 解析失败/u);
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/pages\/broken\.yml/u);
+
+    const getError = (): unknown => {
+      try {
+        parseYaml("title: [", "pages/broken.yml");
+      } catch (err) {
+        return err;
+      }
+      return undefined;
+    };
+    const error = getError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
 
@@ -200,6 +285,65 @@ describe("yaml conversion output", () => {
 
       expect(readFileSync(path.join(target, "a.json"), "utf-8")).toBe("false");
       expect(readdirSync(target).some((file) => file.endsWith(".tmp"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("skips null and undefined conversion results but writes other falsy values", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-skip-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      for (const name of ["null", "undefined", "empty", "zero", "false", "text"])
+        writeFileSync(path.join(source, `${name}.yml`), `name: ${name}`);
+
+      const results: Record<string, unknown> = {
+        null: null,
+        undefined,
+        empty: "",
+        zero: 0,
+        false: false,
+        text: "x",
+      };
+
+      convertYamlFilesToJson(source, target, (_data, filePath) => results[filePath]);
+
+      expect(readdirSync(target).sort()).toStrictEqual([
+        "empty.json",
+        "false.json",
+        "text.json",
+        "zero.json",
+      ]);
+      expect(readFileSync(path.join(target, "empty.json"), "utf-8")).toBe('""');
+      expect(readFileSync(path.join(target, "zero.json"), "utf-8")).toBe("0");
+      expect(readFileSync(path.join(target, "false.json"), "utf-8")).toBe("false");
+      expect(readFileSync(path.join(target, "text.json"), "utf-8")).toBe('"x"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not write an output for a document containing only markers", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-marker-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      writeFileSync(path.join(source, "empty.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      convertYamlFilesToJson(source, target, (data) => data);
+
+      expect(existsSync(path.join(target, "empty.json"))).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("空 YAML 文件已跳过"));
+      warnSpy.mockRestore();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

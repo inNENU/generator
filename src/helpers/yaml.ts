@@ -48,22 +48,60 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
 };
 
 /**
+ * 匹配位于第 0 列的文档标记行（`---`、`...`）
+ *
+ * 文档标记后只允许空白或注释；这里按单行匹配，调用前已统一换行符并去掉 `\r`，所以 CRLF/CR 文件不会被漏判。
+ */
+const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:[ \t]+(?:#.*)?)?$/u;
+
+/**
+ * 匹配流起始处带缩进的 `---`
+ *
+ * 解析器（js-yaml）会把文件首行缩进的 `---`（可带行尾注释）当作文档开始标记，而不是普通标量；同样的内容出现在第二行及以后才是标量，因此只在首行应用。`...` 没有这个特例。
+ */
+const yamlIndentedStartMarkerPattern = /^[ \t]+---(?:[ \t]+(?:#.*)?)?$/u;
+
+/**
+ * 匹配 YAML 指令行
+ *
+ * 只承认规范定义的 `%YAML`/`%TAG`；其它第 0 列的 `%` 行不是可跳过的内容，交给 js-yaml 判定（可能是非法指令）。
+ */
+const yamlDirectivePattern = /^%(?:YAML|TAG)\b/u;
+
+/**
  * 判断 YAML 内容是否包含实际文档
  *
+ * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容。文件开头的 BOM 会先剥离，CRLF/CR 行尾按换行拆分，因此行尾不会影响判断。
+ * 文档标记与指令按规范必须位于第 0 列，缩进的 `...` 属于普通标量；但 js-yaml 会把流起始处缩进的 `---` 当作文档开始标记，这里仅在首行与之保持一致。缩进的 `%foo`
+ * 也不再被误判为空文档。
+ *
  * @param content YAML 内容
- * @returns 是否包含非空、非注释行
+ * @returns 是否包含实际标量内容
  */
-const hasYamlDocument = (content: string): boolean =>
-  content.split("\n").some((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+const hasYamlDocument = (content: string): boolean => {
+  // 去掉文件开头的 BOM，避免首行的文档标记被当成普通内容
+  const normalizedContent = content.startsWith("\uFEFF") ? content.slice(1) : content;
+
+  return normalizedContent.split(/\r\n?|\n/u).some((line, index) => {
+    if (line.trim() === "") return false;
+    if (line.trimStart().startsWith("#")) return false;
+
+    // 拆分时已去掉行尾的 `\r`，标记与注释的匹配因此不受 CRLF/CR 影响
+    if (yamlDirectivePattern.test(line)) return false;
+    if (index === 0 && yamlIndentedStartMarkerPattern.test(line)) return false;
+
+    return !yamlDocumentMarkerPattern.test(line);
+  });
+};
 
 /**
  * 解析 YAML 内容
  *
- * 空文件或仅包含注释时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
+ * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。
  *
  * @param content YAML 内容
  * @param filePath 文件路径，仅用于错误信息
- * @returns 解析结果，空文档为 `undefined`
+ * @returns 解析结果，无标量文档为 `undefined`
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const parseYaml = <T = unknown>(content: string, filePath = ""): T | undefined => {
@@ -210,7 +248,7 @@ const removeStaleOutputs = (
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹，默认为源文件夹
- * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
+ * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值；返回 `null`/`undefined` 时跳过该文件
  * @param processFunction 内容处理函数，在解析前对 YAML 内容进行预处理
  */
 export const convertYamlFilesToJson = <T = unknown, Value = T>(
@@ -240,7 +278,8 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
       const result = convertFunction(parsed, yamlRelativePath);
 
-      if (result !== void 0) {
+      // `null`/`undefined` 表示调用方要求跳过该文件；`""`、`0`、`false` 是有效输出，需要正常写出
+      if (result != null) {
         if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
         writeFileAtomically(targetFilename, JSON.stringify(result));
@@ -262,6 +301,9 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 
 /**
  * 将源文件夹下的所有 YAML 文件转换为 Markdown 文件
+ *
+ * 与 `convertYamlFilesToJson` 不同，本函数不把转换函数返回的 `null`/`undefined` 视为“跳过”： 转换函数被声明为返回
+ * `string`，当前消费者都返回 Markdown 文本；若运行时返回 `null`/`undefined`， 写入会失败并计入聚合错误，而不是静默跳过该文件。
  *
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回 Markdown 内容
