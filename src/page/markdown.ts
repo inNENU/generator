@@ -101,25 +101,41 @@ isOriginal: true
 export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions = {}): string => {
   const { location = "", check = false } = options;
 
-  if (!page) throw new Error(`${location} doesn't contain anything`);
+  if (!page) throw new Error(`${location} 页面数据不存在`);
+
+  /**
+   * 当前处理阶段
+   *
+   * 配置级（frontmatter、标题等页面字段）与内容级（组件渲染）异常分别使用不同的中文文案，避免把配置问题误报为内容问题。
+   */
+  let phase: "config" | "content" = "content";
 
   try {
     // 先确认页面结构可用，再执行可选校验；校验实现本身抛出的异常由 runValidation 统一包装为 ValidationError
-    if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
+    if (!page.content) throw new Error(`${location} 页面缺少可渲染内容`);
 
     if (check) {
       runValidation(`${location} 页面校验失败`, () => {
-        const issues = [
-          ...checkPageConfig(page, location),
-          ...checkPageContent(page.content, location, location),
-        ];
+        const configIssues = checkPageConfig(page, location);
+        const contentIssues = checkPageContent(page.content, location, location);
+        const issues = [...configIssues, ...contentIssues];
 
-        if (issues.length) throw new ValidationError(`${location} 页面校验失败`, issues);
+        if (issues.length) {
+          // 保持一次性汇总全部问题的既有行为，仅按问题来源细化文案：
+          // 内容问题优先，避免页面内容损坏时因配置 schema 同时报出 content 字段问题而误标为配置失败
+          const label = contentIssues.length > 0 ? "页面内容校验失败" : "页面配置校验失败";
+
+          throw new ValidationError(`${location} ${label}`, issues);
+        }
       });
     }
 
+    phase = "config";
+
     const { desc, content: pageContents } = page;
     const frontmatter = buildFrontmatter(page);
+
+    phase = "content";
 
     const blocks: string[] = [];
 
@@ -134,12 +150,15 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
     });
 
     if (desc) {
+      // 描述是页面配置字段，处理它时切回配置阶段，确保异常文案指向配置而不是内容
+      phase = "config";
       blocks.push(
         desc
           .split("\n")
           .map((line) => `> ${line}`)
           .join("\n>\n"),
       );
+      phase = "content";
     }
 
     // 组件模板自身可能以换行开头，统一去掉后再按一个空行拼接，
@@ -154,6 +173,8 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
   } catch (err) {
     if (err instanceof ValidationError) throw err;
 
-    throw new Error(`为 ${location} 生成 Markdown 失败: ${(err as Error).message}`, { cause: err });
+    const label = phase === "config" ? "页面配置处理失败" : "页面内容处理失败";
+
+    throw new Error(`${location} ${label}: ${(err as Error).message}`, { cause: err });
   }
 };

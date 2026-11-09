@@ -57,7 +57,7 @@ describe("getPageMarkdown check 选项", () => {
         getPageMarkdown(invalidPage, { location: "guide/about", check: true }),
       );
 
-      expect(err.message).toContain("guide/about 页面校验失败");
+      expect(err.message).toContain("guide/about 页面内容校验失败");
       expect(err.issues.length).toBeGreaterThanOrEqual(2);
       expect(err.issues.join("\n")).toContain("（位置: title）");
       expect(err.issues.join("\n")).toContain("（位置: content.0）");
@@ -104,7 +104,7 @@ describe("getPageText check 选项", () => {
         getPageText(invalidPage, "guide/about", { check: true }),
       );
 
-      expect(err.message).toContain("guide/about 页面校验失败");
+      expect(err.message).toContain("guide/about 页面内容校验失败");
       expect(err.issues.length).toBeGreaterThanOrEqual(2);
       expect(err.issues.join("\n")).toContain("（位置: title）");
       expect(err.issues.join("\n")).toContain("（位置: content.0）");

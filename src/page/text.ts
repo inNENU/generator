@@ -61,50 +61,67 @@ export const getPageText = (
   pagePath = "",
   options: GetPageTextOptions = {},
 ): string => {
-  try {
-    if (!page) throw new Error(`${pagePath} doesn't contain anything`);
+  if (!page) throw new Error(`${pagePath} 页面数据不存在`);
 
+  /**
+   * 当前处理阶段
+   *
+   * 配置级（标题、描述等页面字段）与内容级（组件渲染）异常分别使用不同的中文文案，避免把配置问题误报为内容问题。
+   */
+  let phase: "config" | "content" = "content";
+
+  try {
     if (options.check) {
       runValidation(`${pagePath} 页面校验失败`, () => {
-        const issues = [
-          ...checkPageConfig(page, pagePath),
-          ...checkPageContent(page.content, pagePath, pagePath),
-        ];
+        const configIssues = checkPageConfig(page, pagePath);
+        const contentIssues = checkPageContent(page.content, pagePath, pagePath);
+        const issues = [...configIssues, ...contentIssues];
 
-        if (issues.length) throw new ValidationError(`${pagePath} 页面校验失败`, issues);
+        if (issues.length) {
+          // 保持一次性汇总全部问题的既有行为，仅按问题来源细化文案：
+          // 内容问题优先，避免页面内容损坏时因配置 schema 同时报出 content 字段问题而误标为配置失败
+          const label = contentIssues.length > 0 ? "页面内容校验失败" : "页面配置校验失败";
+
+          throw new ValidationError(`${pagePath} ${label}`, issues);
+        }
       });
     }
 
-    if (!page.content) throw new Error(`${pagePath}.content doesn't contain anything`);
+    if (!page.content) throw new Error(`${pagePath} 页面缺少可渲染内容`);
+
+    phase = "config";
 
     const { title, desc, content } = page;
+    const heading = `# ${escapeHtml(title)}`;
+    const descBlock = desc ? `${formatDesc(desc)}\n\n` : "";
+
+    phase = "content";
 
     const mode = options.mode ?? "web";
 
     // 不输出 cite：AI 无网络搜索能力，来源只能是小程序页面，不引用外部网址
 
-    return `\
-# ${escapeHtml(title)}
+    const body = content
+      .map((component, index) =>
+        renderComponentMarkdown(component, {
+          dialect: "text",
+          location: `${pagePath} page.content[${index}]`,
+          mode,
+          urlConverter: options.urlConverter,
+        }),
+      )
+      .filter((block) => block !== "")
+      // 组件块自身带有尾部空行，统一裁剪后再按一个空行拼接
+      .map((block) => block.replace(/^\n+/u, "").trimEnd())
+      .filter((block) => block !== "")
+      .join("\n\n");
 
-${desc ? `${formatDesc(desc)}\n\n` : ""}\
-${content
-  .map((component, index) =>
-    renderComponentMarkdown(component, {
-      dialect: "text",
-      location: `${pagePath} page.content[${index}]`,
-      mode,
-      urlConverter: options.urlConverter,
-    }),
-  )
-  .filter((block) => block !== "")
-  // 组件块自身带有尾部空行，统一裁剪后再按一个空行拼接
-  .map((block) => block.replace(/^\n+/u, "").trimEnd())
-  .filter((block) => block !== "")
-  .join("\n\n")}
-`.trim();
+    return `${heading}\n\n${descBlock}${body}`.trim();
   } catch (err) {
     if (err instanceof ValidationError) throw err;
 
-    throw new Error(`${pagePath} page.content 处理失败: ${(err as Error).message}`, { cause: err });
+    const label = phase === "config" ? "页面配置处理失败" : "页面内容处理失败";
+
+    throw new Error(`${pagePath} ${label}: ${(err as Error).message}`, { cause: err });
   }
 };
