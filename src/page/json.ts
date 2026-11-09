@@ -1,7 +1,7 @@
 // oxlint-disable import/max-dependencies
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
-import { join } from "upath";
+import { join, resolve } from "upath";
 
 import { getAccountJSON } from "../components/account/json.js";
 import { getActionJSON } from "../components/action/json.js";
@@ -141,6 +141,13 @@ export interface GetPageJSONOptions extends CheckPageConfigOptions {
    * @default true
    */
   check?: boolean;
+  /**
+   * 源 YAML 文件路径
+   *
+   * 用于在 `diffFiles` 命中时更新 `time`。缺省按 `pageFolder` + `pagePath` 计算；地图页的源文件位于 `mapFolder`，由
+   * `getMapPageJSON` 显式传入。
+   */
+  sourcePath?: string;
   /** 需要移除的字段 */
   removeFields?: string[];
 }
@@ -299,7 +306,7 @@ export const getPageJSON = (
   options: GetPageJSONOptions = {},
 ): PageData => {
   const { check = true } = options;
-  const changedFiles = new Set(diffFiles);
+  const changedFiles = new Set(diffFiles.map((filePath) => resolve(filePath)));
 
   try {
     if (!page) throw new Error(`${pagePath} 不存在内容`);
@@ -335,8 +342,9 @@ export const getPageJSON = (
     if (!pageData.cite?.length) delete pageData.cite;
 
     if (time) {
-      const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
-      const date = changedFiles.has(pageYAMLPath) ? updatePageTime(pageYAMLPath) : time;
+      const pageYAMLPath =
+        options.sourcePath ?? join(generatorConfig.pageFolder, `${pagePath}.yml`);
+      const date = changedFiles.has(resolve(pageYAMLPath)) ? updatePageTime(pageYAMLPath) : time;
 
       pageData.time = formatPageTime(date);
     }

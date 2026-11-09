@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { MapPageConfig, MarkersConfig } from "../src/index.js";
-import { getMapPageJSON, getMarkerJSON, getMarkersJSON, markersDataSchema } from "../src/index.js";
+import {
+  getMapPageJSON,
+  getMarkerJSON,
+  getMarkersJSON,
+  markersDataSchema,
+  ValidationError,
+} from "../src/index.js";
 
 describe(getMapPageJSON, () => {
   it("含 photo 字段的地图配置不应触发重复校验误报，且 photo 应保留", () => {
@@ -31,7 +37,7 @@ describe(getMapPageJSON, () => {
       content: [{ tag: "title", text: "图书馆" }],
     } as unknown as MapPageConfig;
 
-    getMapPageJSON(config, "map/benbu/building/library");
+    expect(() => getMapPageJSON(config, "map/benbu/building/library")).toThrow(ValidationError);
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("发现非法地图页面配置"),
@@ -55,7 +61,7 @@ describe(getMapPageJSON, () => {
       ],
     };
 
-    getMapPageJSON(config, "map/benbu/building/library");
+    expect(() => getMapPageJSON(config, "map/benbu/building/library")).toThrow(ValidationError);
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("中不存在"));
 
@@ -115,7 +121,7 @@ describe(getMarkersJSON, () => {
       },
     } as unknown as MarkersConfig;
 
-    getMarkersJSON(config, "map");
+    expect(() => getMarkersJSON(config, "map")).toThrow(ValidationError);
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("发现非法标记点配置"),

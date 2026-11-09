@@ -42,6 +42,8 @@ const pageText = getPageText(page, "home");
 Page generators take a `PageConfig` object as their first argument. The page path is a separate argument for `getPageJSON(page, pagePath,
 diffFiles?, options?)` and `getPageText(page, pagePath, options?)`, while `getPageMarkdown(page, options?)` reads it from
 `options.location` because the Markdown options object already carries the rendering context.
+`getPageJSON` looks up the source YAML under `pageFolder` by default. If a page's source lives elsewhere, pass `sourcePath` so `diffFiles`
+can still refresh its `time`; `getMapPageJSON` resolves map sources under `mapFolder` automatically.
 
 `config()` accepts:
 
