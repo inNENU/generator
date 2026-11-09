@@ -61,6 +61,18 @@ const braces: Record<string, string> = {
 };
 
 /**
+ * 输出一个已中和的花括号
+ *
+ * 在花括号后插入 HTML 注释；若已有输出以花括号结尾（可能是字面花括号或前一条改写结果），先插入注释隔开， 避免实体/反斜杠解码后两个花括号变成相邻的 `{{` / `}}`。
+ *
+ * @param result 已累积的输出
+ * @param brace 需要中和的花括号
+ * @returns 更新后的输出
+ */
+const appendNeutralizedBrace = (result: string, brace: "{" | "}"): string =>
+  `${result}${result.endsWith("{") || result.endsWith("}") ? "<!-- -->" : ""}${brace}<!-- -->`;
+
+/**
  * 解码实体 body（不含开头 `&` 与结尾 `;`）
  *
  * @param body 实体 body
@@ -178,18 +190,24 @@ const neutralizeDecodedBraces = (value: string): string => {
     const decoded = decodeEntityChain(value, index);
 
     if (decoded?.character === "{" || decoded?.character === "}") {
-      result += decoded.character === "{" ? "{<!-- -->" : "}<!-- -->";
+      result = appendNeutralizedBrace(result, decoded.character);
       index = decoded.end;
       continue;
     }
 
-    // 实体解码出的反斜杠紧邻字面花括号时，等价于 Markdown 转义花括号；改写成字面反斜杠，交给反斜杠归一化处理
+    // 实体解码出的反斜杠紧邻花括号（字面或实体编码）时，等价于 Markdown 转义花括号；直接按花括号中和
     if (decoded?.character === "\\") {
       const next = value[decoded.end];
+      const nextBrace =
+        next === "{" || next === "}"
+          ? { character: next, end: decoded.end + 1 }
+          : next === "&"
+            ? decodeEntityChain(value, decoded.end)
+            : null;
 
-      if (next === "{" || next === "}") {
-        result += "\\";
-        index = decoded.end;
+      if (nextBrace?.character === "{" || nextBrace?.character === "}") {
+        result = appendNeutralizedBrace(result, nextBrace.character);
+        index = nextBrace.end;
         continue;
       }
     }
@@ -235,7 +253,7 @@ const normalizeEscapedBraces = (value: string): string => {
       continue;
     }
 
-    result += brace === "{" ? "{<!-- -->" : "}<!-- -->";
+    result = appendNeutralizedBrace(result, brace);
     index = end + 1;
   }
 

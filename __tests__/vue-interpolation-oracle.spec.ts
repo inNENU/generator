@@ -193,6 +193,12 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     ["desc refdef 实体反斜杠 + 字面花括号", '![a][r]\n\n[r]: x "&#92;{&#92;{7*7&#92;}&#92;}"'],
     ["desc linkImage 实体反斜杠 + 字面花括号", '[![a](x "&#92;{&#92;{7*7&#92;}&#92;}")](y)'],
     ["desc 不平衡实体反斜杠", '![a](x "&#92;{&#92;{7*7&#92;}")'],
+    ["desc 实体反斜杠 + 实体花括号 + 换行注释", '![a](x "{&#92;&#123;&#10;alert(1)}&#92;&#125;")'],
+    ["desc 字面花括号 + 实体花括号", '![a](x "{&#123;7*7}&#125;")'],
+    ["desc 字面花括号 + 转义花括号", String.raw`![a](x "{\{7*7}\}")`],
+    ["desc 字面花括号 + 实体反斜杠 + 字面花括号", '![a](x "{&#92;{7*7&#92;}}")'],
+    ["desc 不平衡实体反斜杠 + 实体花括号", '![a](x "{&#92;&#123;7*7")'],
+    ["desc 实体花括号 + 字面花括号", '![a](x "&#123;{7*7}&#125;")'],
   ];
 
   it("保留 figure 标题中的裸 & 文本", () => {
@@ -206,7 +212,7 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     expect(html).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
-  it.each(payloads)("中和后 figure 标题不执行插值：%s", (_name, desc) => {
+  it.each(payloads)("中和跨解码花括号邻接后不执行插值：%s", (_name, desc) => {
     const markdown = getPageMarkdown(
       { title: "t", desc, content: [{ tag: "text", text: "x" }] },
       { mode: "web" },
