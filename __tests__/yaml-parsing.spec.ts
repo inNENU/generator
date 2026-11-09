@@ -24,6 +24,17 @@ const createTempDir = (): string => mkdtempSync(path.join(tmpdir(), "innenu-yaml
 
 const removeDir = (dir: string): void => rmSync(dir, { force: true, recursive: true });
 
+/**
+ * 列出目标文件夹中的实际输出，忽略生成清单
+ *
+ * @param dir 目标文件夹
+ * @returns 排序后的文件名
+ */
+const listOutputs = (dir: string): string[] =>
+  readdirSync(dir)
+    .filter((filename) => !filename.startsWith(".innenu-generated."))
+    .sort();
+
 describe(parseYaml, () => {
   it("returns undefined for empty or comment-only documents", () => {
     expect(parseYaml("")).toBeUndefined();
@@ -313,7 +324,7 @@ describe("yaml conversion output", () => {
 
       convertYamlFilesToJson(source, target, (_data, filePath) => results[filePath]);
 
-      expect(readdirSync(target).sort()).toStrictEqual([
+      expect(listOutputs(target)).toStrictEqual([
         "empty.json",
         "false.json",
         "text.json",
@@ -368,7 +379,7 @@ describe("yaml conversion output", () => {
 
       convertYamlFilesToJson(source, target, (data) => data);
 
-      expect(readdirSync(target).sort()).toStrictEqual(["a.json", "c.json"]);
+      expect(listOutputs(target)).toStrictEqual(["a.json", "c.json"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
