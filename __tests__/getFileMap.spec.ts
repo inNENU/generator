@@ -118,25 +118,31 @@ describe(getFileMap, () => {
     },
   );
 
-  it.skipIf(process.platform === "win32")("reads symlinked files but ignores broken links", () => {
-    const dir = makeTempDir();
+  it.skipIf(process.platform === "win32")(
+    "reads symlinked files inside the root and ignores broken or outside links",
+    () => {
+      const dir = makeTempDir();
 
-    try {
-      const root = path.join(dir, "root");
-      const target = path.join(dir, "target.txt");
+      try {
+        const root = path.join(dir, "root");
+        const insideTarget = path.join(root, "inside.txt");
+        const outsideTarget = path.join(dir, "outside.txt");
 
-      mkdirSync(root, { recursive: true });
-      writeFileSync(target, "target", "utf-8");
-      symlinkSync(target, path.join(root, "linked.txt"));
-      symlinkSync(path.join(dir, "missing.txt"), path.join(root, "broken.txt"));
+        mkdirSync(root, { recursive: true });
+        writeFileSync(insideTarget, "inside", "utf-8");
+        writeFileSync(outsideTarget, "outside", "utf-8");
+        symlinkSync(insideTarget, path.join(root, "linked.txt"));
+        symlinkSync(outsideTarget, path.join(root, "outside-linked.txt"));
+        symlinkSync(path.join(dir, "missing.txt"), path.join(root, "broken.txt"));
 
-      expect(getFileMap(root, "txt")).toStrictEqual([
-        { type: "file", filename: "linked.txt", content: "target" },
-      ]);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+        expect(getFileMap(root, "txt")).toStrictEqual([
+          { type: "file", filename: "inside.txt", content: "inside" },
+        ]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("sorts directory entries so the map is deterministic", () => {
     const dir = makeTempDir();

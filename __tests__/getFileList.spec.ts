@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -151,6 +151,124 @@ describe(getFileList, () => {
         expect(files).toContain("sub/deep/nested.txt");
       } finally {
         teardown();
+      }
+    });
+  });
+
+  describe("getFileList ordering", () => {
+    const makeTempDir = (): string => mkdtempSync(path.join(tmpdir(), "getFileList-order-"));
+
+    it("sorts files and directories by code unit instead of readdir order", () => {
+      const dir = makeTempDir();
+
+      try {
+        mkdirSync(path.join(dir, "dir-2"));
+        mkdirSync(path.join(dir, "dir-10"));
+        writeFileSync(path.join(dir, "a.txt"), "");
+        writeFileSync(path.join(dir, "B.txt"), "");
+        writeFileSync(path.join(dir, "2.txt"), "");
+        writeFileSync(path.join(dir, "10.txt"), "");
+        writeFileSync(path.join(dir, "dir-2/a.txt"), "");
+        writeFileSync(path.join(dir, "dir-10/a.txt"), "");
+
+        expect(getFileList(dir, "txt")).toStrictEqual([
+          "10.txt",
+          "2.txt",
+          "B.txt",
+          "a.txt",
+          "dir-10/a.txt",
+          "dir-2/a.txt",
+        ]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("interleaves files and directories by name instead of listing files first", () => {
+      const dir = makeTempDir();
+
+      try {
+        mkdirSync(path.join(dir, "a-dir"));
+        writeFileSync(path.join(dir, "a-dir/x.txt"), "");
+        writeFileSync(path.join(dir, "z.txt"), "");
+
+        expect(getFileList(dir, "txt")).toStrictEqual(["a-dir/x.txt", "z.txt"]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("returns the same order when entries are created in different orders", () => {
+      const first = makeTempDir();
+      const second = makeTempDir();
+      const names = ["c.txt", "a.txt", "b.txt"];
+
+      try {
+        for (const name of names) writeFileSync(path.join(first, name), "");
+        for (const name of names.toReversed()) writeFileSync(path.join(second, name), "");
+
+        expect(getFileList(first, "txt")).toStrictEqual(["a.txt", "b.txt", "c.txt"]);
+        expect(getFileList(second, "txt")).toStrictEqual(["a.txt", "b.txt", "c.txt"]);
+      } finally {
+        rmSync(first, { recursive: true, force: true });
+        rmSync(second, { recursive: true, force: true });
+      }
+    });
+
+    it("accepts multiple extensions and keeps the same case-sensitive rule", () => {
+      const dir = makeTempDir();
+
+      try {
+        writeFileSync(path.join(dir, "a.yml"), "");
+        writeFileSync(path.join(dir, "b.yaml"), "");
+        writeFileSync(path.join(dir, "c.YAML"), "");
+        writeFileSync(path.join(dir, "d.json"), "");
+
+        expect(getFileList(dir, ["yml", "yaml"])).toStrictEqual(["a.yml", "b.yaml"]);
+        expect(getFileList(dir, "yml")).toStrictEqual(["a.yml"]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe.skipIf(process.platform === "win32")("getFileList symbolic links", () => {
+    const makeTempDir = (): string => mkdtempSync(path.join(tmpdir(), "getFileList-link-"));
+
+    it("does not follow self-referential or cyclic directory links", () => {
+      const dir = makeTempDir();
+
+      try {
+        mkdirSync(path.join(dir, "real"));
+        writeFileSync(path.join(dir, "real/page.yml"), "");
+        symlinkSync(dir, path.join(dir, "loop"));
+        symlinkSync(path.join(dir, "real"), path.join(dir, "real/back"));
+
+        expect(getFileList(dir, "yml")).toStrictEqual(["real/page.yml"]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("reads symlinked files inside the root once and ignores outside or broken links", () => {
+      const dir = makeTempDir();
+
+      try {
+        const root = path.join(dir, "root");
+        const outside = path.join(dir, "outside");
+
+        mkdirSync(path.join(root, "sub"), { recursive: true });
+        mkdirSync(outside);
+        writeFileSync(path.join(root, "page.yml"), "");
+        writeFileSync(path.join(outside, "secret.yml"), "");
+        symlinkSync(path.join(root, "page.yml"), path.join(root, "alias.yml"));
+        symlinkSync(path.join(root, "page.yml"), path.join(root, "sub/alias.yml"));
+        symlinkSync(path.join(outside, "secret.yml"), path.join(root, "outside.yml"));
+        symlinkSync(path.join(root, "missing.yml"), path.join(root, "broken.yml"));
+
+        expect(getFileList(root, "yml")).toStrictEqual(["page.yml"]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
       }
     });
   });

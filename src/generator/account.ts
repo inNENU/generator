@@ -4,6 +4,7 @@ import { join } from "upath";
 
 import { createPromiseQueue, getFileList } from "../helpers/index.js";
 import { ValidationError } from "../helpers/validation.js";
+import { YAML_EXTENSIONS } from "../helpers/yamlPath.js";
 import type { QQAccounts, WechatAccountData, WechatAccounts } from "../schema/index.js";
 import { checkQQAccounts, checkWechatAccountData, checkWechatAccounts } from "../schema/index.js";
 
@@ -163,7 +164,7 @@ export const updateAccountFile = async (folder: string, path: string): Promise<v
  * @param folder 文件夹
  */
 export const updateAccountFiles = async (folder: string): Promise<void> => {
-  const fileList = getFileList(folder, "yml");
+  const fileList = getFileList(folder, YAML_EXTENSIONS);
 
   await createPromiseQueue(
     fileList.map((item) => (): Promise<void> => updateAccountFile(folder, item)),
