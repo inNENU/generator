@@ -67,11 +67,35 @@ export interface ResolvedAssetLink {
   suffix: string;
 }
 
+/** 不可作为资源根目录的片段：`.`、`..` 与 Windows 盘符 */
+const invalidAssetRootPattern = /^(?:\.{1,2}|[a-z]:)$/iu;
+
+/**
+ * 判断路径中是否包含以百分号编码的点段（如 `%2e%2e`）
+ *
+ * 这类路径在按 URL 解析时会被还原为 `..`，从而绕过 `..` 检查，因此需要单独拒绝。
+ *
+ * @param value 待判断的路径
+ * @returns 是否包含编码后的点段
+ */
+const hasEncodedDotSegment = (value: string): boolean =>
+  value.split("/").some((segment) => {
+    if (!/%2e/iu.test(segment)) return false;
+
+    try {
+      const decoded = decodeURIComponent(segment);
+
+      return decoded === "." || decoded === "..";
+    } catch {
+      return false;
+    }
+  });
+
 /**
  * 解析站内资源链接
  *
  * 资源链接以 `$` 开头，`$` 后的第一段为资源根目录（如 `$img/cover.png` 的 `img`）。解析时会剥离 `?query` 与 `#hash`、把反斜杠统一为正斜杠并做
- * POSIX 规范化； 空路径、目录路径以及用 `..` 逃出根目录的链接都会返回 `null`。
+ * POSIX 规范化； 空路径、目录路径、根目录为 `.`/`..`/盘符的链接，以及用 `..` 逃出根目录的链接都会返回 `null`。
  *
  * @param link 资源链接
  * @param root 资源根目录；省略时从链接中推断（已知目录的场景可显式传入）
@@ -88,7 +112,7 @@ export const resolveAssetLink = (link: string, root?: string): ResolvedAssetLink
     .replaceAll("\\", "/")
     .replace(/\/+$/u, "");
 
-  if (!normalizedRoot) return null;
+  if (!normalizedRoot || invalidAssetRootPattern.test(normalizedRoot)) return null;
 
   if (body !== normalizedRoot && !body.startsWith(`${normalizedRoot}/`)) return null;
 
@@ -97,7 +121,8 @@ export const resolveAssetLink = (link: string, root?: string): ResolvedAssetLink
   if (
     resolved === normalizedRoot ||
     resolved.endsWith("/") ||
-    !resolved.startsWith(`${normalizedRoot}/`)
+    !resolved.startsWith(`${normalizedRoot}/`) ||
+    hasEncodedDotSegment(resolved)
   )
     return null;
 
@@ -106,6 +131,8 @@ export const resolveAssetLink = (link: string, root?: string): ResolvedAssetLink
 
 /**
  * 检查文件是否存在
+ *
+ * 站内链接会按当前工作目录（cwd）解析，调用方需要先切换到资源仓库根目录。
  *
  * @param link 文件链接
  * @param location 文件所在位置
