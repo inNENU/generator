@@ -95,6 +95,51 @@ describe(generateLyrics, () => {
     }
   });
 
+  it("各类元数据标签静默跳过，只对真正无法解析的行逐行警告并带行号", () => {
+    const fixture = createFixture();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      const lyrics = generate(
+        fixture,
+        [
+          "[ti:测试歌曲]",
+          "[ar:测试歌手]",
+          "[al:测试专辑]",
+          "[by:test]",
+          "[offset:500]",
+          "[re:innenu-generator]",
+          "[ve:1.0]",
+          "[length:03:45]",
+          "[00:01.00]第一行歌词",
+          "[00:02.50]第二行歌词",
+          "[00:xx]坏时间戳",
+        ].join("\n"),
+        "tags.lrc",
+      );
+
+      // 8 行元数据全部静默跳过，歌词输出只受坏时间戳行影响（被跳过）
+      expect(lyrics).toStrictEqual([
+        { time: 1, text: "第一行歌词" },
+        { time: 2.5, text: "第二行歌词" },
+      ]);
+
+      // 只有坏时间戳行触发警告，且带行号
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain("tags.lrc");
+      expect(warnSpy.mock.calls[0]?.[0]).toContain("第 11 行");
+      expect(warnSpy.mock.calls[0]?.[0]).toContain("[00:xx]坏时间戳");
+      expect(warnSpy.mock.calls[0]?.[0]).not.toContain("[ti:测试歌曲]");
+    } finally {
+      logSpy.mockRestore();
+      infoSpy.mockRestore();
+      warnSpy.mockRestore();
+      rmSync(fixture.testDir, { recursive: true, force: true });
+    }
+  });
+
   it("元数据与无法解析的行不产生条目", () => {
     const fixture = createFixture();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -109,7 +154,10 @@ describe(generateLyrics, () => {
       );
 
       expect(lyrics).toStrictEqual([]);
-      expect(warnSpy).toHaveBeenCalledTimes(1);
+      // 两个无法解析的行各警告一次，行号分别为 3、4
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain("第 3 行");
+      expect(warnSpy.mock.calls[1]?.[0]).toContain("第 4 行");
     } finally {
       logSpy.mockRestore();
       infoSpy.mockRestore();
@@ -140,6 +188,28 @@ describe("generateLyrics 输出路径", () => {
     } finally {
       logSpy.mockRestore();
       infoSpy.mockRestore();
+      rmSync(fixture.testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("忽略文件开头的 UTF-8 BOM，首行歌词正常解析", () => {
+    const fixture = createFixture();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      const lyrics = generate(fixture, "\uFEFF[00:01.00]第一行\n[00:02.00]第二行");
+
+      expect(lyrics).toStrictEqual([
+        { time: 1, text: "第一行" },
+        { time: 2, text: "第二行" },
+      ]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      logSpy.mockRestore();
+      infoSpy.mockRestore();
+      warnSpy.mockRestore();
       rmSync(fixture.testDir, { recursive: true, force: true });
     }
   });
