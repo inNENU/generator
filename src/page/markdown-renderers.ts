@@ -21,11 +21,11 @@ import {
   escapeContainerBodySyntax,
   escapeHtml,
   escapeMarkdownLinkLabel,
-  escapeVueInterpolation,
   formatMarkdownDestination,
   getFileLink,
   normalizeInlineText,
 } from "../utils.js";
+import { escapeVueInterpolation } from "../vue-interpolation.js";
 import type { ComponentOptions } from "./schema.js";
 
 /** URL 转换结果 */

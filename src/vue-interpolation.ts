@@ -22,7 +22,7 @@ const vueInterpolationCloseRun = new RegExp(
   "gu",
 );
 const markdownFenceStart = /^ {0,3}(?<fence>`{3,}|~{3,})/u;
-const markdownFenceClose = /^ {0,3}(?:`{3,}|~{3,})[ \t]*$/u;
+const markdownFenceClose = /^ {0,3}(?:`{3,}|~{3,})[ \t]*\r?$/u;
 const isValidHtmlComment = (comment: string): boolean => {
   const body = comment.slice(4, -3);
 
@@ -37,11 +37,11 @@ const isValidHtmlComment = (comment: string): boolean => {
   );
 };
 const markdownHtmlTag =
-  /<\/?[A-Za-z][\w-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/gu;
+  /<\/[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/gu;
 const htmlBlockTagSource =
   "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul";
 const htmlTagOnlyLine =
-  /^ {0,3}<\/?[A-Za-z][\w-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>\s*$/u;
+  /^ {0,3}(?:<\/[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w:.-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>)\s*$/u;
 const htmlBlockStart = new RegExp(
   String.raw`^ {0,3}<(?<closing>/)?(?<tag>${htmlBlockTagSource})\b`,
   "iu",
@@ -51,6 +51,7 @@ const htmlCommentStart = /^ {0,3}<!--/u;
 const htmlProcessingStart = /^ {0,3}<\?/u;
 const htmlCdataStart = /^ {0,3}<!\[CDATA\[/u;
 const htmlDeclarationStart = /^ {0,3}<![A-Z]/u;
+const htmlRawTextStart = /<(?<tag>textarea|script|style|title|xmp|iframe|noembed|noframes)\b/iu;
 
 /**
  * 读取行首围栏标记
@@ -135,6 +136,7 @@ const collectListItemFenceLines = (lines: string[], htmlBlockLines: Set<number>)
     if (!fence) continue;
 
     result.add(index);
+    let closed = false;
 
     for (let next = index + 1; next < lines.length; next += 1) {
       const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
@@ -149,8 +151,14 @@ const collectListItemFenceLines = (lines: string[], htmlBlockLines: Set<number>)
         for (let cursor = index; cursor <= next; cursor += 1) result.add(cursor);
 
         index = next;
+        closed = true;
         break;
       }
+    }
+
+    if (!closed) {
+      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
+      break;
     }
   }
 
@@ -177,6 +185,7 @@ const collectBlockquoteFenceLines = (lines: string[], htmlBlockLines: Set<number
     if (!fence) continue;
 
     result.add(index);
+    let closed = false;
 
     for (let next = index + 1; next < lines.length; next += 1) {
       const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
@@ -191,8 +200,14 @@ const collectBlockquoteFenceLines = (lines: string[], htmlBlockLines: Set<number
         for (let cursor = index; cursor <= next; cursor += 1) result.add(cursor);
 
         index = next;
+        closed = true;
         break;
       }
+    }
+
+    if (!closed) {
+      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
+      break;
     }
   }
 
@@ -373,7 +388,32 @@ const findCodeSpanClose = (content: string, from: number, markerLength: number):
 };
 
 /**
- * 按源码顺序遮蔽行内代码与 HTML 注释
+ * 查找下一个未被转义的 HTML 标签
+ *
+ * @param content 单行内容
+ * @param from 起始位置
+ * @returns 标签起始位置与长度，找不到时为 null
+ */
+const findHtmlTag = (content: string, from: number): { index: number; length: number } | null => {
+  markdownHtmlTag.lastIndex = from;
+
+  let match = markdownHtmlTag.exec(content);
+
+  while (match) {
+    if (!isEscaped(content, match.index)) return { index: match.index, length: match[0].length };
+
+    markdownHtmlTag.lastIndex = match.index + 1;
+    match = markdownHtmlTag.exec(content);
+  }
+
+  return null;
+};
+
+const splitVueBraceRun = (run: string, atom: RegExp): string =>
+  run.replaceAll(atom, "$&<!-- -->").replace(/<!-- -->$/u, "");
+
+/**
+ * 按源码顺序遮蔽行内代码、HTML 注释与 HTML 标签
  *
  * Markdown 先解析代码段、再解析行内 HTML。这里按同一顺序扫描：反引号在注释之前时先成对代码， 注释在反引号之前时先整体遮蔽注释，避免注释里的反引号破坏代码段边界。
  *
@@ -382,55 +422,85 @@ const findCodeSpanClose = (content: string, from: number, markerLength: number):
  * @param stashComment 注释遮蔽函数
  * @returns 遮蔽后的内容
  */
+// oxlint-disable-next-line eslint/max-statements -- 顺序扫描的三种分支集中在此，拆分只会增加状态传递
 const maskInlineSyntax = (
   content: string,
   stash: (value: string) => string,
   stashComment: (comment: string) => string,
 ): string => {
+  // 形如 `](` 的残缺链接不会被 markdown-it 识别，若其中反引号与正文配对会把插值藏进代码段；
+  // 这里先拆开其中的花括号，宁可让该行的行内代码失去 fidelity，也不留下模板执行面。
+  const source = content.includes("](")
+    ? content
+        .replaceAll(vueInterpolationOpenRun, (run) =>
+          splitVueBraceRun(run, vueInterpolationOpenAtom),
+        )
+        .replaceAll(vueInterpolationCloseRun, (run) =>
+          splitVueBraceRun(run, vueInterpolationCloseAtom),
+        )
+    : content;
   let result = "";
   let index = 0;
 
-  while (index < content.length) {
-    const codeStart = findCodeSpanStart(content, index);
-    const commentStart = content.indexOf("<!--", index);
+  while (index < source.length) {
+    const codeStart = findCodeSpanStart(source, index);
+    const commentStart = source.indexOf("<!--", index);
+    const tag = findHtmlTag(source, index);
 
     if (
       commentStart !== -1 &&
-      !isEscaped(content, commentStart) &&
-      (codeStart === -1 || commentStart < codeStart)
+      !isEscaped(source, commentStart) &&
+      (codeStart === -1 || commentStart < codeStart) &&
+      (!tag || commentStart < tag.index)
     ) {
-      const commentEnd = content.indexOf("-->", commentStart + 4);
+      const commentEnd = source.indexOf("-->", commentStart + 4);
 
       if (commentEnd === -1) {
-        result += content.slice(index);
+        result += source.slice(index);
         break;
       }
 
-      const comment = content.slice(commentStart, commentEnd + 3);
+      const comment = source.slice(commentStart, commentEnd + 3);
 
-      result += content.slice(index, commentStart);
+      result += source.slice(index, commentStart);
       result += isValidHtmlComment(comment) ? stashComment(comment) : comment;
       index = commentEnd + 3;
       continue;
     }
 
+    // 标签与代码段按源码顺序处理：代码段先出现时整段保留，属性中的反引号不会破坏代码边界。
+    if (tag && (codeStart === -1 || tag.index < codeStart)) {
+      result += source.slice(index, tag.index);
+      result += stash(source.slice(tag.index, tag.index + tag.length));
+      index = tag.index + tag.length;
+      continue;
+    }
+
     if (codeStart === -1) {
-      result += content.slice(index);
+      result += source.slice(index);
       break;
     }
 
-    const openEnd = getBacktickRunEnd(content, codeStart);
+    const openEnd = getBacktickRunEnd(source, codeStart);
     const markerLength = openEnd - codeStart;
-    const closeStart = findCodeSpanClose(content, openEnd, markerLength);
+    const closeStart = findCodeSpanClose(source, openEnd, markerLength);
+
+    // 花括号拆分后 source 与 content 长度不同，但这里统一使用 source 的坐标；
+    // 仍保留防御：空游标或倒退时前进一位，避免任何索引错位导致死循环。
+    if (markerLength <= 0) {
+      result += source.slice(index, codeStart + 1);
+      index = codeStart + 1;
+      continue;
+    }
 
     if (closeStart === -1) {
-      result += content.slice(index, openEnd);
+      result += source.slice(index, openEnd);
       index = openEnd;
       continue;
     }
 
-    result += content.slice(index, codeStart);
-    result += stash(content.slice(codeStart, closeStart + markerLength));
+    result += source.slice(index, codeStart);
+    result += stash(source.slice(codeStart, closeStart + markerLength));
     index = closeStart + markerLength;
   }
 
@@ -458,6 +528,9 @@ const collectHtmlBlockLines = (lines: string[]): Set<number> => {
         index = closeIndex;
         continue;
       }
+
+      // 未闭合围栏会一直延续到容器末尾，后面的内容不是 HTML 块。
+      break;
     }
 
     const htmlEnd = getHtmlBlockEnd(lines, index);
@@ -467,6 +540,132 @@ const collectHtmlBlockLines = (lines: string[]): Set<number> => {
     for (let next = index; next <= htmlEnd; next += 1) result.add(next);
 
     index = htmlEnd;
+  }
+
+  return result;
+};
+
+/** Markdown 链接 / 图片（含可选 title；允许反引号与花括号，交给 markdown-it 决定是否成链） */
+const markdownLinkOrImage =
+  /!?\[[^\]\n]*\]\((?:<[^<>\n]*>|[^\s()'"]*)(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^()\n]*\)))?\s*\)/gu;
+
+/** Markdown autolink（scheme URL 或邮箱；允许反引号与花括号） */
+const markdownAutolink = /<(?:[A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*|[^\s<>@]+@[^\s<>]+)>/gu;
+
+/** 表格分隔行 */
+const markdownTableDelimiter = /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/u;
+
+/**
+ * 记录 GFM 表格各行的行号
+ *
+ * Markdown-it 的表格解析按单元格独立处理行内内容，反引号不会跨单元格配对； 这里的行内扫描也必须按单元格切分，否则会把 `{{ }}` 误当成代码内容放过。
+ *
+ * @param lines 全部行
+ * @returns 表格行号集合
+ */
+const collectTableBlockLines = (lines: string[]): Set<number> => {
+  const result = new Set<number>();
+
+  for (let index = 1; index < lines.length; index += 1) {
+    if (!markdownTableDelimiter.test(lines[index])) continue;
+
+    const start = index - 1;
+
+    if (start < 0 || !lines[start].includes("|")) continue;
+
+    let end = index;
+
+    while (end + 1 < lines.length && lines[end + 1].trim() !== "" && lines[end + 1].includes("|"))
+      end += 1;
+
+    for (let next = start; next <= end; next += 1) result.add(next);
+
+    index = end;
+  }
+
+  return result;
+};
+
+/**
+ * 按未转义的 `|` 切分表格行
+ *
+ * @param line 表格行
+ * @returns 单元格片段
+ */
+const splitTableRow = (line: string): string[] => {
+  const cells: string[] = [];
+  let current = "";
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+
+    if (char === "|" && !isEscaped(line, index)) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+
+  return cells;
+};
+
+/**
+ * 标记行首 HTML 注释块所在的行
+ *
+ * 注释块里的花括号不能用插入注释的方式拆开（会提前终结注释或泄漏注释内容）， 需要改写为字符引用。
+ *
+ * @param lines 全部行
+ * @returns 注释块行号集合
+ */
+const collectHtmlCommentLines = (lines: string[]): Set<number> => {
+  const result = new Set<number>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!htmlCommentStart.test(stripBlockquotePrefix(lines[index]))) continue;
+
+    const end = findLineWith(lines, index, "-->");
+
+    for (let next = index; next <= end; next += 1) result.add(next);
+
+    index = end;
+  }
+
+  return result;
+};
+
+/**
+ * 标记原始文本元素所在的行
+ *
+ * `textarea` / `script` / `style` / `title` 等元素内部按 HTML 规则是文本，标签样式的字符串不会成为元素或属性， 不能按标签遮蔽其中的花括号。
+ *
+ * @param lines 全部行
+ * @returns 原始文本元素行号
+ */
+const collectHtmlRawTextLines = (lines: string[]): Set<number> => {
+  const result = new Set<number>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const start = htmlRawTextStart.exec(stripBlockquotePrefix(lines[index]));
+
+    if (!start?.groups?.tag) continue;
+
+    const close = new RegExp(String.raw`</${start.groups.tag}\s*>`, "iu");
+    let end = lines.length - 1;
+
+    for (let next = index; next < lines.length; next += 1) {
+      if (close.test(stripBlockquotePrefix(lines[next]))) {
+        end = next;
+        break;
+      }
+    }
+
+    for (let cursor = index; cursor <= end; cursor += 1) result.add(cursor);
+
+    index = end;
   }
 
   return result;
@@ -508,9 +707,14 @@ const maskFenceBlocks = (
     const closeIndex = findFenceClose(lines, index, fence);
 
     if (closeIndex === -1) {
-      // 未闭合的围栏只是普通文本，不能当作代码放过其中的插值。
-      result.push(line);
-      continue;
+      // markdown-it 会把未闭合围栏一直当作代码；这里标记到末尾并一律拆开花括号，
+      // 不按 v-pre 保留，避免围栏之后的文本被误当成代码。
+      for (let next = index; next < lines.length; next += 1) {
+        fenceLines.add(next);
+        result.push(lines[next]);
+      }
+
+      break;
     }
 
     const protectedByVPre = hasFenceVPre(fence.info);
@@ -549,33 +753,58 @@ const maskMarkdownSyntax = (
     stash(comment.replaceAll("{", "&#123;").replaceAll("}", "&#125;"));
   const lines = content.split("\n");
   const htmlBlockLines = collectHtmlBlockLines(lines);
+  const htmlCommentLines = collectHtmlCommentLines(lines);
+  const rawTextLines = collectHtmlRawTextLines(lines);
+  const tableBlockLines = collectTableBlockLines(lines);
   const listFenceLines = collectListItemFenceLines(lines, htmlBlockLines);
   const blockquoteFenceLines = collectBlockquoteFenceLines(lines, htmlBlockLines);
   const fenceResult = maskFenceBlocks(lines, htmlBlockLines, listFenceLines, stash);
+  const isCodeContext = (index: number, line: string): boolean =>
+    listFenceLines.has(index) ||
+    blockquoteFenceLines.has(index) ||
+    fenceResult.fenceLines.has(index) ||
+    isIndentedCodeLine(line);
   const tagMasked = fenceResult.lines
     .map((line, index) =>
-      listFenceLines.has(index) ||
-      blockquoteFenceLines.has(index) ||
-      fenceResult.fenceLines.has(index) ||
-      isIndentedCodeLine(line)
-        ? line
-        : line.replaceAll(markdownHtmlTag, (match: string, offset: number) =>
+      htmlBlockLines.has(index) && !rawTextLines.has(index) && !isCodeContext(index, line)
+        ? line.replaceAll(markdownHtmlTag, (match: string, offset: number) =>
             isEscaped(line, offset) ? match : stash(match),
-          ),
+          )
+        : line,
     )
     .join("\n");
   // 注释与行内代码按源码顺序处理，避免注释里的反引号与正文反引号错误配对。
   const masked = tagMasked
     .split("\n")
-    .map((line, index) =>
-      htmlBlockLines.has(index) ||
-      listFenceLines.has(index) ||
-      blockquoteFenceLines.has(index) ||
-      fenceResult.fenceLines.has(index) ||
-      isIndentedCodeLine(line)
-        ? line
-        : maskInlineSyntax(line, stash, stashComment),
-    )
+    .map((line, index) => {
+      if (htmlCommentLines.has(index))
+        // 注释本身不可见，实体编码后整体遮蔽，避免后续把实体再拆成嵌套注释。
+        return stash(line.replaceAll("{", "&#123;").replaceAll("}", "&#125;"));
+
+      if (htmlBlockLines.has(index) || rawTextLines.has(index) || isCodeContext(index, line))
+        return line;
+
+      // 先遮蔽真实链接（destination/title）与 autolink，再做行内代码配对：
+      // markdown-it 不把它们当作行内内容，其中的反引号不能与正文反引号配对。
+      const withoutLinks = line
+        .replaceAll(markdownLinkOrImage, (match: string, offset: number) => {
+          if (isEscaped(line, offset)) return match;
+
+          // 只遮蔽 destination/title；标签文字仍要参与花括号中和。
+          const destination = match.indexOf("](") + 1;
+
+          return match.slice(0, destination) + stash(match.slice(destination));
+        })
+        .replaceAll(markdownAutolink, (match: string, offset: number) =>
+          isEscaped(line, offset) || /[{}]/u.test(match) ? match : stash(match),
+        );
+
+      return tableBlockLines.has(index)
+        ? splitTableRow(withoutLinks)
+            .map((cell) => maskInlineSyntax(cell, stash, stashComment))
+            .join("|")
+        : maskInlineSyntax(withoutLinks, stash, stashComment);
+    })
     .join("\n");
 
   const restore = (value: string): string => {
@@ -604,9 +833,6 @@ const maskMarkdownSyntax = (
  * @param atom 单个花括号（含实体 / 转义形式）
  * @returns 拆开后的内容
  */
-const splitVueBraceRun = (run: string, atom: RegExp): string =>
-  run.replaceAll(atom, "$&<!-- -->").replace(/<!-- -->$/u, "");
-
 /**
  * 中和 Vue 插值
  *

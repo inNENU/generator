@@ -397,8 +397,6 @@ export const escapeHtml = (content: string): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-export { escapeVueInterpolation } from "./vue-interpolation.js";
-
 /**
  * 将标题等行内文本压成单行
  *
