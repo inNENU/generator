@@ -31,21 +31,27 @@ export const getWechatAccessToken = async (appid: string, secret: string): Promi
   if (!response.ok)
     throw new Error(`获取微信 access_token 失败：HTTP ${response.status} ${response.statusText}`);
 
-  let data: WechatAccessTokenResponse;
+  let data: unknown;
 
   try {
-    data = (await response.json()) as WechatAccessTokenResponse;
+    data = await response.json();
   } catch {
     throw new Error("获取微信 access_token 失败：响应不是有效的 JSON");
   }
 
-  if (typeof data.errcode === "number" && data.errcode !== 0) {
+  // 先确认响应体是普通对象，避免 null / 字符串 / 数组时读取字段抛出 TypeError
+  if (typeof data !== "object" || data == null || Array.isArray(data))
+    throw new Error("获取微信 access_token 失败：响应不是有效的 JSON 对象");
+
+  const { access_token: accessToken, errcode, errmsg } = data as WechatAccessTokenResponse;
+
+  if (typeof errcode === "number" && errcode !== 0) {
     throw new Error(
-      `获取微信 access_token 失败：微信返回错误码 ${data.errcode}（${data.errmsg ?? "未提供错误信息"}）`,
+      `获取微信 access_token 失败：微信返回错误码 ${errcode}（${errmsg ?? "未提供错误信息"}）`,
     );
   }
 
-  if (!data.access_token) throw new Error("获取微信 access_token 失败：响应中缺少 access_token");
+  if (!accessToken) throw new Error("获取微信 access_token 失败：响应中缺少 access_token");
 
-  return data.access_token;
+  return accessToken;
 };
