@@ -156,26 +156,15 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
       phase = "config";
       // desc 会逐行加上 `> ` 前缀并用 `>` 分隔行拼接，这会改变引用块/列表围栏的嵌套边界。
       // 若 desc 自身带容器前缀的围栏，必须按最终 Markdown 结构中和；否则保持原有单行处理语义。
-      const hasContainerFence = desc.split("\n").some((line) => {
-        const stripped = line.replace(/^(?: {0,3}>[ \t]?)+/u, "");
-        return (
-          /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+(?:```|~~~)/u.test(stripped) ||
-          (/^(?: {0,3}>[ \t]?)+/u.test(line) && /(?:```|~~~)/u.test(stripped))
-        );
-      });
-
+      // desc 会逐行加上 `> ` 前缀并用 `>` 分隔行拼接；必须先按最终结构组装，再中和插值，
+      // 否则跨行行内代码会在补入的 `>` 分隔行处被 markdown-it 拆成两个段落。
       blocks.push(
-        hasContainerFence
-          ? escapeVueInterpolation(
-              desc
-                .split("\n")
-                .map((line) => `> ${line}`)
-                .join("\n>\n"),
-            )
-          : escapeVueInterpolation(desc)
-              .split("\n")
-              .map((line) => `> ${line}`)
-              .join("\n>\n"),
+        escapeVueInterpolation(
+          desc
+            .split("\n")
+            .map((line) => `> ${line}`)
+            .join("\n>\n"),
+        ),
       );
       phase = "content";
     }

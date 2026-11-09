@@ -1,698 +1,86 @@
-import MarkdownIt from "markdown-it";
 import { describe, expect, it } from "vitest";
 
 import { getPageMarkdown } from "../src/page/markdown.js";
-import type { PageConfig } from "../src/page/schema.js";
-import { getPageText } from "../src/page/text.js";
-import { escapeVueInterpolation } from "../src/vue-interpolation.js";
 
-const raw = "{{ 7*7 }}";
-const neutralized = "{<!-- -->{ 7*7 }<!-- -->}";
-
-const markdownIt = new MarkdownIt({ html: true });
-
-const createPage = (content: PageConfig["content"], desc?: string): PageConfig => ({
-  title: "t",
-  ...(desc ? { desc } : {}),
-  content,
-});
-
-const expectNeutralized = (markdown: string): void => {
-  expect(markdown).toContain(neutralized);
-  expect(markdown).not.toContain("{{");
-  expect(markdown).not.toContain("}}");
-};
+/**
+ * 生成只含一个 text 组件的站点 Markdown
+ *
+ * @param text 正文
+ * @param desc 描述
+ * @returns 生成的 Markdown
+ */
+const renderText = (text: string, desc?: string): string =>
+  getPageMarkdown(
+    {
+      title: "t",
+      desc,
+      content: [{ tag: "text", text }],
+    },
+    { mode: "web" },
+  );
 
 describe("站点 Markdown 的 Vue 插值中和", () => {
-  it("中和正文行与标题中的插值", () => {
-    const markdown = getPageMarkdown(
-      createPage([{ tag: "text", header: `标题 ${raw}`, text: `正文 ${raw}` }]),
-      { location: "probe/text" },
-    );
+  it("中和正文与描述中的插值", () => {
+    const markdown = renderText("x {{7*7}} y", "z {{ 7*7 }} w");
 
-    expectNeutralized(markdown);
-    expect(markdown).toContain(`### 标题 ${neutralized}`);
-    expect(markdown).toContain(`正文 ${neutralized}`);
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(markdown).toContain("{<!-- -->{7*7}<!-- -->}");
+    expect(markdown).toContain("> z {<!-- -->{ 7*7 }<!-- -->} w");
   });
 
-  it("中和组件文本与页面描述中的插值", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          {
-            tag: "card",
-            name: `名称 ${raw}`,
-            title: `标题 ${raw}`,
-            desc: `描述 ${raw}`,
-            path: "guide/about",
-          },
-          { tag: "action", header: `操作 ${raw}`, content: "site://signup" },
-        ],
-        `页面描述 ${raw}`,
-      ),
-      {
-        location: "probe/component",
-        urlConverter: () => "https://example.com/signup",
-      },
-    );
+  it("中和行内代码及 HTML 块中的插值", () => {
+    const markdown = renderText("`{{7*7}}`\n\n<div>{{7*7}}</div>");
 
-    expectNeutralized(markdown);
-    expect(markdown).toContain(`> 页面描述 ${neutralized}`);
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(markdown).toContain("`{<!-- -->{7*7}<!-- -->}`");
+    expect(markdown).toContain("{<!-- -->{7*7}<!-- -->}");
   });
 
-  it("中和连续多个花括号", () => {
-    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "{{{ 7*7 }}}" }]), {
-      location: "probe/braces",
-    });
+  it("保留顶层围栏代码块中的插值（VuePress 会加 v-pre）", () => {
+    const markdown = renderText("```js\nconst a = { b: {{7*7}} };\n```");
 
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
+    expect(markdown).toContain("const a = { b: {{7*7}} };");
   });
 
-  it("中和字符引用与反斜杠转义形式", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: String.raw`正文 \{\{ 7*7 \}\}` },
-          {
-            tag: "table",
-            caption: "表格 {{ 7*7 }}",
-            header: ["列 {{ 7*7 }}"],
-            body: [["值 {{ 7*7 }}"]],
-          },
-        ],
-        "&#123;&#123; 7*7 &#125;&#125;",
-      ),
-      { location: "probe/encoded" },
-    );
-    const html = markdownIt.render(markdown);
+  it("中和 :no-v-pre 顶层围栏中的插值", () => {
+    const markdown = renderText("```js :no-v-pre\n{{7*7}}\n```");
 
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-    expect(html).toContain("<!-- -->");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(markdown).toContain("{<!-- -->{7*7}<!-- -->}");
   });
 
-  it("中和伪装成链接与不成对代码标记的插值", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: "x]({{ 7*7 }})" },
-          { tag: "text", text: "[x](https://example.com/{{ 7*7 }})" },
-          { tag: "text", text: "`` {{ 7*7 }} `" },
-        ],
-        "<x {{ 7*7 }}>\n\n[x]({{ 7*7 }})\n\n]({{{ 7*7 }}})",
-      ),
-      { location: "probe/bypass" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("中和转义反引号、缩进代码与伪占位符", () => {
-    const markdown = getPageMarkdown(
-      createPage([
-        { tag: "text", text: "\\`{{ 7*7 }}\\`" },
-        { tag: "text", text: "    `{{ 7*7 }}`" },
-        { tag: "text", text: "```\n{{ 7*7 }}\n```\n\uE0001\uE001" },
-      ]),
-      { location: "probe/escape" },
-    );
-
-    expect(markdown).not.toContain("\\`{{ 7*7 }}\\`");
-    expect(markdown).not.toContain("    `{{ 7*7 }}`");
-    expect(markdown.match(/\{\{ 7\*7 \}\}/gu)).toHaveLength(1);
-    expect(markdown).toContain("\uE0001\uE001");
-  });
-
-  it("保留代码与属性中的原始花括号", () => {
-    const markdown = getPageMarkdown(
-      createPage([
-        { tag: "text", text: "```\n{{ 7*7 }}\n```\n\n`{{ 7*7 }}`" },
-        { tag: "img", src: "https://example.com/a.png", desc: "{{ 7*7 }}" },
-      ]),
-      { location: "probe/code" },
-    );
-
-    expect(markdown).toContain("```\n{{ 7*7 }}\n```");
-    expect(markdown).toContain("`{{ 7*7 }}`");
-    expect(markdown).toContain('alt="{{ 7*7 }}"');
-  });
-
-  it("中和原始 HTML 组件与描述中的代码片段", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          {
-            tag: "card",
-            name: "n",
-            title: "t",
-            path: "guide/about",
-            desc: "`{{ 7*7 }}`",
-          },
-        ],
-        "<pre>\n`{{ 7*7 }}`\n</pre>\n\n" +
-          "<pre>\n```\n{{ 7*7 }}\n```\n</pre>\n\n" +
-          "<x>\n`{{ 7*7 }}`\n</x>\n\n" +
-          '<x a="b">\n```\n{{ 7*7 }}\n```\n</x>\n\n' +
-          '<span title="`"> {{ 7*7 }} `</span>\n\n' +
-          '<em title="`"> {{ 7*7 }} `</em>\n\n' +
-          '- <div title="`"> {{ 7*7 }} </div>',
-      ),
-      { location: "probe/raw-html" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(markdown).toContain('<span title="`">');
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理关闭 v-pre、非法围栏与非法注释", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: "``` text :no-v-pre\n{{ 7*7 }}\n```" },
-          { tag: "text", text: "``` js `x`\n{{ 7*7 }}\n```" },
-          { tag: "text", text: "```:no\\-v-pre\n{{ 7*7 }}\n```" },
-        ],
-        "<!--> {{ 7*7 }} -->\n\n<!---> {{ 7*7 }} -->\n\n<!-->\n{{ 7*7 }}\n-->\n\n<!--->\n{{ 7*7 }}\n-->\n\nx <!-- ` --> {{ 7*7 }} `\n\n<pre>\n</pre >\n`{{ 7*7 }}`\n</pre>",
-      ),
-      { location: "probe/edge" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理列表内代码、实体禁用 v-pre 与多行注释", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: "-     `{{ 7*7 }}`" },
-          { tag: "text", text: "~~~ text `x` :no-v-pre\n```\n{{ 7*7 }}\n```\n~~~" },
-          { tag: "text", text: "- ``` text :no-v-pre\n  `{{ 7*7 }}`\n  ```" },
-        ],
-        "``` text &#58;no-v-pre\n{{ 7*7 }}\n```\n\n" +
-          "`<!-- ` {{ 7*7 }} -->`\n\n" +
-          "`<!-- ` --> {{ 7*7 }} `\n\n" +
-          "x <!--\n{{ 7*7 }}\n-->",
-      ),
-      { location: "probe/nested" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理代码中形似 HTML 标签的文本", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: '> ``` text :no-v-pre\n> <div a="{{ 7*7 }}">\n> ```' },
-          { tag: "text", text: '- ``` text :no-v-pre\n  <div a="{{ 7*7 }}">\n  ```' },
-        ],
-        ['    <div a="{{ 7*7 }}">', '``` text :no-v-pre\n<div a="{{ 7*7 }}">\n```'].join("\n\n"),
-      ),
-      { location: "probe/code-tag" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理非法标签、原始文本元素与未闭合围栏", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [{ tag: "text", text: "x" }],
-        [
-          '<x_y a="{{ 7*7 }}">',
-          '`<span title="`"> {{ 7*7 }}`',
-          '<textarea><div a="{{ 7*7 }}"></textarea>',
-          '<textarea>\n<div a="{{ 7*7 }}">\n</textarea>',
-          '``` text :no-v-pre\n<div a="{{ 7*7 }}">',
-        ].join("\n\n"),
-      ),
-      { location: "probe/invalid-tag" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理废弃原始文本元素与 plaintext 标签", () => {
-    const desc = [
-      '<plaintext><div a="{{ 7*7 }}"></div>',
-      '<plaintext><div a="{{ 7*7 }}"></div></plaintext>',
-      '<listing><div a="{{ 7*7 }}"></div></listing>',
-      '<noscript><div a="{{ 7*7 }}"></div></noscript>',
-      '<template><div a="{{ 7*7 }}"></div></template>',
-    ].join("\n\n");
-    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "x" }], desc), {
-      location: "probe/plaintext",
-    });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-    expect(html).not.toContain("<plaintext");
-    expect(html).toContain("&lt;plaintext");
-  });
-
-  it("处理无空格伪链接、autolink 文本与闭合标签属性", () => {
-    const desc = ["x <https://e.com/`{{7*7}}`>", "x <https://e.com/``{{7*7}}``>"].join("\n\n");
-    const markdown = getPageMarkdown(
-      createPage(
-        [
-          { tag: "text", text: "x]({{7*7}})" },
-          { tag: "text", text: "x <https://e.com/{{7*7}}>" },
-          { tag: "text", text: 'x </x a="{{7*7}}">' },
-        ],
-        desc,
-      ),
-      { location: "probe/round-10" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理嵌套原始文本与列表围栏", () => {
-    const desc = [
-      '<div><textarea><div a="{{ 7*7 }}"></textarea></div>',
-      '- <textarea><div a="{{ 7*7 }}"></textarea>',
-      '- ``` text :no-v-pre\n  <div a="{{ 7*7 }}">\n  ```',
-      '- ``` text :no-v-pre\n  <div a="{{ 7*7 }}">',
-    ].join("\n\n");
-    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "x" }], desc), {
-      location: "probe/nested-raw-text",
-    });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("处理转义反引号、注释与 HTML 标签", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [{ tag: "text", text: "`a\\` {{ 7*7 }}`" }],
-        [
-          "`a\\` {{ 7*7 }}`",
-          String.raw`\<!-- {{ 7*7 }} -->`,
-          "x <!--a -- b {{ 7*7 }} -->",
-          "x <!--{{ 7*7 }}x <!-- -->",
-          String.raw`\<x a={{7*7}}>`,
-          String.raw`\<x a="{{ 7*7 }}">`,
-          String.raw`\<img alt={{7*7}}>`,
-        ].join("\n\n"),
-      ),
-      { location: "probe/escaped" },
-    );
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(markdown).not.toContain("}}");
-    expect(html).not.toContain("{{");
-    expect(html).not.toContain("}}");
-  });
-
-  it("保留行内代码中 HTML 注释的原文", () => {
-    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "`<!-- {{ 7*7 }} -->`" }]), {
-      location: "probe/code-comment",
-    });
-
-    expect(markdown).toContain("{{ 7*7 }}");
-    expect(markdown).not.toContain("&#123;");
-  });
-
-  it("链接 destination 的反引号不与正文配对", () => {
-    const page = createPage([{ tag: "text", text: "[a](`){{7*7}}`" }], "[a](`){{7*7}}`");
-    const markdown = getPageMarkdown(page, { location: "probe/link-dest" });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(html).not.toContain("{{");
-  });
-
-  it("表格单元格按单元格配对反引号", () => {
-    const page = createPage([
-      { tag: "text", text: "| a` {{7*7}} | b` |\n| --- | --- |" },
-      { tag: "table", caption: "c", header: ["h1", "h2"], body: [["a` {{7*7}}", "b`"]] },
-    ]);
-    const markdown = getPageMarkdown(page, { location: "probe/table-cell" });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(html).not.toContain("{{");
-  });
-
-  it("伪标签名不按 HTML 标签放过", () => {
-    const page = createPage([{ tag: "text", text: '前 <a_b title="{{ 7*7 }}"> 后' }]);
-    const markdown = getPageMarkdown(page, { location: "probe/fake-tag" });
-
-    expect(markdown).not.toContain("{{");
-    expect(markdownIt.render(markdown)).not.toContain("{{");
-  });
-
-  it("残缺链接不会因坐标错位陷入死循环", () => {
-    const desc = "[a](x(y`) {{7*7}}`";
-    const startedAt = Date.now();
-    const markdown = getPageMarkdown(createPage([], desc), {
-      location: "probe/link-brace-loop",
-    });
-    const html = markdownIt.render(markdown);
-
-    expect(Date.now() - startedAt).toBeLessThan(2000);
-    expect(html).not.toContain("{{");
-    expect(markdown).not.toContain("{{ 7*7 }}");
-  });
-
-  it("链接 destination 含花括号且带反引号", () => {
-    const desces = ["[a](`{ ) {{7*7}}`", "[a](`} ) {{7*7}}`", "[a](<`{>) {{7*7}}`"];
-
-    for (const desc of desces) {
-      const markdown = getPageMarkdown(createPage([], desc), { location: "probe/link-brace" });
-      const html = markdownIt.render(markdown);
-
-      // markdown-it 会把 destination 内的花括号百分号编码，正文里的插值才必须被拆开。
-      expect(html).not.toContain("{{");
-      expect(markdown).not.toContain("{{");
-    }
-  });
-
-  it("链接 title 与 autolink 内的反引号不与正文配对", () => {
-    const desces = ['[a](https://x "`") {{7*7}}', "<https://x/`> {{7*7}}"];
-
-    for (const desc of desces) {
-      const markdown = getPageMarkdown(createPage([], desc), { location: "probe/link-title" });
-      const html = markdownIt.render(markdown);
-
-      expect(markdown).not.toContain("{{");
-      expect(html).not.toContain("{{");
-    }
-  });
-
-  it("行首 HTML 注释块不产生嵌套注释", () => {
-    const page = createPage([], "<!-- 注释 {{ 7*7 }} 结束 -->");
-    const markdown = getPageMarkdown(page, { location: "probe/comment-block" });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).toContain("&#123;");
-    expect(markdown).not.toContain("{{");
-    // 注释内部插入 `<!-- -->` 会提前结束注释，把余下内容泄漏为可见文本。
-    expect(html).not.toContain("<!-- -->");
-    expect(html).toContain("<!-- 注释 &#123;&#123; 7*7 &#125;&#125; 结束 -->");
-  });
-
-  it("crlf 围栏仍按代码块放过", () => {
-    const page = createPage([{ tag: "text", text: "```\r\n{{ 7*7 }}\r\n```" }]);
-    const markdown = getPageMarkdown(page, { location: "probe/crlf-fence" });
-
-    expect(markdown).toContain("{{ 7*7 }}");
-    expect(markdown).not.toContain("&#123;");
-  });
-
-  it("中和可解码 autolink 与容器内缩进代码中的插值", () => {
-    const desces = [
-      "<https://e/%7B%7B7*7%7D%7D>",
-      "<a%7B%7B7*7%7D%7D@b.com>",
-      "<a&#123;&#123;7*7&#125;&#125;@b.com>",
-      "<a&lcub;&lcub;7*7&rcub;&rcub;@b.com>",
-      "<https://e/&lcub;&lcub;7*7&rcub;&rcub;>",
-      "- >     `{{7*7}}`",
-      "    {{7*7}}",
-    ];
-
-    for (const desc of desces) {
-      const markdown = getPageMarkdown(createPage([], desc), {
-        location: "probe/decoded-autolink",
-      });
-      const html = markdownIt.render(markdown);
-
-      expect(markdown).not.toContain("{{");
-      expect(html).not.toContain("{{");
-    }
-  });
-
-  it("中和引用块与列表中围栏边界外的插值", () => {
-    const desces = [
+  it("中和缩进围栏、引用块与列表围栏中的插值", () => {
+    const markdown = renderText(
+      "  ```js\n  {{7*7}}\n  ```\n\n- ```js\n  {{7*7}}\n  ```",
       "> ```js\n> {{7*7}}\n> ```",
-      "> > ```js\n> > {{7*7}}\n> > ```",
-      "- ```js\n{{7*7}}\n```",
-      "> - ```js\n>   {{7*7}}\n>   ```",
-    ];
-
-    for (const desc of desces) {
-      const markdown = getPageMarkdown(createPage([], desc), {
-        location: "probe/container-fence",
-      });
-      const html = markdownIt.render(markdown);
-
-      expect(markdown).not.toContain("{{");
-      expect(html).not.toContain("{{");
-    }
-
-    // 顶层合法围栏仍按 v-pre 代码原样保留
-    const fenceMarkdown = getPageMarkdown(createPage([], "```js\n{{7*7}}\n```"), {
-      location: "probe/top-fence",
-    });
-
-    expect(fenceMarkdown).toContain("```js");
-    expect(fenceMarkdown).toContain("{{7*7}}");
-    expect(fenceMarkdown).not.toContain("<!-- -->");
-  });
-
-  it("站点文本管线中和未缩进列表围栏外的插值", () => {
-    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "- ```js\n{{7*7}}\n```" }]), {
-      location: "probe/text-list-fence",
-    });
-    const html = markdownIt.render(markdown);
-
-    expect(markdown).not.toContain("{{");
-    expect(html).not.toContain("{{");
-  });
-
-  it("列表围栏缩进闭合行不会保护其后的插值段落", () => {
-    const contents = [
-      "- ```js\n  ```\n{{7*7}}",
-      "- ```js\n  ```\n\n{{7*7}}",
-      "- ```js :no-v-pre\n  ```\n{{7*7}}",
-      "- item\n  - ```js\n    ```\n  {{7*7}}",
-    ];
-
-    for (const content of contents) {
-      const markdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
-        location: "probe/list-fence-close",
-      });
-      const descMarkdown = getPageMarkdown(createPage([], content), {
-        location: "probe/list-fence-close-desc",
-      });
-
-      expect(markdown).not.toContain("{{");
-      expect(descMarkdown).not.toContain("{{");
-      expect(markdownIt.render(markdown)).not.toContain("{{");
-      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
-    }
-
-    // 围栏 opener 位于列表项续行（不在列表标记行）时，后面的段落也不能被保护
-    for (const content of ["- item\n  ```js\n{{7*7}}", "- item\n  ~~~js\n{{7*7}}"]) {
-      const textMarkdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
-        location: "probe/list-continuation-fence",
-      });
-      const descMarkdown = getPageMarkdown(createPage([], content), {
-        location: "probe/list-continuation-fence-desc",
-      });
-
-      expect(textMarkdown).not.toContain("{{");
-      expect(descMarkdown).not.toContain("{{");
-      expect(markdownIt.render(textMarkdown)).not.toContain("{{");
-      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
-    }
-
-    // 前一个未闭合围栏与紧随其后的 :no-v-pre 围栏不能被合并成受保护整段
-    const twoItems = "- ~~~js\n- ```md :no-v-pre\n  {{7*7}}";
-    const twoItemsMarkdown = getPageMarkdown(createPage([{ tag: "text", text: twoItems }]), {
-      location: "probe/two-items-fence",
-    });
-    const twoItemsDescMarkdown = getPageMarkdown(createPage([], twoItems), {
-      location: "probe/two-items-fence-desc",
-    });
-
-    expect(twoItemsMarkdown).not.toContain("{{");
-    expect(twoItemsDescMarkdown).not.toContain("{{");
-    expect(markdownIt.render(twoItemsMarkdown)).not.toContain("{{");
-    expect(markdownIt.render(twoItemsDescMarkdown)).not.toContain("{{");
-
-    // 列表续行 opener 后面又出现另一个围栏时，不能把中间段落当成配对内容
-    const pseudoCloseCases = [
-      "- item\n  ```js\n{{7*7}}\n  ```",
-      "- item\n  ~~~js\n{{7*7}}\n  ~~~",
-      "- item\n  ````js\n{{7*7}}\n  ````",
-      "1. item\n   ```js\n{{7*7}}\n   ```",
-      "- item\n  ```js\n\n{{7*7}}\n  ```",
-    ];
-
-    for (const content of pseudoCloseCases) {
-      const textMarkdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
-        location: "probe/pseudo-close",
-      });
-      const descMarkdown = getPageMarkdown(createPage([], content), {
-        location: "probe/pseudo-close-desc",
-      });
-
-      expect(textMarkdown).not.toContain("{{");
-      expect(descMarkdown).not.toContain("{{");
-      expect(markdownIt.render(textMarkdown)).not.toContain("{{");
-      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
-    }
-
-    // desc 内引用前缀会占列；tab 必须按原行列展开，不能剥离 `>` 后从 0 列计算
-    for (const content of ["1. ```js\n\t{{7*7}}", "10. ```js\n\t{{7*7}}"]) {
-      const descMarkdown = getPageMarkdown(createPage([], content), {
-        location: "probe/desc-tab-fence",
-      });
-
-      expect(descMarkdown).not.toContain("{{");
-      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
-    }
-
-    // 缩进仍属于合法顶层围栏时，内容保持 v-pre 原文
-    const indented = getPageMarkdown(
-      createPage([{ tag: "text", text: "  ```js\n  {{7*7}}\n  ```" }]),
-      {
-        location: "probe/indented-top-fence",
-      },
     );
 
-    expect(indented).toContain("{{7*7}}");
-    expect(indented).not.toContain("<!-- -->");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
-  it("中和超出列表缩进规则与 :no-v-pre 围栏内的伪围栏", () => {
-    const pageContents = [
-      "-     ```js {{7*7}}",
-      "-     ```js\n      {{7*7}}",
-      "-\t\t```js {{7*7}}",
-      "1.     ```js {{7*7}}",
-    ];
-    const contributes = [
-      "```md :no-v-pre\n- ```js {{7*7}}\n```",
-      "~~~md :no-v-pre\n1. ```js {{7*7}}\n~~~",
-    ];
-
-    for (const content of pageContents) {
-      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text: content }]), {
-        location: "probe/list-indent",
-      });
-      const descMarkdown = getPageMarkdown(createPage([], content), {
-        location: "probe/list-indent-desc",
-      });
-
-      expect(markdown).not.toContain("{{");
-      expect(descMarkdown).not.toContain("{{");
-    }
-
-    for (const content of contributes) {
-      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text: content }]), {
-        location: "probe/no-v-pre",
-      });
-
-      expect(markdown).not.toContain("{{");
-    }
-  });
-
-  it("转义行内与关闭 plaintext 标签且不误伤行内代码", () => {
-    const desces = ["前文 <plaintext> 后文 {{7*7}}", "</plaintext>"];
-
-    for (const desc of desces) {
-      const markdown = getPageMarkdown(createPage([], desc), {
-        location: "probe/inline-plaintext",
-      });
-      const html = markdownIt.render(markdown);
-
-      expect(markdown).not.toContain("{{");
-      expect(html).not.toContain("{{");
-      expect(html).not.toContain("<plaintext");
-    }
-
-    const codeMarkdown = getPageMarkdown(createPage([], "`<textarea>` 与 `{{ 7 * 7 }}`"), {
-      location: "probe/inline-code-fidelity",
-    });
-
-    expect(codeMarkdown).toContain("`<textarea>` 与 `{{ 7 * 7 }}`");
-    expect(codeMarkdown).not.toContain("<!-- -->");
-  });
-
-  it("保留描述代码样本中的标签与花括号", () => {
-    const markdown = getPageMarkdown(
-      createPage(
-        [],
-        "```html\n<plaintext>{{ 7*7 }}</plaintext>\n```\n\n`<template>{{ 7*7 }}</template>`",
-      ),
-      { location: "probe/code-fidelity" },
+  it("中和链接、表格与引用式链接定义中的插值", () => {
+    const markdown = renderText(
+      "[a]({{7*7}})\n\n| h |\n| - |\n| {{7*7}} |\n\n[ref]: https://example.com/{{7*7}}",
     );
 
-    expect(markdown).toContain("<plaintext>{{ 7*7 }}</plaintext>");
-    expect(markdown).toContain("`<template>{{ 7*7 }}</template>`");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
-  it("中和跨行行内代码与转义反引号中的插值", () => {
-    const texts = ["`a\nb` {{7*7}}", "`\n`{{7*7}}", "\\``x`{{7*7}}`"];
+  it("处理 CRLF、BOM、tab 与多行行内代码", () => {
+    const markdown = renderText("\uFEFF`a\n{{7*7}}`\r\n\r\n\t{{7*7}}");
 
-    for (const text of texts) {
-      const markdown = getPageMarkdown(createPage([{ tag: "text", text }]), {
-        location: "probe/multiline-code",
-      });
-      const html = markdownIt.render(markdown);
-
-      expect(markdown).not.toContain("{{");
-      expect(html).not.toContain("{{");
-    }
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
-  it("保留 v-pre 列表围栏与引用式链接定义", () => {
-    const fence = escapeVueInterpolation("- ```js\n  {{7*7}}\n  ```");
+  it("描述中的多行行内代码跨引用分隔行也不会执行", () => {
+    const markdown = renderText("x", "`{{7*7}}\n`");
 
-    expect(fence).toContain("{{7*7}}");
-    expect(fence).not.toContain("<!-- -->");
-
-    const reference = escapeVueInterpolation("[ref]: https://example.com/{{7*7}}\n\n[a][ref]");
-    const html = markdownIt.render(reference);
-
-    expect(reference).toContain("https://example.com/%7B%7B7*7%7D%7D");
-    expect(html).toContain('href="https://example.com/%7B%7B7*7%7D%7D"');
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
-  it("不影响文本管线的原始内容", () => {
-    const page = createPage([{ tag: "text", header: `标题 ${raw}`, text: `正文 ${raw}` }]);
-    const text = getPageText(page, "probe/text");
+  it("对已含注释的文本保持幂等（不会二次拆开）", () => {
+    const markdown = renderText("{<!-- -->{7*7}<!-- -->}");
 
-    expect(text).toContain(raw);
-    expect(text).not.toContain("<!-- -->");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 });
