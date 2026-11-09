@@ -195,6 +195,9 @@ describe("vue 编译级插值防护", () => {
       "```md :no-v-pre\n- ```js {{7*7}}\n```",
       "```md :no-v-pre\n- ```js {{7*7}}",
       "~~~md :no-v-pre\n1. ```js {{7*7}}\n~~~",
+      "- ```js :no-v-pre\n  ```js\n  {{7*7}}\n  ```",
+      "1. ```js :no-v-pre\n   ```js {{7*7}}\n   ```",
+      "- ```js :no-v-pre\n  ```js {{7*7}}",
     ];
 
     for (const text of payloads) {

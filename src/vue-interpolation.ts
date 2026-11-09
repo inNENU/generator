@@ -1127,13 +1127,50 @@ const sanitizeReferenceDestination = (destination: string): string =>
  * @param stash 遮蔽函数
  * @returns 逐行结果
  */
+/**
+ * 合并列表项与引用块围栏的保护范围
+ *
+ * 两类收集器可能把同一个围栏区域识别成不同容器（例如列表围栏正文里形似围栏的行）。 真实 Markdown 中外层围栏先开始、内部文本不再解析，因此按起点最早的候选决定保护状态。
+ *
+ * @param fenceInfos 各收集器的围栏行与受保护行
+ * @returns 行号到是否受 v-pre 保护的映射
+ */
+const resolveContainerFenceProtection = (
+  fenceInfos: { lines: Set<number>; protectedLines: Set<number> }[],
+): Map<number, boolean> => {
+  const ranges: { start: number; end: number; protect: boolean }[] = [];
+
+  for (const info of fenceInfos) {
+    const sorted = [...info.lines].sort((left, right) => left - right);
+
+    for (let cursor = 0; cursor < sorted.length; cursor += 1) {
+      const start = sorted[cursor];
+      let end = start;
+
+      while (cursor + 1 < sorted.length && sorted[cursor + 1] === end + 1) {
+        cursor += 1;
+        end = sorted[cursor];
+      }
+
+      ranges.push({ start, end, protect: info.protectedLines.has(start) });
+    }
+  }
+
+  // 起点更晚的候选先写入、起点更早的候选后覆盖，从而让最外层围栏胜出。
+  ranges.sort((left, right) => right.start - left.start);
+
+  const result = new Map<number, boolean>();
+
+  for (const range of ranges)
+    for (let index = range.start; index <= range.end; index += 1) result.set(index, range.protect);
+
+  return result;
+};
+
 const maskFenceBlocks = (
   lines: string[],
   htmlBlockLines: Set<number>,
-  fenceInfo: {
-    list: { lines: Set<number>; protectedLines: Set<number> };
-    blockquote: { lines: Set<number>; protectedLines: Set<number> };
-  },
+  containerProtection: Map<number, boolean>,
   stash: (value: string) => string,
 ): { lines: string[]; fenceLines: Set<number> } => {
   const result: string[] = [];
@@ -1149,12 +1186,8 @@ const maskFenceBlocks = (
 
     // 列表项与引用块内的围栏在 VuePress 下同样有 v-pre（除非显式 :no-v-pre），
     // 必须原样保留；未受保护的围栏交给后续全局拆分。
-    if (fenceInfo.list.lines.has(index) || fenceInfo.blockquote.lines.has(index)) {
-      result.push(
-        fenceInfo.list.protectedLines.has(index) || fenceInfo.blockquote.protectedLines.has(index)
-          ? stash(line)
-          : line,
-      );
+    if (containerProtection.has(index)) {
+      result.push(containerProtection.get(index) ? stash(line) : line);
       continue;
     }
 
@@ -1229,12 +1262,9 @@ const maskMarkdownSyntax = (
     topLevelFenceLines,
     blockquoteFenceInfo.lines,
   );
-  const fenceResult = maskFenceBlocks(
-    lines,
-    htmlBlockLines,
-    { list: listFenceInfo, blockquote: blockquoteFenceInfo },
-    stash,
-  );
+
+  const containerProtection = resolveContainerFenceProtection([listFenceInfo, blockquoteFenceInfo]);
+  const fenceResult = maskFenceBlocks(lines, htmlBlockLines, containerProtection, stash);
   const isCodeContext = (index: number, line: string): boolean =>
     listFenceInfo.lines.has(index) ||
     blockquoteFenceInfo.lines.has(index) ||
