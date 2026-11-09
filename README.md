@@ -39,8 +39,9 @@ const pageMarkdown = getPageMarkdown(page, { location: "home", mode: "web" });
 const pageText = getPageText(page, "home");
 ```
 
-Page generators take a `PageConfig` object as their first argument; the page path is passed separately (as the second argument) where the
-generator needs it.
+Page generators take a `PageConfig` object as their first argument. The page path is a separate argument for `getPageJSON(page, pagePath,
+diffFiles?, options?)` and `getPageText(page, pagePath, options?)`, while `getPageMarkdown(page, options?)` reads it from
+`options.location` because the Markdown options object already carries the rendering context.
 
 `config()` accepts:
 
@@ -67,15 +68,17 @@ marked for other environments are skipped there by design). Use `getPageJSON` fo
 
 ### JSON Schema files
 
-`pnpm run schema` generates draft-07 JSON Schema files into `schemas/`. They are published with the package and exposed through the
-`innenu-generator/schemas/*` export:
+The draft-07 JSON Schema files in `schemas/` are generated during release (`prepublishOnly`) and shipped inside the package, so consumers
+never need to run a generator. They are exposed through the `innenu-generator/schemas/*` export:
 
 ```ts
 import pageConfigSchema from "innenu-generator/schemas/page-config.schema.json" with { type: "json" };
 ```
 
-JSON modules require an import attribute in Node.js (`with { type: "json" }`). The package manifest is exported as
-`innenu-generator/package.json` for tools that need to read the version, and requires the same import attribute:
+JSON modules require an import attribute in Node.js (`with { type: "json" }`). When importing them from TypeScript, enable
+`resolveJsonModule` in your `tsconfig.json` and keep `module` on `nodenext` (or `esnext`) so the import attribute is preserved. The
+package manifest is exported as `innenu-generator/package.json` for tools that need to read the version, and requires the same import
+attribute:
 
 ```ts
 import pkg from "innenu-generator/package.json" with { type: "json" };
