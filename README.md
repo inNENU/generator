@@ -4,7 +4,7 @@ Content generator for [inNENU](https://github.com/inNENU), producing the data co
 
 ## Requirements
 
-- Node.js `>=22.12.0` (supported LTS lines)
+- Node.js `>=22.12.0` (supported LTS lines). CI currently runs the test suite on Node 26 only, so older LTS lines are supported but not covered by CI.
 - pnpm `12.18.0` (declared through `devEngines`)
 
 ## Installation
@@ -19,6 +19,7 @@ Configure the generator once at startup, then call the generators for the conten
 
 ```ts
 import { config, getPageJSON, getPageMarkdown, getPageText } from "innenu-generator";
+import type { PageConfig } from "innenu-generator";
 
 config({
   assets: "https://assets.innenu.com",
@@ -28,9 +29,19 @@ config({
   pageFolder: "./pages",
 });
 
-const pageJSON = getPageJSON({ title: "Home", content: [...] }, "home", [], { check: true });
-const pageMarkdown = getPageMarkdown("home", { mode: "web" });
+const page: PageConfig = {
+  title: "Home",
+  content: [{ tag: "text", text: "Welcome to inNENU." }],
+};
+
+const pageJSON = getPageJSON(page, "home", [], { check: true });
+const pageMarkdown = getPageMarkdown(page, { location: "home", mode: "web" });
+const pageText = getPageText(page, "home");
 ```
+
+Page generators take a `PageConfig` object as their first argument. The page path is a separate argument for `getPageJSON(page, pagePath,
+diffFiles?, options?)` and `getPageText(page, pagePath, options?)`, while `getPageMarkdown(page, options?)` reads it from
+`options.location` because the Markdown options object already carries the rendering context.
 
 `config()` accepts:
 
@@ -61,8 +72,27 @@ component still needs to show its label.
 ## Entry points
 
 - `innenu-generator`: full public API (page, component, schema, helpers, generators).
-- `innenu-generator/schema`: JSON schemas for the page and component configuration.
+- `innenu-generator/schema`: zod schemas and validators for page components (`textComponentSchema`, `checkText`, ...). This subpath does
+  not include the page config schema.
 - `innenu-generator/typings`: type-only subpath with the shared TypeScript types.
+
+### JSON Schema files
+
+The draft-07 JSON Schema files in `schemas/` are generated during release (`prepublishOnly`) and shipped inside the package, so consumers
+never need to run a generator. They are exposed through the `innenu-generator/schemas/*` export:
+
+```ts
+import pageConfigSchema from "innenu-generator/schemas/page-config.schema.json" with { type: "json" };
+```
+
+JSON modules require an import attribute in Node.js (`with { type: "json" }`). When importing them from TypeScript, enable
+`resolveJsonModule` in your `tsconfig.json` and keep `module` on `nodenext` (or `esnext`) so the import attribute is preserved. The
+package manifest is exported as `innenu-generator/package.json` for tools that need to read the version, and requires the same import
+attribute:
+
+```ts
+import pkg from "innenu-generator/package.json" with { type: "json" };
+```
 
 ## Development
 

@@ -16,12 +16,24 @@ import {
   checkYamlFiles,
   convertYamlFilesToJson,
   convertYamlFilesToMarkdown,
+  getYamlMap,
   parseYaml,
 } from "../src/helpers/yaml.js";
 
 const createTempDir = (): string => mkdtempSync(path.join(tmpdir(), "innenu-yaml-"));
 
 const removeDir = (dir: string): void => rmSync(dir, { force: true, recursive: true });
+
+/**
+ * 列出目标文件夹中的实际输出，忽略生成清单
+ *
+ * @param dir 目标文件夹
+ * @returns 排序后的文件名
+ */
+const listOutputs = (dir: string): string[] =>
+  readdirSync(dir)
+    .filter((filename) => !filename.startsWith(".innenu-generated."))
+    .sort();
 
 describe(parseYaml, () => {
   it("returns undefined for empty or comment-only documents", () => {
@@ -312,7 +324,7 @@ describe("yaml conversion output", () => {
 
       convertYamlFilesToJson(source, target, (_data, filePath) => results[filePath]);
 
-      expect(readdirSync(target).sort()).toStrictEqual([
+      expect(listOutputs(target)).toStrictEqual([
         "empty.json",
         "false.json",
         "text.json",
@@ -367,7 +379,7 @@ describe("yaml conversion output", () => {
 
       convertYamlFilesToJson(source, target, (data) => data);
 
-      expect(readdirSync(target).sort()).toStrictEqual(["a.json", "c.json"]);
+      expect(listOutputs(target)).toStrictEqual(["a.json", "c.json"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -409,6 +421,104 @@ describe("yaml conversion output", () => {
       expect(existsSync(path.join(root, "a.json"))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("yaml unsafe integers", () => {
+  it("warns when an integer exceeds the safe range", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+    try {
+      expect(parseYaml<{ id: number }>("id: 9007199254740993", "data/big.yml")).toStrictEqual({
+        id: 9_007_199_254_740_992,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("9007199254740993"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("data/big.yml"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("引号"));
+
+      expect(parseYaml<{ id: number }>("id: -9007199254740993", "data/negative.yml")).toStrictEqual(
+        {
+          id: -9_007_199_254_740_992,
+        },
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("-9007199254740993"));
+
+      expect(parseYaml<{ id: number }>("id: !!int 0x20000000000001", "data/hex.yml")).toStrictEqual(
+        {
+          id: 9_007_199_254_740_992,
+        },
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("0x20000000000001"));
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("does not warn for safe integers or quoted long numbers", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+    try {
+      expect(parseYaml("id: 9007199254740991")).toStrictEqual({ id: 9_007_199_254_740_991 });
+      expect(parseYaml('id: "9007199254740993"')).toStrictEqual({ id: "9007199254740993" });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+});
+
+describe(getYamlMap, () => {
+  it("skips empty YAML files with a warning instead of throwing", () => {
+    const dir = createTempDir();
+
+    try {
+      writeFileSync(path.join(dir, "valid.yml"), "title: 首页\n");
+      writeFileSync(path.join(dir, "comment.yml"), "# 只有注释\n");
+      writeFileSync(path.join(dir, "marker.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      try {
+        expect(getYamlMap<{ title: string }, string>(dir, (data) => data.title)).toStrictEqual([
+          { type: "file", filename: "valid.yml", value: "首页" },
+        ]);
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("空 YAML 文件已跳过"));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("comment.yml"));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("marker.yml"));
+      } finally {
+        warnSpy.mockRestore();
+      }
+    } finally {
+      removeDir(dir);
+    }
+  });
+
+  it("keeps directories and drops only their empty files", () => {
+    const dir = createTempDir();
+
+    try {
+      mkdirSync(path.join(dir, "nested"));
+      writeFileSync(path.join(dir, "nested", "page.yml"), "title: 子页\n");
+      writeFileSync(path.join(dir, "nested", "empty.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      try {
+        expect(getYamlMap<{ title: string }, string>(dir, (data) => data.title)).toStrictEqual([
+          {
+            type: "dir",
+            dirname: "nested",
+            content: [{ type: "file", filename: "page.yml", value: "子页" }],
+          },
+        ]);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("empty.yml"));
+      } finally {
+        warnSpy.mockRestore();
+      }
+    } finally {
+      removeDir(dir);
     }
   });
 });
