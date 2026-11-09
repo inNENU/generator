@@ -48,11 +48,40 @@ describe("url 协议校验", () => {
     ["javascript&colon;alert(1)"],
     ["mailto:not-an-email"],
     ["tel:javascript:alert(1)"],
+    ["javascript&#x000003a;alert(1)"],
+    ["javascript&#00000058;alert(1)"],
+    ["javascript&#x00000000003a;alert(1)"],
+    ["&#x000000000000006a;avascript:alert(1)"],
+    ["&#0000000000000000106;avascript:alert(1)"],
     [""],
     ["   "],
   ])("拒绝危险地址 %s", (url) => {
     expect(getSafeUrl(url)).toBeNull();
     expect(sanitizeUrl(url)).toBeNull();
+  });
+
+  it("解码多层嵌套的命名字符引用", () => {
+    let nested = "&#106;avascript:alert(1)";
+
+    // 每层只解码最外层 `&amp;`，需要多轮才能还原 `javascript:`。
+    for (let layer = 0; layer < 5; layer += 1) nested = `&amp;${nested.slice(1)}`;
+
+    expect(sanitizeUrl(nested)).toBeNull();
+  });
+
+  it("字符引用嵌套超过轮次上限时按不安全处理", () => {
+    let nested = "&#106;avascript:alert(1)";
+
+    for (let layer = 0; layer < 12; layer += 1) nested = `&amp;${nested.slice(1)}`;
+
+    expect(sanitizeUrl(nested)).toBeNull();
+  });
+
+  it("保留地址中的普通字符引用，不写回解码结果", () => {
+    const url = "https://example.com/?a=1&amp;b=2";
+
+    expect(getSafeUrl(url)).toStrictEqual({ url, kind: "http" });
+    expect(sanitizeUrl(url)).toBe(url);
   });
 
   it("拒绝空值", () => {

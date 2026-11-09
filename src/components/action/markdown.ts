@@ -1,5 +1,10 @@
 import { sanitizeUrl } from "../../helpers/url.js";
-import { escapeHtml, getFileLink } from "../../utils.js";
+import {
+  escapeHtml,
+  escapeMarkdownLinkLabel,
+  formatMarkdownDestination,
+  getFileLink,
+} from "../../utils.js";
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
 
@@ -22,6 +27,20 @@ export interface ActionMarkdownOptions {
    */
   urlConverter?: (url: string) => string | ActionUrlConversion | null | undefined;
 }
+
+/**
+ * 生成代码围栏
+ *
+ * 围栏长度必须大于内容中最长的连续反引号，否则内容里的连续反引号会提前闭合围栏，把后续内容当作正文解析。
+ *
+ * @param content 代码块内容
+ * @returns 至少三个反引号组成的围栏
+ */
+const getCodeFence = (content: string): string => {
+  const longest = Math.max(0, ...(content.match(/`+/gu) ?? []).map((run) => run.length));
+
+  return "`".repeat(Math.max(3, longest + 1));
+};
 
 /**
  * 生成 action 组件 Markdown
@@ -61,8 +80,10 @@ export const getActionMarkdown = (
       ));
 
   const body = isLink
-    ? `[${escapeHtml(header ?? safeContent)}](${safeContent})`
-    : `\`\`\`text\n${content}\n\`\`\``;
+    ? `[${escapeMarkdownLinkLabel(escapeHtml(header ?? safeContent))}](${formatMarkdownDestination(
+        safeContent,
+      )})`
+    : `${getCodeFence(content)}text\n${content}\n${getCodeFence(content)}`;
 
   if (options.mode === "miniapp") {
     return `\

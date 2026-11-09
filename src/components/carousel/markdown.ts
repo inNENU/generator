@@ -1,5 +1,5 @@
 import { sanitizeUrl } from "../../helpers/url.js";
-import { getFileLink } from "../../utils.js";
+import { formatMarkdownDestination, getFileLink } from "../../utils.js";
 import type { CarouselComponentOptions } from "./schema.js";
 import { checkCarousel } from "./schema.js";
 
@@ -21,5 +21,7 @@ export const getCarouselMarkdown = (carousel: CarouselComponentOptions, location
     .map((link) => sanitizeUrl(getFileLink(link)))
     .filter((link): link is string => Boolean(link));
 
-  return images.length > 0 ? `${images.map((link) => `![''](${link})`).join("\n\n")}\n\n` : "";
+  return images.length > 0
+    ? `${images.map((link) => `![''](${formatMarkdownDestination(link)})`).join("\n\n")}\n\n`
+    : "";
 };

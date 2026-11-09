@@ -22,7 +22,14 @@ export interface PageMarkdownOptions extends MarkdownOptions {
 /**
  * 生成页面 frontmatter
  *
- * 空数组与缺省等价：`author: []`、`cite: []` 不输出只有键名的裸 YAML 键，来源为空时页面仍标记为原创。
+ * 空数组与缺省等价：`author: []`、`cite: []` 不输出只有键名的裸 YAML 键。
+ *
+ * `cite` 会逐条做 URL 协议校验，只保留 `sanitizeUrl` 允许的来源（站内相对地址、`http:`、`https:`、`mailto:`、`tel:`）， 危险协议（如
+ * `javascript:`）与 HTML 字符引用混淆变体直接丢弃，避免站点主题把来源渲染成可点击的执行链接。语义约定：
+ *
+ * - 没有任何来源（`cite` 缺省或为空）：不输出 `cite`，输出 `isOriginal: true`；
+ * - 存在来源但全部非法：不输出 `cite`，也不输出 `isOriginal`（页面并非原创，只是来源无法安全展示）；
+ * - 存在合法来源：只输出合法来源，不输出 `isOriginal`。
  *
  * @param page 页面数据
  * @returns 含首尾 `---` 的 frontmatter 内容
@@ -64,14 +71,17 @@ date: ${time}
 `;
   }
 
-  const cites = Array.isArray(cite) ? cite : cite ? [cite] : [];
+  const rawCites = Array.isArray(cite) ? cite : cite ? [cite] : [];
+  const cites = rawCites
+    .map((item) => sanitizeUrl(item))
+    .filter((item): item is string => Boolean(item));
 
   if (cites.length > 0) {
     frontmatter += `\
 cite:
 ${cites.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
 `;
-  } else {
+  } else if (rawCites.length === 0) {
     frontmatter += `\
 isOriginal: true
 `;
