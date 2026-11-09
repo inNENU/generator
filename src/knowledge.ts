@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dump, JSON_SCHEMA, load } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
 
+import { withoutAssetFileCheck } from "./helpers/assetCheck.js";
 import { formatZodError, getFileList } from "./helpers/index.js";
+import { stripYamlExtension, YAML_EXTENSIONS } from "./helpers/yamlPath.js";
 import { pageConfigSchema } from "./page/schema.js";
 import { getPageText } from "./page/text.js";
 import type { UrlConverter } from "./page/text.js";
@@ -64,30 +66,34 @@ export const generateKnowledgeContent = (
   distFolder: string,
   options: KnowledgeContentOptions = {},
 ): void => {
-  if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
+  // 知识库只消费页面文本，产物不包含资源文件本身；稀疏检出（CI 不下载 img/file）下资源必然缺失，
+  // 因此生成期间关闭资源文件存在性校验，保留页面结构 / 字段 / 语义校验。
+  withoutAssetFileCheck(() => {
+    if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
-  const fileList = getFileList(sourceFolder, "yml");
+    const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
 
-  fileList.forEach((filePath) => {
-    const filePathRelative = relative("./", filePath.replace(/\.yml$/u, ""));
-    const sourceFilename = resolve(sourceFolder, filePath);
-    const data = loadPageConfig(sourceFilename, filePath);
+    fileList.forEach((filePath) => {
+      const filePathRelative = relative("./", stripYamlExtension(filePath));
+      const sourceFilename = resolve(sourceFolder, filePath);
+      const data = loadPageConfig(sourceFilename, filePath);
 
-    if (!data || data.aiIgnore) return;
+      if (!data || data.aiIgnore) return;
 
-    const targetFilename = resolve(distFolder, filePath.replace(/\.yml$/u, ".md"));
+      const targetFilename = resolve(distFolder, `${stripYamlExtension(filePath)}.md`);
 
-    try {
-      const text = getPageText(data, filePathRelative, options);
+      try {
+        const text = getPageText(data, filePathRelative, options);
 
-      const targetDirname = dirname(targetFilename);
+        const targetDirname = dirname(targetFilename);
 
-      if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
+        if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
 
-      writeFileSync(targetFilename, text, { encoding: "utf-8" });
-    } catch (err) {
-      console.error(`${filePathRelative} 生成知识库 Markdown 失败:`, err);
-    }
+        writeFileSync(targetFilename, text, { encoding: "utf-8" });
+      } catch (err) {
+        console.error(`${filePathRelative} 生成知识库 Markdown 失败:`, err);
+      }
+    });
   });
 };
 
@@ -230,59 +236,62 @@ export const generateKnowledgeIndex = (
   distFolder: string,
   { format = "lora", sorter, priorityGetter }: KnowledgeIndexOptions = {},
 ): void => {
-  if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
-
-  const fileList = getFileList(sourceFolder, "yml");
-
   const resolveSorter = (): KnowledgeIndexSorter | null =>
     sorter ? (typeof sorter === "function" ? sorter : createKnowledgeSorter(sorter)) : null;
 
-  const index = fileList
-    .map((filePath) => {
-      const sourceFilename = resolve(sourceFolder, filePath);
-      const data = loadPageConfig(sourceFilename, filePath);
+  // 与 generateKnowledgeContent 一致：索引只需要页面字段，稀疏检出下不校验资源文件是否存在。
+  withoutAssetFileCheck(() => {
+    if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
-      if (!data || data.aiIgnore) return null;
+    const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
 
-      const path = filePath.replace(/\.yml$/u, "");
+    const index = fileList
+      .map((filePath) => {
+        const sourceFilename = resolve(sourceFolder, filePath);
+        const data = loadPageConfig(sourceFilename, filePath);
 
-      const info = (data.summary ?? data.title).trim();
+        if (!data || data.aiIgnore) return null;
 
-      // 已有优先级（aiPriority，无字段时为 undefined）
-      const basePriority = "aiPriority" in data ? data.aiPriority : void 0;
+        const path = stripYamlExtension(filePath);
 
-      // 构造完整索引项（path / info / keywords / campus）
-      const item: KnowledgeIndexItem = { path, info };
+        const info = (data.summary ?? data.title).trim();
 
-      if (data.keywords?.length) item.keywords = data.keywords;
-      if (data.campus) item.campus = data.campus;
+        // 已有优先级（aiPriority，无字段时为 undefined）
+        const basePriority = "aiPriority" in data ? data.aiPriority : void 0;
 
-      // 有 priorityGetter 时基于完整索引项与已有优先级重新计算（返回 null / undefined 视为 0）
-      const priority = priorityGetter
-        ? (priorityGetter(item, basePriority) ?? 0)
-        : (basePriority ?? 0);
+        // 构造完整索引项（path / info / keywords / campus）
+        const item: KnowledgeIndexItem = { path, info };
 
-      if (priority !== 0) item.priority = priority;
+        if (data.keywords?.length) item.keywords = data.keywords;
+        if (data.campus) item.campus = data.campus;
 
-      return item;
-    })
-    .filter((item): item is KnowledgeIndexItem => item != null);
+        // 有 priorityGetter 时基于完整索引项与已有优先级重新计算（返回 null / undefined 视为 0）
+        const priority = priorityGetter
+          ? (priorityGetter(item, basePriority) ?? 0)
+          : (basePriority ?? 0);
 
-  // 统一排序：先按优先级，再按自定义排序器（sorter 缺省为空时不改变顺序）
-  const sortedIndex = sortIndex(index, resolveSorter());
+        if (priority !== 0) item.priority = priority;
 
-  const targetFilename = resolve(
-    distFolder,
-    format === "yaml" ? "index.yaml" : format === "lora" ? "index.lora" : "index.json",
-  );
+        return item;
+      })
+      .filter((item): item is KnowledgeIndexItem => item != null);
 
-  const output =
-    format === "lora"
-      ? renderLoraIndex(sortedIndex)
-      : format === "yaml"
-        ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
-          dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
-        : JSON.stringify(sortedIndex, null, 2);
+    // 统一排序：先按优先级，再按自定义排序器（sorter 缺省为空时不改变顺序）
+    const sortedIndex = sortIndex(index, resolveSorter());
 
-  writeFileSync(targetFilename, output, { encoding: "utf-8" });
+    const targetFilename = resolve(
+      distFolder,
+      format === "yaml" ? "index.yaml" : format === "lora" ? "index.lora" : "index.json",
+    );
+
+    const output =
+      format === "lora"
+        ? renderLoraIndex(sortedIndex)
+        : format === "yaml"
+          ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
+            dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
+          : JSON.stringify(sortedIndex, null, 2);
+
+    writeFileSync(targetFilename, output, { encoding: "utf-8" });
+  });
 };

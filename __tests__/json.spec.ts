@@ -172,4 +172,61 @@ describe(checkJSON, () => {
       expect(errorSpy).not.toHaveBeenCalled();
     });
   });
+
+  it.skipIf(process.platform === "win32")(
+    "checks JSON symlinks inside the root and warns instead of silently skipping directory symlinks",
+    async () => {
+      await withTempRoot(async (root) => {
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const linkedFile = path.join(root, "linked.json");
+
+        const outside = mkdtempSync(path.join(tmpdir(), "innenu-json-outside-"));
+
+        try {
+          mkdirSync(path.join(outside, "nested"), { recursive: true });
+          writeFileSync(path.join(root, "target.yaml"), "{ invalid json");
+          writeFileSync(path.join(outside, "nested", "inside.json"), "{ also invalid");
+          symlinkSync(path.join(root, "target.yaml"), linkedFile);
+          symlinkSync(path.join(outside, "nested"), path.join(root, "linked-dir"));
+
+          const error = await getFailure(root);
+          const messages = getMessages(error);
+
+          expect(messages).toHaveLength(1);
+          expect(messages[0]).toContain(linkedFile);
+          expect(messages[0]).toContain("不是一个正确的 JSON 文件");
+          expect(messages.some((message) => message.includes("inside.json"))).toBe(false);
+          expect(errorSpy).toHaveBeenCalledTimes(1);
+          expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("跳过符号链接目录"));
+        } finally {
+          rmSync(outside, { recursive: true, force: true });
+        }
+      });
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "reports JSON symlinks that point outside the checked directory",
+    async () => {
+      await withTempRoot(async (root) => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+
+        const outside = path.join(root, "outside");
+        const checkedRoot = path.join(root, "checked");
+
+        mkdirSync(outside, { recursive: true });
+        mkdirSync(checkedRoot, { recursive: true });
+        writeFileSync(path.join(outside, "secret.json"), JSON.stringify({ ok: true }));
+        symlinkSync(path.join(outside, "secret.json"), path.join(checkedRoot, "linked.json"));
+
+        const error = await getFailure(checkedRoot);
+        const messages = getMessages(error);
+
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toContain("指向检查目录之外");
+        expect(messages[0]).toContain(path.join(checkedRoot, "linked.json"));
+      });
+    },
+  );
 });
