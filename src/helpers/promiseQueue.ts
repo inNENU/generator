@@ -37,6 +37,9 @@ export class Queue {
 
   /** 执行下一个函数 */
   next(): void {
+    // 防御其它路径（如任务重复调用回调）在额度已满时继续调度，保证 running 不超过 capacity
+    if (this.running >= this.capacity) return;
+
     /** 即将执行的任务 */
     const task = this.funcQueue.shift();
 
@@ -57,6 +60,9 @@ export class Queue {
 
       /** 任务完成回调，重复调用只会生效一次 */
       const handleNext = (): void => {
+        // settle 已是幂等的，这里提前返回是为了避免重复调度下一个任务而突破并发上限
+        if (settled) return;
+
         settle();
         this.next();
       };
