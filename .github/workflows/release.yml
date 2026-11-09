@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  contents: read
   id-token: write
 
 jobs:
@@ -20,6 +21,53 @@ jobs:
         uses: pnpm/setup@v3
         with:
           runtime: node@^26.13.0
+
+      # Tag pushes must publish exactly the version declared in package.json.
+      # Manual runs may start from any branch, but must not republish an existing version.
+      - name: Verify version metadata
+        run: |
+          set -euo pipefail
+
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          echo "package.json: ${package_name}@${package_version}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            echo "Tag ${GITHUB_REF_NAME} implies version ${tag_version}"
+
+            if [ "${tag_version}" != "${package_version}" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} (${tag_version}) does not match package.json version ${package_version}."
+              echo "::error::Either bump package.json to ${tag_version} before tagging, or push a tag that matches ${package_version}."
+              exit 1
+            fi
+
+            echo "Tag matches package.json version."
+          else
+            echo "Manual run on ${GITHUB_REF_TYPE} '${GITHUB_REF_NAME}', checking whether ${package_version} is already published."
+
+            # `pnpm view` is used instead of `npm view`: npm enforces
+            # devEngines.packageManager and aborts inside this pnpm project.
+            set +e
+            registry_output="$(pnpm view "${package_name}@${package_version}" version --json 2>&1)"
+            registry_status=$?
+            set -e
+
+            if [ "${registry_status}" -eq 0 ] && [ -n "${registry_output}" ] && [ "${registry_output}" != "null" ]; then
+              echo "::error::Version ${package_version} is already published on npm, bump package.json before running this workflow."
+              exit 1
+            fi
+
+            if printf '%s' "${registry_output}" | grep -qE 'ERR_PNPM_PACKAGE_NOT_FOUND|ERR_PNPM_FETCH_404'; then
+              echo "Version ${package_version} is not published yet."
+            else
+              # Fail open on registry failures: the publish step itself rejects
+              # republishing an existing version, so an unreadable registry
+              # should not block an otherwise valid manual release.
+              echo "::warning::Could not verify whether ${package_version} is already published (registry unreachable or unexpected pnpm error); continuing."
+              printf '%s\n' "${registry_output}"
+            fi
+          fi
 
       - name: Install dependencies
         run: pnpm ci
