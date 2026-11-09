@@ -238,6 +238,28 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("列表续行围栏与相邻 :no-v-pre 围栏不产生插值", () => {
+    const payloads = [
+      "- item\n  ```js\n{{7*7}}",
+      "- item\n  ~~~js\n{{7*7}}",
+      "- ~~~js\n- ```md :no-v-pre\n  {{7*7}}",
+    ];
+
+    for (const text of payloads) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text }]), {
+        location: "oracle/list-continuation-fence",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], text), {
+        location: "oracle/list-continuation-fence-desc",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+      expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+      expect(compileTemplate(descMarkdown)).not.toContain("_toDisplayString");
+    }
+  });
+
   it("引用块与列表围栏边界外不产生插值", () => {
     const desces = [
       "> ```js\n> {{7*7}}\n> ```",

@@ -370,7 +370,15 @@ const collectBlockquoteFenceLines = (
     )
       continue;
 
-    const fence = getFenceInfo(stripBlockquotePrefix(lines[index]));
+    const rawLine = lines[index];
+    const stripped = stripBlockquotePrefix(rawLine);
+    const insideBlockquote = stripped !== rawLine;
+
+    // 0 列缩进的行才可能是顶层围栏；带缩进但不在引用块内的行属于列表续行等场景，
+    // 不能当成新的围栏开头（否则会把后续普通段落误标为受保护）。
+    if (!insideBlockquote && stripped !== rawLine.trimStart()) continue;
+
+    const fence = getFenceInfo(stripped);
 
     if (!fence) continue;
 
@@ -1153,14 +1161,21 @@ const resolveContainerFenceProtection = (
 
     for (let cursor = 0; cursor < sorted.length; cursor += 1) {
       const start = sorted[cursor];
+      const protect = info.protectedLines.has(start);
       let end = start;
 
-      while (cursor + 1 < sorted.length && sorted[cursor + 1] === end + 1) {
+      // 相邻但保护状态不同的围栏属于两个围栏（例如前一个未闭合围栏紧接着 :no-v-pre 围栏），
+      // 不能合并成一个整段，否则前一个围栏的保护状态会覆盖后一个。
+      while (
+        cursor + 1 < sorted.length &&
+        sorted[cursor + 1] === end + 1 &&
+        info.protectedLines.has(sorted[cursor + 1]) === protect
+      ) {
         cursor += 1;
         end = sorted[cursor];
       }
 
-      ranges.push({ start, end, protect: info.protectedLines.has(start) });
+      ranges.push({ start, end, protect });
     }
   }
 

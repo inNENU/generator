@@ -519,6 +519,35 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
       expect(markdownIt.render(descMarkdown)).not.toContain("{{");
     }
 
+    // 围栏 opener 位于列表项续行（不在列表标记行）时，后面的段落也不能被保护
+    for (const content of ["- item\n  ```js\n{{7*7}}", "- item\n  ~~~js\n{{7*7}}"]) {
+      const textMarkdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
+        location: "probe/list-continuation-fence",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], content), {
+        location: "probe/list-continuation-fence-desc",
+      });
+
+      expect(textMarkdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+      expect(markdownIt.render(textMarkdown)).not.toContain("{{");
+      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
+    }
+
+    // 前一个未闭合围栏与紧随其后的 :no-v-pre 围栏不能被合并成受保护整段
+    const twoItems = "- ~~~js\n- ```md :no-v-pre\n  {{7*7}}";
+    const twoItemsMarkdown = getPageMarkdown(createPage([{ tag: "text", text: twoItems }]), {
+      location: "probe/two-items-fence",
+    });
+    const twoItemsDescMarkdown = getPageMarkdown(createPage([], twoItems), {
+      location: "probe/two-items-fence-desc",
+    });
+
+    expect(twoItemsMarkdown).not.toContain("{{");
+    expect(twoItemsDescMarkdown).not.toContain("{{");
+    expect(markdownIt.render(twoItemsMarkdown)).not.toContain("{{");
+    expect(markdownIt.render(twoItemsDescMarkdown)).not.toContain("{{");
+
     // 缩进仍属于合法顶层围栏时，内容保持 v-pre 原文
     const indented = getPageMarkdown(
       createPage([{ tag: "text", text: "  ```js\n  {{7*7}}\n  ```" }]),
