@@ -381,6 +381,11 @@ export const convertStyle = (style?: string | Record<string, string>): string | 
 /**
  * 转义 HTML 特殊字符
  *
+ * 只负责 HTML 层：HTML 文本、引号包裹的属性值，以及写入 Markdown 后会按 raw HTML 解析的片段。 它不会消除 Markdown
+ * 语法：反引号、竖线、方括号、星号等仍会被解析， 需要按输出上下文叠加专用 helper——链接文字用 {@link escapeMarkdownLinkLabel}， 链接目标用
+ * {@link formatMarkdownDestination}，容器正文的行首语法用 {@link escapeContainerBodySyntax}。 frontmatter 标量需要
+ * YAML 引号化，使用 {@link getYamlValue}（不负责 Markdown 转义）。
+ *
  * @param content 需要转义的内容
  * @returns 转义后的内容
  */
