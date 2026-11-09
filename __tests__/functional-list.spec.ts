@@ -150,6 +150,78 @@ describe("functional-list 文本渲染", () => {
     expect(text).not.toContain("RouteLink");
   });
 
+  it("所有条目都被 urlConverter 丢弃时整块不输出，不留下悬空标题", () => {
+    const page = createPage([
+      {
+        tag: "functional-list",
+        header: "工作室招新",
+        items: [{ type: "navigator", text: "招新详情", url: "info?path=Ohope-studio/invite" }],
+        footer: "如有疑问请联系我们",
+      },
+    ]);
+
+    const text = getPageText(page, "other/hope-studio/about", { urlConverter: textUrlConverter });
+
+    expect(text).not.toContain("工作室招新");
+    expect(text).not.toContain("招新详情");
+    expect(text).not.toContain("如有疑问请联系我们");
+    // 该组件是页面唯一内容，整块丢弃后只剩页面标题与描述
+    expect(text).toBe("# 关于我们\n\n> 描述: 页面说明");
+  });
+
+  it("仅部分条目被 urlConverter 丢弃时，标题、页脚与其余条目照常输出", () => {
+    const page = createPage([
+      {
+        tag: "functional-list",
+        header: "相关链接",
+        items: [
+          { type: "navigator", text: "无法转换的链接", url: "unsupported://map" },
+          { type: "navigator", text: "校园导航", url: "site://map" },
+        ],
+        footer: "以上链接仅供参考",
+      },
+    ]);
+
+    const text = getPageText(page, "guide/about", { urlConverter: textUrlConverter });
+
+    expect(text).toContain("#### 相关链接");
+    expect(text).not.toContain("无法转换的链接");
+    expect(text).toContain("- 校园导航（小程序：`/pages/map`");
+    expect(text).toContain("> 以上链接仅供参考");
+  });
+
+  it("article URL 含括号或空格时用尖括号包裹，链接目标不被截断", () => {
+    const page = createPage([
+      {
+        tag: "functional-list",
+        items: [
+          {
+            action: "article",
+            text: "招新文章",
+            url: "https://mp.weixin.qq.com/s/a(b) c",
+          },
+        ],
+      },
+    ]);
+
+    const text = getPageText(page, "guide/about");
+
+    expect(text).toContain("- [招新文章](<https://mp.weixin.qq.com/s/a(b) c>)");
+  });
+
+  it("official 用户名含空格时同样包裹链接目标", () => {
+    const page = createPage([
+      {
+        tag: "functional-list",
+        items: [{ action: "official", text: "关注公众号", username: "in nenu" }],
+      },
+    ]);
+
+    const text = getPageText(page, "guide/about");
+
+    expect(text).toContain("- [关注公众号](<https://open.weixin.qq.com/qr/code?username=in nenu>)");
+  });
+
   it("小程序模式补充 icon / path 与小程序跳转形式", () => {
     const text = getPageText(createFunctionalListPage(), "guide/about", {
       mode: "miniapp",
