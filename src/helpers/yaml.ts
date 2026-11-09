@@ -1,8 +1,19 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 
 import type { Schema } from "js-yaml";
 import { JSON_SCHEMA, NOT_RESOLVED, defineScalarTag, intJsonTag, load } from "js-yaml";
-import { resolve, relative, dirname, join } from "upath";
+import { isAbsolute, normalize, resolve, relative, dirname, join } from "upath";
 
 import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
@@ -264,16 +275,396 @@ const writeFileAtomically = (filename: string, content: string): void => {
   }
 };
 
+/** 生成清单文件名前缀 */
+const GENERATION_MANIFEST_PREFIX = ".innenu-generated.";
+
+/** 生成清单格式版本 */
+const GENERATION_MANIFEST_VERSION = 1;
+
+/**
+ * 判断文件名是否为生成清单
+ *
+ * 清单固定放在目标文件夹根目录，因此带目录分隔符的路径不视为清单。
+ *
+ * @param filename 文件名或相对路径
+ * @returns 是否为生成清单
+ */
+const isGenerationManifest = (filename: string): boolean =>
+  !filename.includes("/") &&
+  filename.startsWith(GENERATION_MANIFEST_PREFIX) &&
+  filename.endsWith(".json");
+
+/**
+ * 获取某个（源文件夹、目标扩展名）组合的生成清单文件名
+ *
+ * 文件名带源文件夹路径与扩展名的哈希，保证多个源共用同一目标文件夹时各用各的清单，不会互相覆盖或按对方的清单清理。
+ *
+ * @param sourceFolder 源文件夹
+ * @param extension 目标文件扩展名
+ * @returns 目标文件夹根目录下的清单文件名
+ */
+const getGenerationManifestName = (sourceFolder: string, extension: ".json" | ".md"): string => {
+  const sourceHash = createHash("sha256")
+    .update(`${resolve(sourceFolder)}\0${extension}`)
+    .digest("hex")
+    .slice(0, 16);
+
+  return `${GENERATION_MANIFEST_PREFIX}${extension.slice(1)}.${sourceHash}.json`;
+};
+
+/**
+ * 把 YAML 相对路径映射为目标输出相对路径
+ *
+ * Markdown 沿用站点约定：`index.yml` 输出为 `README.md`。
+ *
+ * @param filePath 源 YAML 相对路径
+ * @param extension 目标文件扩展名
+ * @returns 目标文件相对路径
+ */
+const getOutputRelativePath = (filePath: string, extension: ".json" | ".md"): string =>
+  extension === ".md"
+    ? filePath.replace(/\.yml$/u, ".md").replace(/(?<sep>\/|^)index\.md$/u, "$<sep>README.md")
+    : filePath.replace(/\.yml$/u, ".json");
+
+/**
+ * 规范化生成清单中的相对路径
+ *
+ * 拒绝空路径、绝对路径与越出目标文件夹的路径，避免被篡改的清单把删除操作引到目标文件夹之外。
+ *
+ * @param filePath 清单中的原始路径
+ * @returns 规范化后的相对路径，不安全时返回 `undefined`
+ */
+const normalizeGenerationPath = (filePath: unknown): string | undefined => {
+  if (typeof filePath !== "string" || filePath === "" || filePath.includes("\0")) return void 0;
+
+  const normalizedPath = normalize(filePath);
+
+  if (
+    normalizedPath === "." ||
+    normalizedPath === ".." ||
+    normalizedPath.startsWith("../") ||
+    isAbsolute(normalizedPath)
+  )
+    return void 0;
+
+  return normalizedPath;
+};
+
+/**
+ * 判断路径是否严格位于文件夹内
+ *
+ * @param folder 文件夹
+ * @param filename 文件路径
+ * @returns 是否位于文件夹内
+ */
+const isInsideFolder = (folder: string, filename: string): boolean => {
+  const relativePath = relative(folder, filename);
+
+  return (
+    relativePath !== "" &&
+    relativePath !== ".." &&
+    !relativePath.startsWith("../") &&
+    !isAbsolute(relativePath)
+  );
+};
+
+/**
+ * 读取生成清单
+ *
+ * 清单损坏或格式不符时返回 `undefined`，调用方据此按“首次运行”保守处理，不做任何删除。
+ *
+ * @param filename 清单文件路径
+ * @returns 排序后的相对路径列表，无法读取时返回 `undefined`
+ */
+const readGenerationManifest = (filename: string): string[] | undefined => {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(readFileSync(filename, { encoding: "utf-8" }));
+  } catch (err) {
+    console.warn(
+      `无法读取生成清单，本次不会清理陈旧输出: ${filename}（${err instanceof Error ? err.message : String(err)}）`,
+    );
+    return void 0;
+  }
+
+  if (
+    typeof parsed !== "object" ||
+    parsed == null ||
+    (parsed as { version?: unknown }).version !== GENERATION_MANIFEST_VERSION ||
+    !Array.isArray((parsed as { files?: unknown }).files)
+  ) {
+    console.warn(`生成清单格式无效，本次不会清理陈旧输出: ${filename}`);
+    return void 0;
+  }
+
+  const files = new Set<string>();
+
+  for (const filePath of (parsed as { files: unknown[] }).files) {
+    const normalizedPath = normalizeGenerationPath(filePath);
+
+    if (!normalizedPath) {
+      console.warn(`生成清单包含无效路径，本次不会清理陈旧输出: ${filename}`);
+      return void 0;
+    }
+
+    files.add(normalizedPath);
+  }
+
+  return [...files].sort();
+};
+
+/**
+ * 写入生成清单
+ *
+ * 内容排序固定，便于 diff；写入方式与输出文件一致，先写临时文件再 rename。
+ *
+ * @param filename 清单文件路径
+ * @param files 本次生成的相对路径列表
+ */
+const writeGenerationManifest = (filename: string, files: readonly string[]): void => {
+  const content = `${JSON.stringify({ version: GENERATION_MANIFEST_VERSION, files }, null, 2)}\n`;
+
+  try {
+    if (readFileSync(filename, { encoding: "utf-8" }) === content) return;
+  } catch {
+    // 清单不存在或暂时不可读时继续写入
+  }
+
+  writeFileAtomically(filename, content);
+};
+
+/**
+ * 获取目标文件夹中已有的输出文件，用于首次运行时决定是否需要告警
+ *
+ * 使用 `Dirent`（不跟随符号链接）遍历，只统计目标扩展名的普通文件，并跳过本次已经生成的文件。
+ *
+ * @param folder 当前遍历的文件夹
+ * @param extension 目标文件扩展名
+ * @param rootFolder 目标文件夹根目录
+ * @param excludedFiles 本次已经生成、无需告警的相对路径
+ * @returns 是否存在本次未生成的输出文件
+ */
+const hasOutputFiles = (
+  folder: string,
+  extension: ".json" | ".md",
+  rootFolder = folder,
+  excludedFiles: ReadonlySet<string> = new Set(),
+): boolean => {
+  let entries;
+
+  try {
+    entries = readdirSync(folder, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+
+  return entries.some((entry) => {
+    if (entry.isSymbolicLink()) return false;
+
+    if (entry.isDirectory())
+      return hasOutputFiles(resolve(folder, entry.name), extension, rootFolder, excludedFiles);
+
+    if (!entry.isFile() || !entry.name.endsWith(extension) || isGenerationManifest(entry.name))
+      return false;
+
+    return !excludedFiles.has(relative(rootFolder, resolve(folder, entry.name)));
+  });
+};
+
+/**
+ * 收集其它生成清单中记录的文件
+ *
+ * 多个源共用同一目标文件夹时，即使不同源恰好映射到同一相对路径，也不能由其中一个源把另一个源仍在生成的文件删掉。
+ *
+ * @param targetFolder 目标文件夹
+ * @param ownManifestName 当前管线的清单文件名
+ * @returns 其它清单记录的文件集合
+ */
+const getProtectedOutputPaths = (targetFolder: string, ownManifestName: string): Set<string> => {
+  const protectedPaths = new Set<string>();
+  let entries;
+
+  try {
+    entries = readdirSync(targetFolder, { withFileTypes: true });
+  } catch {
+    return protectedPaths;
+  }
+
+  for (const entry of entries) {
+    if (entry.name === ownManifestName || !entry.isFile() || !isGenerationManifest(entry.name))
+      continue;
+
+    const files = readGenerationManifest(resolve(targetFolder, entry.name));
+
+    if (files) for (const filePath of files) protectedPaths.add(filePath);
+  }
+
+  return protectedPaths;
+};
+
+/**
+ * 删除单个陈旧输出
+ *
+ * 只删除目标文件夹内的普通文件：符号链接、目录一律跳过；删除前再用 `realpath` 确认解析后的真实路径仍在目标文件夹内，防止通过符号链接删到目标文件夹之外。
+ *
+ * @param targetFolder 目标文件夹（绝对路径）
+ * @param targetRealFolder 目标文件夹的真实路径
+ * @param filePath 清单中的相对路径
+ */
+const removeStaleOutputFile = (
+  targetFolder: string,
+  targetRealFolder: string,
+  filePath: string,
+): void => {
+  const normalizedPath = normalizeGenerationPath(filePath);
+
+  if (!normalizedPath || isGenerationManifest(normalizedPath)) return;
+
+  const filename = resolve(targetFolder, normalizedPath);
+
+  if (!isInsideFolder(targetFolder, filename)) return;
+
+  let fileStat;
+
+  try {
+    fileStat = lstatSync(filename);
+  } catch {
+    // 文件已经不存在，无需处理
+    return;
+  }
+
+  // 不跟随符号链接，也不删除目录
+  if (!fileStat.isFile()) return;
+
+  let realFilename: string;
+
+  try {
+    realFilename = realpathSync(filename);
+  } catch {
+    return;
+  }
+
+  if (!isInsideFolder(targetRealFolder, realFilename)) {
+    console.warn(`已跳过目标文件夹之外的陈旧输出: ${filename}`);
+    return;
+  }
+
+  rmSync(filename, { force: true });
+  console.warn(`已移除陈旧的输出文件: ${filename}`);
+};
+
+/**
+ * 收集本次生成且确实位于目标文件夹内的普通文件
+ *
+ * 清单只记录真实存在的普通文件；符号链接、目录以及解析后越出目标文件夹的路径都不会进入清单。
+ *
+ * @param targetRoot 目标文件夹（绝对路径）
+ * @param targetRealRoot 目标文件夹的真实路径
+ * @param extension 目标文件扩展名
+ * @param generatedFiles 本次实际生成的目标文件相对路径
+ * @returns 可写入清单的相对路径集合
+ */
+const collectGeneratedOutputs = (
+  targetRoot: string,
+  targetRealRoot: string,
+  extension: ".json" | ".md",
+  generatedFiles: Iterable<string>,
+): Set<string> => {
+  const currentFiles = new Set<string>();
+
+  for (const filePath of generatedFiles) {
+    const normalizedPath = normalizeGenerationPath(filePath);
+
+    if (!normalizedPath || isGenerationManifest(normalizedPath)) continue;
+    if (!normalizedPath.endsWith(extension)) continue;
+
+    const filename = resolve(targetRoot, normalizedPath);
+
+    if (!isInsideFolder(targetRoot, filename)) continue;
+
+    let fileStat;
+
+    try {
+      fileStat = lstatSync(filename);
+    } catch {
+      continue;
+    }
+
+    // 清单只记录目标文件夹内真实存在的普通文件
+    if (!fileStat.isFile()) continue;
+
+    try {
+      if (!isInsideFolder(targetRealRoot, realpathSync(filename))) continue;
+    } catch {
+      continue;
+    }
+
+    currentFiles.add(normalizedPath);
+  }
+
+  return currentFiles;
+};
+
+/**
+ * 将本次生成的文件同步到清单，并删除上次生成、本次不再生成的文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹
+ * @param extension 目标文件扩展名
+ * @param generatedFiles 本次实际生成的目标文件相对路径
+ */
+const syncGeneratedOutputs = (
+  sourceFolder: string,
+  targetFolder: string,
+  extension: ".json" | ".md",
+  generatedFiles: Iterable<string>,
+): void => {
+  if (resolve(sourceFolder) === resolve(targetFolder)) return;
+  if (!existsSync(targetFolder)) return;
+
+  const targetRoot = resolve(targetFolder);
+  const manifestName = getGenerationManifestName(sourceFolder, extension);
+  const manifestFilename = resolve(targetRoot, manifestName);
+  const hasManifest = existsSync(manifestFilename);
+  const previousFiles = hasManifest ? readGenerationManifest(manifestFilename) : void 0;
+  const targetRealRoot = realpathSync(targetRoot);
+  const currentFiles = collectGeneratedOutputs(
+    targetRoot,
+    targetRealRoot,
+    extension,
+    generatedFiles,
+  );
+  const sortedFiles = [...currentFiles].sort();
+
+  if (!hasManifest && hasOutputFiles(targetRoot, extension, targetRoot, currentFiles))
+    console.warn(`目标文件夹中缺少生成清单，本次不会清理陈旧输出: ${targetRoot}`);
+
+  if (previousFiles) {
+    const protectedFiles = getProtectedOutputPaths(targetRoot, manifestName);
+
+    for (const filePath of previousFiles) {
+      if (currentFiles.has(filePath) || protectedFiles.has(filePath)) continue;
+
+      removeStaleOutputFile(targetRoot, targetRealRoot, filePath);
+    }
+  }
+
+  writeGenerationManifest(manifestFilename, sortedFiles);
+};
+
 /**
  * 清理目标文件夹中源文件已不存在的旧输出
  *
- * 仅在源与目标文件夹不同时执行，避免误删与生成无关的文件。
+ * 清理只依据生成清单：只删除「清单中记录过、本次未生成」的文件，清单之外的文件（手写文档、其它工具产物、其它源的输出）永远不会被删除。目标文件夹中还没有清单时按首次运行保守处理：不删除任何文件，只写入本次生成的文件清单。
+ *
+ * 仅在源与目标文件夹不同时执行；清单文件带源文件夹与扩展名的哈希，多个源共用同一目标文件夹时互不影响。清理不会跟随符号链接目录，删除前还会用 `realpath` 确认文件仍位于目标文件夹内。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
  * @param extension 目标文件扩展名
  */
-const removeStaleOutputs = (
+export const removeStaleOutputs = (
   sourceFolder: string,
   targetFolder: string,
   extension: ".json" | ".md",
@@ -281,25 +672,16 @@ const removeStaleOutputs = (
   if (resolve(sourceFolder) === resolve(targetFolder)) return;
   if (!existsSync(targetFolder)) return;
 
-  for (const filePath of getFileList(targetFolder, extension.slice(1))) {
-    const targetFilename = resolve(targetFolder, filePath);
-    const sourceBase = filePath.endsWith(extension)
-      ? filePath.slice(0, -extension.length)
-      : filePath;
-    const candidates = [`${sourceBase}.yml`, `${sourceBase}.yaml`];
-
-    if (extension === ".md" && /(?:^|\/)README\.md$/u.test(filePath)) {
-      const dirnamePrefix = filePath.replace(/README\.md$/u, "");
-      candidates.push(`${dirnamePrefix}index.yml`, `${dirnamePrefix}index.yaml`);
-    }
-
-    const hasSource = candidates.some((candidate) => existsSync(resolve(sourceFolder, candidate)));
-
-    if (!hasSource) {
-      rmSync(targetFilename, { force: true });
-      console.warn(`已移除陈旧的输出文件: ${targetFilename}`);
-    }
+  if (!existsSync(sourceFolder)) {
+    console.warn(`源文件夹不存在，已跳过陈旧输出清理: ${resolve(sourceFolder)}`);
+    return;
   }
+
+  const generatedFiles = getFileList(sourceFolder, "yml").map((filePath) =>
+    getOutputRelativePath(filePath, extension),
+  );
+
+  syncGeneratedOutputs(sourceFolder, targetFolder, extension, generatedFiles);
 };
 
 /**
@@ -318,10 +700,11 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
 ): void => {
   const fileList = getFileList(sourceFolder, "yml");
   const errors: Error[] = [];
+  const generatedFiles = new Set<string>();
 
   fileList.forEach((filePath) => {
     const sourceFilename = resolve(sourceFolder, filePath);
-    const targetFilename = resolve(targetFolder, filePath.replace(/\.yml$/u, ".json"));
+    const targetFilename = resolve(targetFolder, getOutputRelativePath(filePath, ".json"));
     const targetFolderPath = dirname(targetFilename);
     const yamlRelativePath = relative("./", filePath.replace(/\.yml$/u, ""));
 
@@ -342,6 +725,7 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
         if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
         writeFileAtomically(targetFilename, JSON.stringify(result));
+        generatedFiles.add(relative(resolve(targetFolder), targetFilename));
       }
     } catch (err) {
       errors.push(
@@ -355,7 +739,7 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   if (errors.length > 0)
     throw new AggregateError(errors, `YAML 转 JSON 失败（${errors.length} 个文件）`);
 
-  removeStaleOutputs(sourceFolder, targetFolder, ".json");
+  syncGeneratedOutputs(sourceFolder, targetFolder, ".json", generatedFiles);
 };
 
 /**
@@ -376,13 +760,11 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
 ): void => {
   const fileList = getFileList(sourceFolder, "yml");
   const errors: Error[] = [];
+  const generatedFiles = new Set<string>();
 
   fileList.forEach((filePath) => {
     const sourceFilename = resolve(sourceFolder, filePath);
-    const targetFilename = resolve(
-      targetFolder,
-      filePath.replace(/\.yml$/u, ".md").replace(/(?<sep>\/|^)index.md$/u, "$<sep>README.md"),
-    );
+    const targetFilename = resolve(targetFolder, getOutputRelativePath(filePath, ".md"));
     const targetFolderPath = dirname(targetFilename);
 
     try {
@@ -399,6 +781,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
       if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
       writeFileAtomically(targetFilename, result);
+      generatedFiles.add(relative(resolve(targetFolder), targetFilename));
     } catch (err) {
       errors.push(
         new Error(`YAML 转 Markdown 失败: ${sourceFilename}`, {
@@ -411,7 +794,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
   if (errors.length > 0)
     throw new AggregateError(errors, `YAML 转 Markdown 失败（${errors.length} 个文件）`);
 
-  removeStaleOutputs(sourceFolder, targetFolder, ".md");
+  syncGeneratedOutputs(sourceFolder, targetFolder, ".md", generatedFiles);
 };
 
 export interface YamlInfo<Value = unknown> {
