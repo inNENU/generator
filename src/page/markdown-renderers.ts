@@ -17,7 +17,13 @@ import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
 import { sanitizeUrl } from "../helpers/url.js";
 import type { MarkdownMode, UrlHandler } from "../typings.js";
-import { escapeContainerBodySyntax, escapeHtml, getFileLink } from "../utils.js";
+import {
+  escapeContainerBodySyntax,
+  escapeHtml,
+  escapeMarkdownLinkLabel,
+  formatMarkdownDestination,
+  getFileLink,
+} from "../utils.js";
 import type { ComponentOptions } from "./schema.js";
 
 /** URL 转换结果 */
@@ -152,7 +158,9 @@ const renderTextComponentMarkdown = (
               return `- ${escapeHtml(item.text)}${icon}（小程序：\`${converted.miniapp}\`）`;
             }
 
-            return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）`;
+            return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(
+              converted.web,
+            )})）`;
           }
 
           const itemDesc = "desc" in item && item.desc ? ` - ${escapeHtml(item.desc)}` : "";
@@ -193,7 +201,9 @@ ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
           return `- ${escapeHtml(cardTitle)}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
         }
 
-        return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${converted.web})）\n\n`;
+        return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(
+          converted.web,
+        )})）\n\n`;
       }
 
       const itemDesc = cardDesc ? ` - ${escapeHtml(cardDesc)}` : "";
@@ -218,14 +228,18 @@ ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
 
       return `\
 ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
-![在腾讯地图中查看](${getLocationMarkerUrl(points)})\n\n`;
+![在腾讯地图中查看](${formatMarkdownDestination(getLocationMarkerUrl(points))})\n\n`;
     }
 
     case "img": {
       const { src, desc: imgDesc } = component;
       const imgLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
 
-      return imgLink ? `![${escapeHtml(imgDesc ?? "")}](${imgLink})\n\n` : "";
+      return imgLink
+        ? `![${escapeMarkdownLinkLabel(escapeHtml(imgDesc ?? ""))}](${formatMarkdownDestination(
+            imgLink,
+          )})\n\n`
+        : "";
     }
 
     case "carousel": {
@@ -234,7 +248,7 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
         .filter((link): link is string => link != null);
 
       return images.length > 0
-        ? `${images.map((link) => `![''](${link})\n\n`).join("\n")}\n\n`
+        ? `${images.map((link) => `![''](${formatMarkdownDestination(link)})\n\n`).join("\n")}\n\n`
         : "";
     }
 
@@ -243,7 +257,9 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
       const docUrl = sanitizeUrl(mode === "miniapp" ? url : (getFileLink(url) ?? url));
       const docName = getDocDisplayName(name, docUrl ?? "");
 
-      return docUrl ? `- [${escapeHtml(docName)}](${docUrl})\n\n` : `- ${escapeHtml(name)}\n\n`;
+      return docUrl
+        ? `- [${escapeMarkdownLinkLabel(escapeHtml(docName))}](${formatMarkdownDestination(docUrl)})\n\n`
+        : `- ${escapeHtml(name)}\n\n`;
     }
 
     case "phone": {
@@ -275,12 +291,16 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
 #### ${escapeHtml(header || `${lName}${fName} 联系方式`)}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
-- 电话: ${telUrl ? `[${escapeHtml(String(num))}](${telUrl})` : escapeHtml(String(num))}
+- 电话: ${
+        telUrl
+          ? `[${escapeMarkdownLinkLabel(escapeHtml(String(num)))}](${formatMarkdownDestination(telUrl)})`
+          : escapeHtml(String(num))
+      }
 ${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
 ${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
 ${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\
 ${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
-${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
+${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${formatMarkdownDestination(mailUrl)})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 ${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
 ${contactTitle ? `- 职位: ${escapeHtml(contactTitle)}\n` : ""}\
 ${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
@@ -298,14 +318,14 @@ ${postCode ? `- 邮编: ${escapeHtml(String(postCode))}\n` : ""}\
       const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
 
       return `\
-${logoUrl ? `![${escapeHtml(name)}](${logoUrl})\n\n` : ""}\
+${logoUrl ? `![${escapeMarkdownLinkLabel(escapeHtml(name))}](${formatMarkdownDestination(logoUrl)})\n\n` : ""}\
 ${name ? `- 名称: ${escapeHtml(name)}\n` : ""}\
 ${detail ? `- 详情: ${escapeHtml(detail)}\n` : ""}\
 ${accountDesc ? `- 描述: ${escapeHtml(accountDesc)}\n` : ""}\
 ${qq ? `- QQ: ${escapeHtml(String(qq))}\n` : ""}\
-${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
+${wxid ? `- 微信公众号二维码: ![](${formatMarkdownDestination(`https://open.weixin.qq.com/qr/code?username=${encodeURIComponent(wxid)}`)})\n` : ""}\
 ${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
-${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
+${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${formatMarkdownDestination(mailUrl)})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 
 `;
     }
@@ -315,7 +335,9 @@ ${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱:
       const audioLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
       const label = `音频${name ? `: ${escapeHtml(name)}` : ""}`;
 
-      return audioLink ? `[${label}](${audioLink})\n\n` : `${label}\n\n`;
+      return audioLink
+        ? `[${escapeMarkdownLinkLabel(label)}](${formatMarkdownDestination(audioLink)})\n\n`
+        : `${label}\n\n`;
     }
 
     case "video": {
@@ -323,7 +345,9 @@ ${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱:
       const videoLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
       const label = `视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}`;
 
-      return videoLink ? `[${label}](${videoLink})\n\n` : `${label}\n\n`;
+      return videoLink
+        ? `[${escapeMarkdownLinkLabel(label)}](${formatMarkdownDestination(videoLink)})\n\n`
+        : `${label}\n\n`;
     }
 
     default: {

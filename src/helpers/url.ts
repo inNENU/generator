@@ -26,7 +26,18 @@ const controlPattern = /\p{Cc}/u;
 
 /** HTML 字符引用匹配 */
 const characterReferencePattern =
-  /&(?:#(?<decimal>\d{1,7})|#x(?<hex>[0-9a-f]{1,6})|(?<name>[a-z][a-z0-9]{1,31}));?/giu;
+  /&(?:#(?<decimal>\d+)|#x(?<hex>[0-9a-f]+)|(?<name>[a-z][a-z0-9]{1,31}));?/giu;
+
+/** 解码字符引用的最大轮次，防止深层嵌套引用造成 DoS */
+const maxCharacterReferenceRounds = 10;
+
+/** 解码结果 */
+interface DecodedCharacterReferences {
+  /** 解码后的内容 */
+  value: string;
+  /** 是否在轮次上限内解码至稳定 */
+  stable: boolean;
+}
 
 /** HTML 中与 URL 混淆相关的常见命名实体 */
 const namedCharacterReferences: Record<string, string> = {
@@ -45,45 +56,56 @@ const namedCharacterReferences: Record<string, string> = {
 };
 
 /**
+ * 解码一轮 HTML 字符引用
+ *
+ * @param input 待解码内容
+ * @returns 解码一轮后的内容
+ */
+const decodeCharacterReferencesOnce = (input: string): string =>
+  input.replaceAll(
+    characterReferencePattern,
+    (entity: string, decimal?: string, hex?: string, name?: string) => {
+      if (decimal) {
+        const codePoint = Number(decimal);
+
+        return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
+      }
+
+      if (hex) {
+        const codePoint = Number.parseInt(hex, 16);
+
+        return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
+      }
+
+      const named = name ? namedCharacterReferences[name.toLowerCase()] : "";
+
+      return named || entity;
+    },
+  );
+
+/**
  * 解码 HTML 字符引用
  *
  * 仅用于校验，不会把解码后的内容写回产物。浏览器会在解析属性值时解码字符引用， 因此需要先把 `&#106;avascript:` 之类的变体还原后再判断协议。
  *
+ * 数字引用不限制位数、命名引用可多层嵌套，这里循环解码至稳定；超过轮次上限仍未稳定时标记为不可信， 交由调用方按不安全处理。
+ *
  * @param value 待解码的 URL
- * @returns 解码后的 URL
+ * @returns 解码后的内容及是否稳定
  */
-const decodeCharacterReferences = (value: string): string => {
+const decodeCharacterReferences = (value: string): DecodedCharacterReferences => {
   let current = value;
 
-  // 多层编码（如 `&amp;#106;`）也按最坏情况还原，最多三轮。
-  for (let round = 0; round < 3; round += 1) {
-    const next = current.replaceAll(
-      characterReferencePattern,
-      (entity: string, decimal?: string, hex?: string, name?: string) => {
-        if (decimal) {
-          const codePoint = Number(decimal);
+  for (let round = 0; round < maxCharacterReferenceRounds; round += 1) {
+    const next = decodeCharacterReferencesOnce(current);
 
-          return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
-        }
-
-        if (hex) {
-          const codePoint = Number.parseInt(hex, 16);
-
-          return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
-        }
-
-        const named = name ? namedCharacterReferences[name.toLowerCase()] : "";
-
-        return named || entity;
-      },
-    );
-
-    if (next === current) break;
+    if (next === current) return { value: current, stable: true };
 
     current = next;
   }
 
-  return current;
+  // 再用一轮探测：仍在变化说明嵌套层数超过上限，不能保证还原后再判断协议是安全的。
+  return { value: current, stable: decodeCharacterReferencesOnce(current) === current };
 };
 
 /**
@@ -92,10 +114,13 @@ const decodeCharacterReferences = (value: string): string => {
  * 浏览器会忽略协议中的 ASCII 空白与控制字符，因此校验时先去除这些字符，避免 `java\tscript:` 之类绕过。
  *
  * @param value 原始 URL
- * @returns 用于协议判断的 URL
+ * @returns 用于协议判断的 URL；字符引用无法在轮次上限内解码时返回 `null`
  */
-const normalizeForValidation = (value: string): string =>
-  decodeCharacterReferences(value).replaceAll(/[\p{Cc}\s]/gu, "");
+const normalizeForValidation = (value: string): string | null => {
+  const { value: decoded, stable } = decodeCharacterReferences(value);
+
+  return stable ? decoded.replaceAll(/[\p{Cc}\s]/gu, "") : null;
+};
 
 /**
  * 校验用户可控 URL
