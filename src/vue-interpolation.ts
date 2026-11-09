@@ -51,7 +51,8 @@ const htmlCommentStart = /^ {0,3}<!--/u;
 const htmlProcessingStart = /^ {0,3}<\?/u;
 const htmlCdataStart = /^ {0,3}<!\[CDATA\[/u;
 const htmlDeclarationStart = /^ {0,3}<![A-Z]/u;
-const htmlRawTextStart = /<(?<tag>textarea|script|style|title|xmp|iframe|noembed|noframes)\b/iu;
+const htmlRawTextStart =
+  /<(?<tag>textarea|script|style|title|xmp|iframe|noembed|noframes|plaintext|listing|noscript|template)\b/iu;
 
 /**
  * 读取行首围栏标记
@@ -855,12 +856,15 @@ const maskMarkdownSyntax = (
  */
 export const escapeVueInterpolation = (content: string): string => {
   const { masked, restore } = maskMarkdownSyntax(content);
-
-  return restore(
+  const escaped = restore(
     masked
       .replaceAll(vueInterpolationOpenRun, (run) => splitVueBraceRun(run, vueInterpolationOpenAtom))
       .replaceAll(vueInterpolationCloseRun, (run) =>
         splitVueBraceRun(run, vueInterpolationCloseAtom),
       ),
   );
+
+  // `plaintext` 是废弃的原始文本元素，Vue 编译器会把它当作缺少结束标签的原始文本元素。
+  // 转义标签本身，交给 markdown-it 输出为可见文本，避免编译失败。
+  return escaped.replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
 };

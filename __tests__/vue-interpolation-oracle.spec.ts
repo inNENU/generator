@@ -148,6 +148,24 @@ describe("vue 编译级插值防护", () => {
     expect(code).not.toContain("_toDisplayString");
   });
 
+  it("废弃原始文本元素不会导致 Vue 编译错误", () => {
+    const desces = [
+      '<plaintext><div a="{{ 7*7 }}"></div>',
+      '<plaintext><div a="{{ 7*7 }}"></div></plaintext>',
+      '<listing><div a="{{ 7*7 }}"></div></listing>',
+      '<noscript><div a="{{ 7*7 }}"></div></noscript>',
+      '<template><div a="{{ 7*7 }}"></div></template>',
+    ];
+
+    for (const desc of desces) {
+      const code = compileTemplate(
+        getPageMarkdown(createPage([], desc), { location: "probe/obsolete-raw-text" }),
+      );
+
+      expect(code).not.toContain("_toDisplayString");
+    }
+  });
+
   it("crlf 围栏代码由 v-pre 保护", () => {
     const page = createPage([{ tag: "text", text: "```\r\n{{ 7*7 }}\r\n```" }]);
     const code = compileTemplate(getPageMarkdown(page, { location: "probe/crlf-fence" }));

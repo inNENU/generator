@@ -256,6 +256,27 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(html).not.toContain("}}");
   });
 
+  it("处理废弃原始文本元素与 plaintext 标签", () => {
+    const desc = [
+      '<plaintext><div a="{{ 7*7 }}"></div>',
+      '<plaintext><div a="{{ 7*7 }}"></div></plaintext>',
+      '<listing><div a="{{ 7*7 }}"></div></listing>',
+      '<noscript><div a="{{ 7*7 }}"></div></noscript>',
+      '<template><div a="{{ 7*7 }}"></div></template>',
+    ].join("\n\n");
+    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "x" }], desc), {
+      location: "probe/plaintext",
+    });
+    const html = markdownIt.render(markdown);
+
+    expect(markdown).not.toContain("{{");
+    expect(markdown).not.toContain("}}");
+    expect(html).not.toContain("{{");
+    expect(html).not.toContain("}}");
+    expect(html).not.toContain("<plaintext");
+    expect(html).toContain("&lt;plaintext");
+  });
+
   it("处理无空格伪链接、autolink 文本与闭合标签属性", () => {
     const desc = ["x <https://e.com/`{{7*7}}`>", "x <https://e.com/``{{7*7}}``>"].join("\n\n");
     const markdown = getPageMarkdown(
