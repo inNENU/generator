@@ -26,6 +26,35 @@ describe(getTableMarkdown, () => {
     expect(markdown).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(markdown).not.toContain("<script>");
   });
+
+  it("keeps a literal backslash-pipe pair inside one cell", () => {
+    const markdown = getTableMarkdown(createTable(["列"], [[String.raw`a\|b`]]));
+    const row = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    // 输入为反斜杠 + 管道；先转义反斜杠再转义管道，得到 `\\` + `\|`。
+    expect(row).toBe(String.raw`| a\\\|b |`);
+  });
+
+  it("doubles literal backslashes so they combine correctly with pipe escaping", () => {
+    const markdown = getTableMarkdown(createTable(["列"], [[String.raw`a\\b`]]));
+    const row = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    expect(row).toBe(String.raw`| a\\\\b |`);
+  });
+
+  it("escapes a literal backslash-pipe pair in header cells", () => {
+    const markdown = getTableMarkdown(createTable([String.raw`a\|b`], [["普通"]]));
+    const headerRow = markdown.split("\n").find((line) => line.startsWith("| a"));
+
+    expect(headerRow).toBe(String.raw`| a\\\|b |`);
+  });
+
+  // 额外覆盖：单独的管道字符也必须转义，避免被当作列分隔符。
+  it("escapes a lone pipe as a cell character", () => {
+    const markdown = getTableMarkdown(createTable(["|"], [["|"]]));
+
+    expect(markdown).toContain(String.raw`| \| |`);
+  });
 });
 
 describe(checkTable, () => {

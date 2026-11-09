@@ -178,20 +178,66 @@ const updateOptionalPageDataFields = (
   if (typeof page.contact === "boolean") pageData.contact = page.contact;
 };
 
+/** 页面时间输出时区：中国标准时间 */
+const PAGE_TIME_ZONE = "Asia/Shanghai";
+
+/** 不带时区标记的 ISO 日期时间（秒与毫秒可选） */
+const ISO_DATETIME_WITHOUT_ZONE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/u;
+
+/** 按 `Asia/Shanghai` 输出年月日与时分秒的格式化器 */
+const pageTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: PAGE_TIME_ZONE,
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
 /**
- * 将数字补齐为两位
+ * 解析页面时间
  *
- * @param value 待补齐的数字
- * @returns 两位字符串
+ * 不带时区标记的 ISO 日期时间按 `Asia/Shanghai` 墙钟解析，避免解析结果随构建机器的 `process.env.TZ` 变化； 其余字符串交给 `Date` 解析。
+ *
+ * @param time 时间字符串
+ * @returns 解析后的日期
  */
-const padTwoDigits = (value: number): string => String(value).padStart(2, "0");
+const parsePageTime = (time: string): Date => {
+  if (!ISO_DATETIME_WITHOUT_ZONE.test(time)) return new Date(time);
+
+  // `Asia/Shanghai` 自 1991 年 9 月起固定为 UTC+8；1986–1991 年中国实行夏令时，
+  // 该期间不带时区的历史时间仍按 +08:00 解释，可能有 1 小时偏差（已知边界）
+  return new Date(`${time.replace(" ", "T")}+08:00`);
+};
+
+/**
+ * 按 `Asia/Shanghai` 格式化日期时间
+ *
+ * @param date 待格式化的日期
+ * @returns `YYYY 年 M 月 D 日 HH:mm:ss` 文本
+ */
+const formatPageDateTime = (date: Date): string => {
+  const parts = pageTimeFormatter.formatToParts(date);
+
+  const getPart = (type: string): string => parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")} 年 ${Number(getPart("month"))} 月 ${Number(
+    getPart("day"),
+  )} 日 ${getPart("hour")}:${getPart("minute")}:${getPart("second")}`;
+};
 
 /**
  * 格式化页面时间
  *
- * 日期字符串（`YYYY-MM-DD`）只输出日期，避免被解析为 UTC 零点后按本地时区显示成前一天或 08:00； 其他形式按本地时间输出完整的年月日与 `HH:mm:ss`。
+ * 日期字符串（`YYYY-MM-DD`）只输出日期，避免被解析为 UTC 零点后按本地时区显示成前一天或 08:00； 其他 ISO 日期时间统一按
+ * `Asia/Shanghai`（UTC+8）输出完整的年月日与 `HH:mm:ss`。不带时区标记的时间按北京时间墙钟解析， 因此输出不依赖构建机器的 `process.env.TZ`。
  *
- * @param time 页面时间（日期字符串或 Date）
+ * 仅支持 `Date` 与 ISO 日期/日期时间字符串，不支持 number 时间戳。已知边界：1986–1991 年中国实行夏令时， 该期间不带时区标记的历史时间按 UTC+8 解释，可能产生
+ * 1 小时偏差。
+ *
+ * @param time 页面时间（ISO 日期/日期时间字符串或 Date）
  * @returns 用于展示的时间文本
  */
 const formatPageTime = (time: string | Date): string => {
@@ -202,13 +248,11 @@ const formatPageTime = (time: string | Date): string => {
     return `${dateOnly.getFullYear()} 年 ${dateOnly.getMonth() + 1} 月 ${dateOnly.getDate()} 日`;
   }
 
-  const date = new Date(time);
+  const date = typeof time === "string" ? parsePageTime(time) : time;
 
   if (Number.isNaN(date.getTime())) throw new TypeError(`无法解析页面时间: ${String(time)}`);
 
-  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 ${padTwoDigits(
-    date.getHours(),
-  )}:${padTwoDigits(date.getMinutes())}:${padTwoDigits(date.getSeconds())}`;
+  return formatPageDateTime(date);
 };
 
 /**

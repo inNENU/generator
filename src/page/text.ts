@@ -35,6 +35,20 @@ export interface GetPageTextOptions {
 }
 
 /**
+ * 将页面描述渲染为引用块
+ *
+ * 多行描述逐行加 `> `，行间以空引用行（`\n>\n`）分隔，与站点管线保持一致； 空行保留为空引用行，行内首尾空白不做裁剪。
+ *
+ * @param desc 页面描述
+ * @returns 引用格式的描述块（块后空行由调用方补充）
+ */
+const formatDesc = (desc: string): string => {
+  const [firstLine = "", ...continuationLines] = escapeHtml(desc).split("\n");
+
+  return [`描述: ${firstLine}`, ...continuationLines].map((line) => `> ${line}`).join("\n>\n");
+};
+
+/**
  * 获取页面文本
  *
  * @param page 页面数据
@@ -72,7 +86,7 @@ export const getPageText = (
     return `\
 # ${escapeHtml(title)}
 
-${desc ? `> 描述: ${escapeHtml(desc)}\n\n` : ""}\
+${desc ? `${formatDesc(desc)}\n\n` : ""}\
 ${content
   .map((component, index) =>
     renderComponentMarkdown(component, {
