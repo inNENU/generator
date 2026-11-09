@@ -1,10 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 
-import { dump, JSON_SCHEMA, load } from "js-yaml";
+import { dump } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
 
 import { withoutAssetFileCheck } from "./helpers/assetCheck.js";
+import { writeFileAtomically } from "./helpers/generation-manifest.js";
 import { formatZodError, getFileList } from "./helpers/index.js";
+import { parseYaml } from "./helpers/yaml.js";
 import { stripYamlExtension, YAML_EXTENSIONS } from "./helpers/yamlPath.js";
 import { pageConfigSchema } from "./page/schema.js";
 import { getPageText } from "./page/text.js";
@@ -28,7 +30,8 @@ export interface KnowledgeContentOptions {
 /**
  * 读取并校验页面配置
  *
- * 解析失败或不符合 `pageConfigSchema` 时输出带文件路径的错误并返回 `null`，避免单页问题中断整批转换。
+ * 解析失败或不符合 `pageConfigSchema` 时输出带文件路径的错误并返回 `null`，避免单页问题中断整批转换。 解析统一走 `parseYaml`，与其它 YAML
+ * 转换路径一致地应用别名数量（`maxAliases`）与展开节点上限，并把解析异常包装成带文件路径的错误； 空文件、纯注释或仅包含文档标记/指令的页面没有页面配置，按非法页面跳过。
  *
  * @param sourceFilename 页面 YAML 文件路径
  * @param displayPath 报错中展示的相对路径
@@ -37,7 +40,15 @@ export interface KnowledgeContentOptions {
 const loadPageConfig = (sourceFilename: string, displayPath: string): PageConfig | null => {
   try {
     const content = readFileSync(sourceFilename, { encoding: "utf-8" });
-    const parsed = pageConfigSchema.safeParse(load(content, { schema: JSON_SCHEMA }));
+    const value = parseYaml(content, sourceFilename);
+
+    if (value === void 0) {
+      console.error(`${displayPath} 页面配置为空（空文件、仅注释或仅文档标记），已跳过`);
+
+      return null;
+    }
+
+    const parsed = pageConfigSchema.safeParse(value);
 
     if (!parsed.success) {
       console.error(`${displayPath} 页面配置校验失败:\n${formatZodError(parsed.error)}`);
@@ -55,6 +66,13 @@ const loadPageConfig = (sourceFilename: string, displayPath: string): PageConfig
 
 /**
  * 生成知识库内容，将源文件夹下的 YAML 页面转换为 Markdown 文本
+ *
+ * 每个 Markdown 文件都通过 `writeFileAtomically` 写出（先写临时文件再 rename），避免中途失败留下半截文件。
+ *
+ * 关于陈旧输出：本函数不清理 `distFolder` 中源文件已删除的旧产物。真实消费者（innenu-resource）在生成前会整体删除输出目录
+ * （`deleteSync("./.resource/**")`），陈旧文件不会跨运行堆积；而现有 generation-manifest 的清理 API 按站点约定把 `index.yml`
+ * 映射为 `README.md`，且只支持 `.json` / `.md` 两种扩展名，与知识库的 `index.md` 及 `index.lora|yaml|json`
+ * 输出约定不一致，直接复用会误记/误删路径，并会在 AI 消费目录里额外留下清单文件。因此在 API 扩展出可定制的输出路径映射之前不做清理，避免引入破坏性行为。
  *
  * @default {}
  * @param sourceFolder 源文件夹
@@ -89,7 +107,7 @@ export const generateKnowledgeContent = (
 
         if (!existsSync(targetDirname)) mkdirSync(targetDirname, { recursive: true });
 
-        writeFileSync(targetFilename, text, { encoding: "utf-8" });
+        writeFileAtomically(targetFilename, text);
       } catch (err) {
         console.error(`${filePathRelative} 生成知识库 Markdown 失败:`, err);
       }
@@ -216,6 +234,11 @@ export interface KnowledgeIndexOptions {
 /**
  * 生成知识库索引（L0 文档索引）
  *
+ * 索引文件通过 `writeFileAtomically` 写出（先写临时文件再 rename），避免中途失败留下半截文件。
+ *
+ * 与 `generateKnowledgeContent` 相同，本函数不清理 `distFolder` 里的陈旧输出：消费者会在生成前整体删除输出目录，而现有
+ * generation-manifest 清理 API 的路径映射与扩展名约定也不适用于知识库索引（详见 `generateKnowledgeContent` 的说明）。
+ *
  * - `json`：输出 `distFolder/index.json`，每条记录 `{ path, info, keywords, campus }`
  * - `yaml`：输出 `distFolder/index.yaml`，每条记录一行，自动处理转义
  * - `lora`（默认）：输出 `distFolder/index.lora`，最紧凑：首行 path、次行 info（summary 取代 title）， keywords / campus 仅
@@ -292,6 +315,6 @@ export const generateKnowledgeIndex = (
             dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
           : JSON.stringify(sortedIndex, null, 2);
 
-    writeFileSync(targetFilename, output, { encoding: "utf-8" });
+    writeFileAtomically(targetFilename, output);
   });
 };
