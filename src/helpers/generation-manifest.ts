@@ -79,21 +79,21 @@ const getCanonicalPath = (filePath: string): string => {
 };
 
 /**
- * 获取某个（源文件夹、目标扩展名）组合的生成清单文件名
+ * 获取某个（源文件夹、产物类型）组合的生成清单文件名
  *
- * 文件名带源文件夹真实路径与扩展名的哈希，保证多个源共用同一目标文件夹时各用各的清单，不会互相覆盖或按对方的清单清理。 同一个物理源经符号链接或 `/var` 别名访问时仍指向同一个清单。
+ * 文件名带源文件夹真实路径与产物类型的哈希，保证多个源共用同一目标文件夹时各用各的清单，不会互相覆盖或按对方的清单清理。 同一个物理源经符号链接或 `/var` 别名访问时仍指向同一个清单。
  *
  * @param sourceFolder 源文件夹
- * @param extension 目标文件扩展名
+ * @param manifestKey 产物类型标识（如 `.json`、`.md`、`.svg`），同时参与清单名哈希
  * @returns 目标文件夹根目录下的清单文件名
  */
-const getGenerationManifestName = (sourceFolder: string, extension: ".json" | ".md"): string => {
+const getGenerationManifestName = (sourceFolder: string, manifestKey: string): string => {
   const sourceHash = createHash("sha256")
-    .update(`${getCanonicalPath(sourceFolder)}\0${extension}`)
+    .update(`${getCanonicalPath(sourceFolder)}\0${manifestKey}`)
     .digest("hex")
     .slice(0, 16);
 
-  return `${GENERATION_MANIFEST_PREFIX}${extension.slice(1)}.${sourceHash}.json`;
+  return `${GENERATION_MANIFEST_PREFIX}${manifestKey.replace(/^\./u, "")}.${sourceHash}.json`;
 };
 
 /**
@@ -224,17 +224,17 @@ const writeGenerationManifest = (filename: string, files: readonly string[]): vo
 /**
  * 获取目标文件夹中已有的输出文件，用于首次运行时决定是否需要告警
  *
- * 使用 `Dirent`（不跟随符号链接）遍历，只统计目标扩展名的普通文件，并跳过本次已经生成的文件。
+ * 使用 `Dirent`（不跟随符号链接）遍历，只统计普通文件，并跳过本次已经生成的文件。
  *
  * @param folder 当前遍历的文件夹
- * @param extension 目标文件扩展名
+ * @param extension 目标文件扩展名；为 `null` 时统计所有普通文件（如无扩展名的 SVG 图标产物）
  * @param rootFolder 目标文件夹根目录
  * @param excludedFiles 本次已经生成、无需告警的相对路径
  * @returns 是否存在本次未生成的输出文件
  */
 const hasOutputFiles = (
   folder: string,
-  extension: ".json" | ".md",
+  extension: string | null,
   rootFolder = folder,
   excludedFiles: ReadonlySet<string> = new Set(),
 ): boolean => {
@@ -252,8 +252,8 @@ const hasOutputFiles = (
     if (entry.isDirectory())
       return hasOutputFiles(resolve(folder, entry.name), extension, rootFolder, excludedFiles);
 
-    if (!entry.isFile() || !entry.name.endsWith(extension) || isGenerationManifest(entry.name))
-      return false;
+    if (!entry.isFile() || isGenerationManifest(entry.name)) return false;
+    if (extension != null && !entry.name.endsWith(extension)) return false;
 
     return !excludedFiles.has(relative(rootFolder, resolve(folder, entry.name)));
   });
@@ -355,14 +355,14 @@ const removeStaleOutputFile = (
  *
  * @param targetRoot 目标文件夹（绝对路径）
  * @param targetRealRoot 目标文件夹的真实路径
- * @param extension 目标文件扩展名
+ * @param extension 目标文件扩展名；为 `null` 时不按扩展名过滤（如无扩展名的 SVG 图标产物）
  * @param generatedFiles 本次实际生成的目标文件相对路径
  * @returns 可写入清单的相对路径集合
  */
 const collectGeneratedOutputs = (
   targetRoot: string,
   targetRealRoot: string,
-  extension: ".json" | ".md",
+  extension: string | null,
   generatedFiles: Iterable<string>,
 ): Set<string> => {
   const currentFiles = new Set<string>();
@@ -371,7 +371,7 @@ const collectGeneratedOutputs = (
     const normalizedPath = normalizeGenerationPath(filePath);
 
     if (!normalizedPath || isGenerationManifest(normalizedPath)) continue;
-    if (!normalizedPath.endsWith(extension)) continue;
+    if (extension != null && !normalizedPath.endsWith(extension)) continue;
 
     const filename = resolve(targetRoot, normalizedPath);
 
@@ -400,25 +400,32 @@ const collectGeneratedOutputs = (
   return currentFiles;
 };
 
+interface SyncOutputOptions {
+  /** 产物类型标识，用于区分同一目标文件夹中的不同产物 */
+  manifestKey: string;
+  /** 目标文件扩展名；为 `null` 时不按扩展名过滤 */
+  extension: string | null;
+}
+
 /**
- * 将本次生成的文件同步到清单，并删除上次生成、本次不再生成的文件
+ * 同步生成清单并清理陈旧输出（通用实现）
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
- * @param extension 目标文件扩展名
+ * @param options 产物类型与扩展名
  * @param generatedFiles 本次实际生成的目标文件相对路径
  */
-export const syncGeneratedOutputs = (
+const syncOutputs = (
   sourceFolder: string,
   targetFolder: string,
-  extension: ".json" | ".md",
+  { extension, manifestKey }: SyncOutputOptions,
   generatedFiles: Iterable<string>,
 ): void => {
   if (getCanonicalPath(sourceFolder) === getCanonicalPath(targetFolder)) return;
   if (!existsSync(targetFolder)) return;
 
   const targetRoot = resolve(targetFolder);
-  const manifestName = getGenerationManifestName(sourceFolder, extension);
+  const manifestName = getGenerationManifestName(sourceFolder, manifestKey);
   const manifestFilename = resolve(targetRoot, manifestName);
   const hasManifest = existsSync(manifestFilename);
   const previousFiles = hasManifest ? readGenerationManifest(manifestFilename) : void 0;
@@ -452,6 +459,42 @@ export const syncGeneratedOutputs = (
   }
 
   writeGenerationManifest(manifestFilename, sortedFiles);
+};
+
+/**
+ * 将本次生成的文件同步到清单，并删除上次生成、本次不再生成的文件
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹
+ * @param extension 目标文件扩展名
+ * @param generatedFiles 本次实际生成的目标文件相对路径
+ */
+export const syncGeneratedOutputs = (
+  sourceFolder: string,
+  targetFolder: string,
+  extension: ".json" | ".md",
+  generatedFiles: Iterable<string>,
+): void => {
+  syncOutputs(sourceFolder, targetFolder, { manifestKey: extension, extension }, generatedFiles);
+};
+
+/**
+ * 同步无扩展名产物（SVG 图标）的生成清单，并删除上次生成、本次不再生成的产物
+ *
+ * 图标产物写入目标文件夹根目录且没有扩展名（根图标写文件、分类聚合为同名 JSON），无法复用按 `.json` / `.md` 过滤的
+ * `syncGeneratedOutputs`；清单只记录输出文件名，删除规则与 YAML 产物一致：
+ * 只删除「清单记录过、本次未生成」的普通文件，清单之外的文件不碰，首次运行与清单损坏时不做清理。
+ *
+ * @param sourceFolder 源文件夹
+ * @param targetFolder 目标文件夹
+ * @param generatedFiles 本次实际生成的目标文件名（相对目标文件夹）
+ */
+export const syncGeneratedIconOutputs = (
+  sourceFolder: string,
+  targetFolder: string,
+  generatedFiles: Iterable<string>,
+): void => {
+  syncOutputs(sourceFolder, targetFolder, { manifestKey: ".svg", extension: null }, generatedFiles);
 };
 
 /**
