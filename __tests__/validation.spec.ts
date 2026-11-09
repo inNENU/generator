@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import * as zod from "zod";
 
-import { ValidationError } from "../src/helpers/validation.js";
+import { formatZodError, ValidationError } from "../src/helpers/validation.js";
 import { getPageContent, getPageJSON } from "../src/page/json.js";
-import { checkPageConfig, checkPageContent, checkPageData } from "../src/page/schema.js";
+import {
+  checkPageConfig,
+  checkPageContent,
+  checkPageData,
+  pageContentSchema,
+  pageTitleSchema,
+} from "../src/page/schema.js";
 import type { PageConfig, PageData } from "../src/page/schema.js";
 
 describe("validation", () => {
@@ -100,5 +107,103 @@ describe("validation", () => {
     const pageData = getPageJSON(configWithUnknownKey, "guide/about", [], { check: false });
 
     expect(pageData.id).toBe("guide/about");
+  });
+});
+
+/**
+ * 解析失败时取出错误对象
+ *
+ * 调用前需先用 expect 断言解析失败，避免误用成功结果。
+ *
+ * @param result 解析结果
+ * @returns Zod 错误对象
+ */
+const failureOf = <T>(result: zod.ZodSafeParseResult<T>): zod.ZodError<T> =>
+  (result as zod.ZodSafeParseError<T>).error;
+
+describe("zod 错误消息格式化", () => {
+  it("显式自定义 message 优先于 zhCN locale 文案", () => {
+    const result = pageTitleSchema.safeParse("");
+
+    expect(result.success).toBe(false);
+    expect(formatZodError(failureOf(result))).toBe("✖ 页面标题不能为空");
+  });
+
+  it("联合类型展开分支并保留字段路径", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = pageContentSchema.safeParse([{ tag: "card", title: "" }]);
+
+    expect(result.success).toBe(false);
+
+    const detail = formatZodError(failureOf(result));
+
+    expect(detail).toContain("卡片标题不能为空（位置: 0.title）");
+    expect(detail).not.toContain("✖ 无效输入（位置: 0）");
+
+    const issues = checkPageContent(
+      [{ tag: "card", title: "" }] as unknown as PageData["content"],
+      "guide/about",
+    );
+
+    expect(issues.join("\n")).toContain("0.title");
+    expect(issues.join("\n")).toContain("卡片标题不能为空");
+
+    errorSpy.mockRestore();
+  });
+
+  it("联合类型自身的自定义 error 文案优先于分支问题", () => {
+    const union = zod.union([zod.string().startsWith("a"), zod.number()], {
+      error: () => "取值不符合要求",
+    });
+    const result = union.safeParse(true);
+
+    expect(result.success).toBe(false);
+    expect(formatZodError(failureOf(result))).toBe("✖ 取值不符合要求");
+  });
+
+  it("联合类型分支的重复文案只保留一次", () => {
+    const union = zod.union([
+      zod.object({ title: zod.string().min(2, "标题不合法") }),
+      zod.object({ title: zod.string().regex(/^x/u, "标题不合法") }),
+    ]);
+    const result = union.safeParse({ title: "" });
+
+    expect(result.success).toBe(false);
+
+    const detail = formatZodError(failureOf(result));
+
+    expect(detail.match(/标题不合法/gu)).toHaveLength(1);
+    expect(detail).toContain("标题不合法（位置: title）");
+  });
+
+  it("联合类型分支问题过多时截断并注明省略数量", () => {
+    const union = zod.union(
+      Array.from({ length: 9 }, (_, index) =>
+        zod.object({ [`f${index}`]: zod.string().min(1, "必填字段不能为空") }),
+      ),
+    );
+    const input = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`f${index}`, ""]));
+    const result = union.safeParse(input);
+
+    expect(result.success).toBe(false);
+
+    const detail = formatZodError(failureOf(result));
+
+    expect(detail).toContain("其余 4 条问题已省略");
+    expect(detail).toContain("必填字段不能为空（位置: f0）");
+    expect(detail).not.toContain("必填字段不能为空（位置: f5）");
+    expect(detail.match(/必填字段不能为空/gu)).toHaveLength(5);
+  });
+
+  it("判别值不匹配时列出可用取值", () => {
+    const result = pageContentSchema.safeParse([{ tag: "bogus" }]);
+
+    expect(result.success).toBe(false);
+
+    const detail = formatZodError(failureOf(result));
+
+    expect(detail).toContain("无效的 tag 值，期望以下之一：");
+    expect(detail).toContain("card");
+    expect(detail).toContain("（位置: 0.tag）");
   });
 });

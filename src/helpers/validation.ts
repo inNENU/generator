@@ -1,20 +1,130 @@
 import * as zod from "zod";
 
+type ZodIssue = zod.core.$ZodIssue;
+
 const chineseErrorMap = zod.locales.zhCN().localeError as unknown as (
-  issue: zod.core.$ZodIssue,
+  issue: ZodIssue,
 ) => string | { message: string } | undefined;
 
-/** Zod 在未提供定制文案时使用的默认消息 */
+const englishErrorMap = zod.locales.en().localeError as unknown as (
+  issue: ZodIssue,
+) => string | { message: string } | undefined;
+
+/** Zod 在未提供定制文案时使用的通用消息 */
 const genericMessages = new Set(["Invalid input", "无效输入"]);
 
 /**
- * 判断消息是否比 zod 的默认文案更具体
+ * Zod 内置文案的开头
  *
- * @param message 待判断的消息
- * @returns 是否为调用方显式给出的文案
+ * 调用方显式给出的文案通常不会以这些片段开头；命中时视为 zod 默认文案，避免把英文/中文默认提示当成作者自定义消息。
  */
-const isSpecificMessage = (message: string | undefined): message is string =>
-  typeof message === "string" && message.length > 0 && !genericMessages.has(message);
+const defaultMessagePrefixes = [
+  "Invalid input",
+  "Invalid value",
+  "Invalid option",
+  "Invalid key",
+  "Invalid union",
+  "Invalid element",
+  "Invalid length",
+  "Invalid discriminator",
+  "Unrecognized key",
+  "Too small",
+  "Too big",
+  "Not multiple of",
+  "无效输入",
+  "无效值",
+  "无效选项",
+  "无效键",
+  "无效联合",
+  "无效元素",
+  "无效长度",
+  "数值过小",
+  "数值过大",
+  "无法识别的键",
+];
+
+/** 联合类型最多展示的问题条数，避免一次校验输出过多内容 */
+const maxUnionMessages = 5;
+
+/** 联合类型展开的最大深度，防御异常结构导致的递归失控 */
+const maxUnionDepth = 4;
+
+/** 展开过程中最多收集的原始问题条数 */
+const maxCollectedMessages = 50;
+
+/**
+ * 归一化消息中随输入变化的部分
+ *
+ * Zod 的 issue 在离开解析流程后不再保留 `input`，直接调用 error map 会把“实际接收 number”重算成“实际接收 undefined”。
+ * 比较默认文案时忽略该片段，避免把 `invalid_type` 误判为作者自定义消息。
+ *
+ * @param message 待归一化的消息
+ * @returns 归一化后的消息
+ */
+const normalizeMessage = (message: string): string =>
+  message
+    .replaceAll(/received\s+[^,;.\n]+/gu, "received <value>")
+    .replaceAll(/实际接收\s*[^,，;；。\n]+/gu, "实际接收 <value>");
+
+/**
+ * 读取 error map 的文案
+ *
+ * @param errorMap Zod error map
+ * @param issue Zod 校验问题
+ * @returns 文案，无法生成时为 `undefined`
+ */
+const readErrorMessage = (
+  errorMap: (issue: ZodIssue) => string | { message: string } | undefined,
+  issue: ZodIssue,
+): string | undefined => {
+  const result = errorMap(issue);
+
+  return typeof result === "string" ? result : result?.message;
+};
+
+/**
+ * 将 issue 映射为中文消息
+ *
+ * @param issue Zod 校验问题
+ * @returns 中文问题描述
+ */
+const localizeIssue = (issue: ZodIssue): string =>
+  readErrorMessage(chineseErrorMap, issue) ?? issue.message;
+
+/**
+ * 判断消息是否来自 zod 的默认文案
+ *
+ * 依次比对通用文案、内置文案开头，以及与 en/zhCN error map 生成结果的归一化文本；三者都不匹配时认为是调用方显式给出的文案。
+ *
+ * @param issue Zod 校验问题
+ * @returns 是否为 zod 默认文案
+ */
+const isDefaultMessage = (issue: ZodIssue): boolean => {
+  const { message } = issue;
+
+  if (!message) return true;
+  if (genericMessages.has(message)) return true;
+  if (defaultMessagePrefixes.some((prefix) => message.startsWith(prefix))) return true;
+
+  const normalized = normalizeMessage(message);
+
+  return [englishErrorMap, chineseErrorMap].some((errorMap) => {
+    const localized = readErrorMessage(errorMap, issue);
+
+    return typeof localized === "string" && normalizeMessage(localized) === normalized;
+  });
+};
+
+/**
+ * 解析单条 issue 的最终消息
+ *
+ * 作者显式给出的文案优先于 zhCN locale 生成的默认文案，例如 `.min(1, "页面标题不能为空")` 这类通过参数传入的消息。
+ *
+ * @param issue Zod 校验问题
+ * @returns 问题描述（不含位置）
+ */
+const resolveIssueMessage = (issue: ZodIssue): string =>
+  isDefaultMessage(issue) ? localizeIssue(issue) : issue.message;
 
 /**
  * 拼接错误定位
@@ -26,48 +136,116 @@ const isSpecificMessage = (message: string | undefined): message is string =>
 const withLocation = (message: string, path: readonly PropertyKey[]): string =>
   path.length > 0 ? `${message}（位置: ${path.join(".")}）` : message;
 
-/**
- * 将 issue 映射为中文消息
- *
- * @param issue Zod 校验问题
- * @returns 中文问题描述
- */
-const localizeIssue = (issue: zod.core.$ZodIssue): string => {
-  const result = chineseErrorMap(issue);
+/** 展开后的问题，`author` 标记文案是否来自调用方 */
+interface UnionIssueMessage {
+  readonly text: string;
+  readonly author: boolean;
+}
 
-  return typeof result === "string" ? result : (result?.message ?? issue.message);
+/**
+ * 描述判别值不匹配的联合类型问题
+ *
+ * Zod 不会为判别值不匹配提供分支错误，只给出英文的判别提示；这里转成列出合法取值的中文文案。
+ *
+ * @param issue 联合类型问题
+ * @returns 可读描述，无法判断时退回 locale 文案
+ */
+const describeUnionMismatch = (issue: zod.core.$ZodIssueInvalidUnion): string => {
+  // 判别值不匹配时 zod 会在 issue 上附带 discriminator 与 options，但类型定义未暴露这两个字段
+  const { discriminator, options } = issue as {
+    readonly discriminator?: PropertyKey;
+    readonly options?: readonly PropertyKey[];
+  };
+
+  if (!discriminator || !options?.length) return localizeIssue(issue);
+
+  return `无效的 ${String(discriminator)} 值，期望以下之一：${options.map(String).join(" | ")}`;
 };
 
 /**
- * 收集 issue 中调用方显式给出的具体错误
+ * 递归展开联合类型的分支问题
  *
- * `invalid_union` 会递归展开各分支并保留分支定位；只收集 `custom` issue 与联合类型自带的定制消息，避免把 zod 的通用
- * 分支文案（如“无效URL”）全部拼接进来。返回的消息已包含位置信息。
+ * 每层都会把当前 issue 的 path 追加到父级定位后，因此最终消息保留“外层位置 + 分支字段路径”（如 `0.title`）。
  *
- * @param issue Zod 校验问题
+ * @param issue 当前 issue
  * @param parentPath 父级定位
- * @returns 具体错误描述列表
+ * @param messages 收集结果
+ * @param depth 当前展开深度
  */
-const collectIssueMessages = (
-  issue: zod.core.$ZodIssue,
+const collectUnionMessages = (
+  issue: ZodIssue,
   parentPath: readonly PropertyKey[],
-): string[] => {
+  messages: UnionIssueMessage[],
+  depth: number,
+): void => {
+  if (messages.length >= maxCollectedMessages) return;
+
   const path = [...parentPath, ...(issue.path ?? [])];
 
-  if (issue.code === "invalid_union") {
-    // 判别字段不匹配时 zod 不提供分支错误，只有英文的判别值提示，此时退回 zhCN 文案
-    if (issue.errors.length > 0 && isSpecificMessage(issue.message))
-      return [withLocation(issue.message, path)];
+  if (issue.code === "invalid_union" && depth < maxUnionDepth) {
+    if (issue.errors.length > 0) {
+      for (const branch of issue.errors) {
+        for (const branchIssue of branch)
+          collectUnionMessages(branchIssue, path, messages, depth + 1);
+      }
 
-    return issue.errors.flatMap((branchIssues) =>
-      branchIssues.flatMap((branchIssue) => collectIssueMessages(branchIssue, path)),
-    );
+      return;
+    }
+
+    messages.push({
+      text: withLocation(describeUnionMismatch(issue), path),
+      author: false,
+    });
+
+    return;
   }
 
-  if (issue.code === "custom" && isSpecificMessage(issue.message))
-    return [withLocation(issue.message, path)];
+  const author = !isDefaultMessage(issue);
 
-  return [];
+  messages.push({
+    text: withLocation(author ? issue.message : localizeIssue(issue), path),
+    author,
+  });
+};
+
+/**
+ * 将联合类型问题格式化为中文消息
+ *
+ * 联合类型自身带有作者文案时直接使用；否则展开各分支，作者显式给出的分支文案排在前面，相同文案与定位会去重， 超过上限时截断并注明剩余条数。
+ *
+ * @param issue 联合类型问题
+ * @returns 中文问题描述
+ */
+const formatUnionIssue = (issue: zod.core.$ZodIssueInvalidUnion): string => {
+  const path = issue.path ?? [];
+
+  // 联合类型自身带有作者文案时（如 `imgSchema` 的 `error` 回调），该文案已汇总分支信息，直接使用
+  if (issue.errors.length > 0 && !isDefaultMessage(issue)) return withLocation(issue.message, path);
+
+  const collected: UnionIssueMessage[] = [];
+
+  collectUnionMessages(issue, [], collected, 0);
+
+  const seen = new Set<string>();
+  const unique = collected.filter(({ text }) => {
+    if (seen.has(text)) return false;
+
+    seen.add(text);
+
+    return true;
+  });
+  const ordered = [
+    ...unique.filter(({ author }) => author),
+    ...unique.filter(({ author }) => !author),
+  ];
+  const shown = ordered.slice(0, maxUnionMessages);
+  const hidden = ordered.length - shown.length;
+
+  if (hidden > 0) shown.push({ text: `其余 ${hidden} 条问题已省略`, author: false });
+
+  return shown.length > 0
+    ? shown.map(({ text }) => text).join("；")
+    : withLocation(localizeIssue(issue), path);
 };
 
 /**
@@ -76,22 +254,10 @@ const collectIssueMessages = (
  * @param issue Zod 校验问题
  * @returns 中文问题描述
  */
-const formatZodIssue = (issue: zod.core.$ZodIssue): string => {
-  const path = issue.path ?? [];
+const formatZodIssue = (issue: ZodIssue): string => {
+  if (issue.code === "invalid_union") return formatUnionIssue(issue);
 
-  if (issue.code === "custom") {
-    const message = isSpecificMessage(issue.message) ? issue.message : localizeIssue(issue);
-
-    return withLocation(message, path);
-  }
-
-  if (issue.code === "invalid_union") {
-    const messages = [...new Set(collectIssueMessages(issue, []))];
-
-    return messages.length > 0 ? messages.join("；") : withLocation(localizeIssue(issue), path);
-  }
-
-  return withLocation(localizeIssue(issue), path);
+  return withLocation(resolveIssueMessage(issue), issue.path ?? []);
 };
 
 /**
