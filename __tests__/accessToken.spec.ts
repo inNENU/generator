@@ -86,6 +86,47 @@ describe("微信公众号 access_token", () => {
     await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(/access_token/u);
   });
 
+  it("throws a friendly error when the response body is an empty object", async () => {
+    stubFetch(() => jsonResponse({}));
+
+    await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(
+      "获取微信 access_token 失败：响应中缺少 access_token",
+    );
+  });
+
+  it("throws a friendly error when the response body is JSON null", async () => {
+    stubFetch(() => jsonResponse(null));
+
+    await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(
+      "获取微信 access_token 失败：响应不是有效的 JSON 对象",
+    );
+  });
+
+  it("throws a friendly error when the response body is a non-object JSON value", async () => {
+    stubFetch(() => jsonResponse("ok"));
+
+    await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(
+      "获取微信 access_token 失败：响应不是有效的 JSON 对象",
+    );
+  });
+
+  it("throws a friendly error when the response body is a JSON array", async () => {
+    stubFetch(() => jsonResponse([]));
+
+    await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(
+      "获取微信 access_token 失败：响应不是有效的 JSON 对象",
+    );
+  });
+
+  it("throws when the response body is empty", async () => {
+    stubFetch(() => new Response("", { status: 200 }));
+
+    // 空响应体无法被 JSON.parse 解析，走“不是有效的 JSON”分支
+    await expect(getWechatAccessToken("appid", "secret")).rejects.toThrow(
+      "获取微信 access_token 失败：响应不是有效的 JSON",
+    );
+  });
+
   it("returns the token on success", async () => {
     stubFetch(() =>
       jsonResponse({ access_token: "access-token-value", errcode: 0, expires_in: 7200 }),
