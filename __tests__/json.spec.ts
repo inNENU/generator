@@ -105,6 +105,22 @@ describe(checkJSON, () => {
     });
   });
 
+  it("should include the first failure summary in the AggregateError message", async () => {
+    await withTempRoot(async (root) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const brokenFile = path.join(root, "broken.json");
+
+      writeFileSync(brokenFile, "{ invalid json");
+
+      const error = await getFailure(root);
+
+      expect(error.message).toContain("共 1 个错误");
+      expect(error.message).toContain("首个错误");
+      expect(error.message).toContain(brokenFile);
+      expect(error.message).toContain("不是一个正确的 JSON 文件");
+    });
+  });
+
   it("should ignore files that are not JSON", async () => {
     await withTempRoot(async (root) => {
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
