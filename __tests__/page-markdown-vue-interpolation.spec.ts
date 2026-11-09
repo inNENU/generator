@@ -117,4 +117,27 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
 
     expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
+
+  it("中和实体链且不吞掉裸 & 周围的文本", () => {
+    const payloads = [
+      "&#38;#123;&#38;#123;7*7&#38;#125;&#38;#125;",
+      "&#x26;#123;&#x26;#123;7*7&#x26;#125;&#x26;#125;",
+      "&#X26;#x7B;&#X26;#x7B;7*7&#X26;#x7D;&#X26;#x7D;",
+      "&AMP;#123;&AMP;#123;7*7&AMP;#125;&AMP;#125;",
+      "&#x00026;#123;7*7&#x00026;#125;",
+      "&#38;#123;{7*7&#38;&#125;}",
+    ];
+
+    for (const desc of payloads) expect(renderText("x", desc)).not.toMatch(/\{\{7\*7\}\}/u);
+
+    const keepAmpersand = renderText("x", "R&D notes: &#123;x&#125;");
+
+    expect(keepAmpersand).toContain("R&D notes:");
+    expect(keepAmpersand).not.toContain("&#123;");
+
+    const keepUrl = renderText("x", "See [x](https://e.com/?a=1&b=2) or &#123;");
+
+    expect(keepUrl).toContain("a=1&b=2");
+    expect(keepUrl).not.toContain("&#123;");
+  });
 });

@@ -176,7 +176,21 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     ["desc 圆括号 title", "![a](x (&#38;#123;&#38;#123;7*7&#38;#125;&#38;#125;))"],
     ["desc linkImage", '[![a](x "&#38;#123;&#38;#123;7*7&#38;#125;&#38;#125;")](y)'],
     ["desc refdef title", '![a][r]\n\n[r]: x "&#38;#123;&#38;#123;7*7&#38;#125;&#38;#125;"'],
+    ["desc 大写 AMP 前缀", '![a](x "&AMP;#123;&AMP;#123;7*7&AMP;#125;&AMP;#125;")'],
+    ["desc 十六进制前导零 & 链", '![a](x "&#x00026;#123;7*7&#x00026;#125;")'],
+    ["desc 裸 & 与实体混排", '![a](x "R&D &#123;&#123;7*7&#125;&#125;")'],
   ];
+
+  it("保留 figure 标题中的裸 & 文本", () => {
+    const markdown = getPageMarkdown(
+      { title: "t", desc: '![a](x "R&D &#123;&#123;7*7&#125;&#125;")', content: [] },
+      { mode: "web" },
+    );
+    const html = renderWithFigure(markdown);
+
+    expect(html).toContain("R&amp;D");
+    expect(html).not.toMatch(/\{\{7\*7\}\}/u);
+  });
 
   it.each(payloads)("中和后 figure 标题不执行插值：%s", (_name, desc) => {
     const markdown = getPageMarkdown(
@@ -185,6 +199,7 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     );
     const html = renderWithFigure(markdown);
 
+    expect(html).toContain("<figcaption");
     expect(html).not.toMatch(/\{\{7\*7\}\}/u);
     expect(compile(html, { mode: "function" }).code).not.toContain("_toDisplayString");
   });

@@ -46,7 +46,7 @@ const maxEntityDecodeDepth = 10;
 const numericEntityPattern = /^#(?:(?<decimal>0*\d+)|[xX](?<hex>0*[\da-fA-F]+))$/u;
 
 /** 单个 HTML 实体（含 `&` 与 `;`）的匹配 */
-const htmlEntityPattern = /&(?:#(?:(?:0*\d+)|[xX]0*[\da-fA-F]+)|[a-zA-Z][a-zA-Z\d]*);/u;
+const htmlEntityPattern = /&(?:#(?:(?:0*\d+)|[xX]0*[\da-fA-F]+)|[a-zA-Z][a-zA-Z\d]*);/uy;
 
 /** HTML 命名实体中可能表示 `&` 的形式 */
 const ampersandEntityPattern = /^(?:amp|AMP)$/u;
@@ -98,16 +98,18 @@ const decodeEntityAt = (
   if (hasAmpersandPrefix) {
     const end = value.indexOf(";", index);
 
-    if (end === -1) return null;
+    if (end === -1 || end - index > 32) return null;
 
     const character = decodeEntityBody(value.slice(index, end));
 
     return character ? { character, end: end + 1 } : null;
   }
 
-  const match = htmlEntityPattern.exec(value.slice(index));
+  htmlEntityPattern.lastIndex = index;
 
-  if (!match) return null;
+  const match = htmlEntityPattern.exec(value);
+
+  if (!match || match.index !== index) return null;
 
   const character = decodeEntityBody(match[0].slice(1, -1));
 
