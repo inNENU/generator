@@ -39,29 +39,152 @@ const splitVueBraceRuns = (value: string): string =>
 /** 会被 URL 解码成花括号的百分号编码 */
 const encodedBracePattern = /%(?:7[bB]|7[dD])/gu;
 
-/** 会被 HTML/Markdown 解码成花括号的实体（含大小写十六进制、左右花括号与多层 `&amp;` 前缀） */
-const decodedBracePattern =
-  /&(?:amp;)*(?:#(?:0*(?:123|125)|x0*7(?:[bB]|[dD]))|l(?:cub|brace)|r(?:cub|brace));/giu;
+/** 实体解码最多迭代的层数（防止病态输入造成长循环） */
+const maxEntityDecodeDepth = 10;
+
+/** 数字实体 body（不含 `&` 与 `;`）的匹配 */
+const numericEntityPattern = /^#(?:(?<decimal>0*\d+)|[xX](?<hex>0*[\da-fA-F]+))$/u;
+
+/** 单个 HTML 实体（含 `&` 与 `;`）的匹配 */
+const htmlEntityPattern = /&(?:#(?:(?:0*\d+)|[xX]0*[\da-fA-F]+)|[a-zA-Z][a-zA-Z\d]*);/u;
+
+/** HTML 命名实体中可能表示 `&` 的形式 */
+const ampersandEntityPattern = /^(?:amp|AMP)$/u;
+
+/** 命名花括号实体 */
+const braces: Record<string, string> = {
+  lcub: "{",
+  lbrace: "{",
+  rcub: "}",
+  rbrace: "}",
+};
+
+/**
+ * 解码实体 body（不含开头 `&` 与结尾 `;`）
+ *
+ * @param body 实体 body
+ * @returns 解码出的字符，不是已知实体则返回 `null`
+ */
+const decodeEntityBody = (body: string): string | null => {
+  const numeric = numericEntityPattern.exec(body);
+
+  if (numeric?.groups) {
+    const { decimal, hex } = numeric.groups;
+    const codePoint = decimal ? Math.trunc(Number(decimal)) : Number.parseInt(hex ?? "", 16);
+
+    if (codePoint > 0x10ffff) return null;
+
+    return String.fromCodePoint(codePoint);
+  }
+
+  if (ampersandEntityPattern.test(body)) return "&";
+
+  return braces[body.toLowerCase()] ?? null;
+};
+
+/**
+ * 解码从指定位置开始的一层 HTML 实体
+ *
+ * @param value 输入文本
+ * @param index 实体起始位置（可能位于虚拟 `&` 之后）
+ * @param hasAmpersandPrefix 是否已由上一层解码出 `&`
+ * @returns 解码出的字符与实体结束位置，若不是实体则返回 `null`
+ */
+const decodeEntityAt = (
+  value: string,
+  index: number,
+  hasAmpersandPrefix: boolean,
+): { character: string; end: number } | null => {
+  if (hasAmpersandPrefix) {
+    const end = value.indexOf(";", index);
+
+    if (end === -1) return null;
+
+    const character = decodeEntityBody(value.slice(index, end));
+
+    return character ? { character, end: end + 1 } : null;
+  }
+
+  const match = htmlEntityPattern.exec(value.slice(index));
+
+  if (!match) return null;
+
+  const character = decodeEntityBody(match[0].slice(1, -1));
+
+  return character ? { character, end: index + match[0].length } : null;
+};
+
+/**
+ * 沿实体链解码到最终字符
+ *
+ * 例如 `&#38;#123;` 会被解码成 `&` + `#123;`，再解码成 `{`。实体可能被 Markdown、插件与浏览器多次解码， 因此沿链最多解码
+ * {@link maxEntityDecodeDepth} 层，得到最终字符与实体链结束位置。
+ *
+ * @param value 输入文本
+ * @param index `&` 起始位置
+ * @returns 最终字符与结束位置，若链条不产生花括号则返回 `null`
+ */
+const decodeEntityChain = (
+  value: string,
+  index: number,
+): { character: string; end: number } | null => {
+  let position = index;
+  let hasAmpersandPrefix = false;
+
+  for (let depth = 0; depth < maxEntityDecodeDepth; depth += 1) {
+    const decoded = decodeEntityAt(value, position, hasAmpersandPrefix);
+
+    if (!decoded) return null;
+
+    position = decoded.end;
+
+    if (decoded.character === "&") {
+      hasAmpersandPrefix = true;
+      continue;
+    }
+
+    return { character: decoded.character, end: position };
+  }
+
+  return null;
+};
 
 /**
  * 中和会被后续解码还原成花括号的实体
  *
- * 实体在 Markdown、@mdit/plugin-figure 等插件以及 Vue 编译过程中可能被多次解码，仅再加一层 `&amp;` 不足以覆盖 全部解码链。这里直接把实体改写成「花括号 +
- * HTML 注释」，无论解码多少次都只会得到被注释隔开的单个花括号。
+ * 实体在 Markdown、插件（如 `@mdit/plugin-figure` 对图片 title 的二次解析）以及 Vue 编译过程中可能被多次解码，
+ * 仅按固定前缀加实体层数不足。这里沿实体链解码，只要最终字符是花括号，就把整条链改写成「花括号 + HTML 注释」， 从而任意多次解码都只会得到被注释隔开的单个花括号。
  *
  * @param value 原始 Markdown
  * @returns 不会解码出 `{{` / `}}` 的 Markdown
  */
-const neutralizeDecodedBraces = (value: string): string =>
-  value
-    .replaceAll(decodedBracePattern, (match) => {
-      const entity = match.replace(/^&(?:amp;)*/iu, "");
-      const isOpenBrace = /^(?:#0*123|#x0*7b|l(?:cub|brace));$/iu.test(entity);
+const neutralizeDecodedBraces = (value: string): string => {
+  let result = "";
+  let index = 0;
 
-      return isOpenBrace ? "{<!-- -->" : "}<!-- -->";
-    })
+  while (index < value.length) {
+    if (value[index] !== "&") {
+      result += value[index];
+      index += 1;
+      continue;
+    }
+
+    const decoded = decodeEntityChain(value, index);
+
+    if (decoded?.character === "{" || decoded?.character === "}") {
+      result += decoded.character === "{" ? "{<!-- -->" : "}<!-- -->";
+      index = decoded.end;
+      continue;
+    }
+
+    result += "&";
+    index += 1;
+  }
+
+  return result
     .replaceAll(encodedBracePattern, (match) => `%25${match.slice(1)}`)
     .replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
+};
 
 /**
  * 还原 Markdown 反斜杠转义后的花括号文本
