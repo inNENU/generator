@@ -21,6 +21,15 @@ jobs:
         with:
           runtime: node@^26.13.0
 
+      - name: Verify tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          expected_tag="v$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "${expected_tag}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${expected_tag#v}"
+            exit 1
+          fi
+
       - name: Install dependencies
         run: pnpm ci
 
