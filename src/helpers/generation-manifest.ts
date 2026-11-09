@@ -467,6 +467,7 @@ export const syncGeneratedOutputs = (
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
  * @param extension 目标文件扩展名
+ * @internal
  */
 export const removeStaleOutputs = (
   sourceFolder: string,

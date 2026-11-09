@@ -130,6 +130,7 @@ const collectJSONSymbolicLink = (
  *
  * @param path 目录路径
  * @throws {AggregateError} 当目录遍历、文件读取或 JSON 解析失败时抛出，`errors` 中包含去重后的具体错误
+ * @internal
  */
 export const checkJSON = async (path: string): Promise<void> => {
   /** 已记录的错误，按错误类型与路径去重 */

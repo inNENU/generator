@@ -265,6 +265,7 @@ const formatZodIssue = (issue: ZodIssue): string => {
  *
  * @param error Zod 校验错误
  * @returns 中文错误描述
+ * @internal
  */
 export const formatZodError = (error: zod.ZodError): string =>
   error.issues.map((issue) => `✖ ${formatZodIssue(issue)}`).join("\n");
@@ -273,6 +274,8 @@ export const formatZodError = (error: zod.ZodError): string =>
  * 校验错误
  *
  * 当数据未通过完整性校验时抛出，`issues` 中包含全部校验问题。
+ *
+ * @internal
  */
 export class ValidationError extends Error {
   /** 全部校验问题 */
@@ -292,6 +295,7 @@ export class ValidationError extends Error {
  *
  * @param message 校验失败消息
  * @param validate 校验回调，发现问题时应抛出 `ValidationError`
+ * @internal
  */
 export const runValidation = (message: string, validate: () => void): void => {
   try {
@@ -312,6 +316,7 @@ export const runValidation = (message: string, validate: () => void): void => {
  * @param label 错误提示
  * @param error Zod 校验错误
  * @returns 问题描述列表
+ * @internal
  */
 export const collectZodIssues = (
   location: string,

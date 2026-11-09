@@ -1,3 +1,4 @@
+/** @internal */
 export interface Task {
   /** 函数本身 */
   // oxlint-disable-next-line typescript/no-explicit-any
@@ -43,7 +44,11 @@ const getErrorSummary = (error: unknown): string => {
     : summary;
 };
 
-/** 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。 */
+/**
+ * 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。
+ *
+ * @internal
+ */
 export class Queue {
   constructor(
     /** 允许同时并行的任务数 */
@@ -170,6 +175,7 @@ export class Queue {
  * @param promiseList 需要执行的函数列表，每个函数都必须返回一个 Promise
  * @param capacity 允许同时并行的任务数，必须为正整数
  * @returns 当所有函数执行完毕时返回的 Promise，包含所有函数的结果
+ * @internal
  */
 export const createPromiseQueue = async <T>(
   promiseList: (() => Promise<T>)[],

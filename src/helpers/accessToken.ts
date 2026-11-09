@@ -17,6 +17,7 @@ interface WechatAccessTokenResponse {
  * @param appid 微信公众号 AppID
  * @param secret 微信公众号 AppSecret
  * @returns Access_token
+ * @internal
  */
 export const getWechatAccessToken = async (appid: string, secret: string): Promise<string> => {
   // 通过 searchParams 设置参数，保证 appid / secret 中的特殊字符被正确编码

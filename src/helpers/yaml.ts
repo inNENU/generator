@@ -168,6 +168,7 @@ const hasYamlDocument = (content: string): boolean => {
  * @param content YAML 内容
  * @param filePath 文件路径，仅用于错误与告警信息
  * @returns 解析结果，无标量文档为 `undefined`
+ * @internal
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const parseYaml = <T = unknown>(content: string, filePath = ""): T | undefined => {
@@ -205,6 +206,7 @@ const ambiguousScalarPattern =
  *
  * @param content 内容
  * @returns 处理后的 YAML 值
+ * @internal
  */
 export const getYamlValue = (content: string): string => {
   const needsQuote =
@@ -261,6 +263,7 @@ const assertUniqueOutputPaths = (
  *
  * @param sourceFolder 源文件夹
  * @param checker 检查函数，接收解析后的数据与文件路径
+ * @internal
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const checkYamlFiles = <T = unknown>(
@@ -295,6 +298,7 @@ export const checkYamlFiles = <T = unknown>(
  * @param targetFolder 目标文件夹，默认为源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值；返回 `null`/`undefined` 时跳过该文件
  * @param processFunction 内容处理函数，在解析前对 YAML 内容进行预处理
+ * @internal
  */
 export const convertYamlFilesToJson = <T = unknown, Value = T>(
   sourceFolder: string,
@@ -358,6 +362,7 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回 Markdown 内容
  * @param targetFolder 目标文件夹，默认为源文件夹
+ * @internal
  */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 export const convertYamlFilesToMarkdown = <T = unknown>(
@@ -405,18 +410,21 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
   syncGeneratedOutputs(sourceFolder, targetFolder, ".md", generatedFiles);
 };
 
+/** @internal */
 export interface YamlInfo<Value = unknown> {
   type: "file";
   filename: string;
   value: Value;
 }
 
+/** @internal */
 export interface YamlDirInfo<Value = unknown> {
   type: "dir";
   dirname: string;
   content: YamlMapItem<Value>[];
 }
 
+/** @internal */
 export type YamlMapItem<Value> = YamlInfo<Value> | YamlDirInfo<Value>;
 
 /**
@@ -427,6 +435,7 @@ export type YamlMapItem<Value> = YamlInfo<Value> | YamlDirInfo<Value>;
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回转换后的值
  * @returns YAML 映射列表
+ * @internal
  */
 export const getYamlMap = <T = unknown, Value = T>(
   sourceFolder: string,
