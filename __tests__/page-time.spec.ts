@@ -1,10 +1,11 @@
+// oxlint-disable vitest/no-hooks -- 每个用例都会通过 setupPage 修改生成器配置，需要统一恢复默认值
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import path from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { join } from "upath";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { config } from "../src/config.js";
+import { config, resetConfig } from "../src/config.js";
 import { getPageJSON, updatePageTime } from "../src/page/json.js";
 import type { PageConfig } from "../src/page/schema.js";
 
@@ -14,21 +15,21 @@ interface PageFixture {
 }
 
 const createPageFolder = (pageFolder: string, fileName: string, content: string): string => {
-  const pageYAMLPath = path.join(pageFolder, "guide", `${fileName}.yml`);
+  const pageYAMLPath = join(pageFolder, "guide", `${fileName}.yml`);
 
-  mkdirSync(path.join(pageFolder, "guide"), { recursive: true });
+  mkdirSync(join(pageFolder, "guide"), { recursive: true });
   writeFileSync(pageYAMLPath, content, { encoding: "utf-8" });
 
   return pageYAMLPath;
 };
 
 const setupPage = (content: string): PageFixture => {
-  const pageFolder = mkdtempSync(path.join(tmpdir(), "innenu-page-time-"));
+  const pageFolder = mkdtempSync(join(tmpdir(), "innenu-page-time-"));
 
   config({
     assets: "https://example.com/assets/",
     icon: "https://example.com/icons/",
-    mapFolder: path.join(pageFolder, "map"),
+    mapFolder: join(pageFolder, "map"),
     mapKey: "test-key",
     pageFolder,
   });
@@ -40,6 +41,11 @@ const setupPage = (content: string): PageFixture => {
 };
 
 describe("page time update", () => {
+  afterEach(() => {
+    // `setupPage` 会调用 `config()`，用例结束后恢复默认配置，避免污染后续测试文件
+    resetConfig();
+  });
+
   it("在文件变更时原子更新源 YAML 的 time 字段", () => {
     const { pageFolder, pageYAMLPath } = setupPage(
       "title: 关于\ntime: 2024-01-01\ncontent:\n  - tag: text\n    text: hi\n",
@@ -64,7 +70,7 @@ describe("page time update", () => {
       expect(pageData.time).toBe("2024 年 5 月 1 日 20:00:00");
 
       // 临时文件已被清理，目录内只剩页面文件
-      expect(readdirSync(path.join(pageFolder, "guide"))).toStrictEqual(["about.yml"]);
+      expect(readdirSync(join(pageFolder, "guide"))).toStrictEqual(["about.yml"]);
     } finally {
       vi.useRealTimers();
       rmSync(pageFolder, { recursive: true, force: true });
@@ -121,7 +127,7 @@ describe("page time update", () => {
     );
 
     try {
-      expect(() => updatePageTime(path.join(pageFolder, "guide", "missing.yml"))).toThrow(
+      expect(() => updatePageTime(join(pageFolder, "guide", "missing.yml"))).toThrow(
         /页面文件不存在: .*missing\.yml/u,
       );
     } finally {
