@@ -37,7 +37,7 @@ export interface ActionMarkdownOptions {
  * @returns 至少三个反引号组成的围栏
  */
 const getCodeFence = (content: string): string => {
-  const longest = Math.max(0, ...(content.match(/`+/gu) ?? []).map((run) => run.length));
+  const longest = (content.match(/`+/gu) ?? []).reduce((max, run) => Math.max(max, run.length), 0);
 
   return "`".repeat(Math.max(3, longest + 1));
 };
