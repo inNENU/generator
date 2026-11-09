@@ -171,6 +171,8 @@ describe("vue 编译级插值防护", () => {
       "<https://e/%7B%7B7*7%7D%7D>",
       "<a%7B%7B7*7%7D%7D@b.com>",
       "<a&#123;&#123;7*7&#125;&#125;@b.com>",
+      "<a&lcub;&lcub;7*7&rcub;&rcub;@b.com>",
+      "<https://e/&lcub;&lcub;7*7&rcub;&rcub;>",
       "`x <https://e/`> {{7*7}} `",
       "- >     `{{7*7}}`",
       "    {{7*7}}",
@@ -183,6 +185,44 @@ describe("vue 编译级插值防护", () => {
 
       expect(code).not.toContain("_toDisplayString");
     }
+  });
+
+  it("行内与关闭 plaintext 标签不产生插值或编译错误", () => {
+    const desces = [
+      "前文 <plaintext> 后文 {{7*7}}",
+      "</plaintext>",
+      "`<textarea>` 与 `{{ 7 * 7 }}`",
+    ];
+
+    for (const desc of desces) {
+      const markdown = getPageMarkdown(createPage([], desc), {
+        location: "probe/inline-plaintext",
+      });
+
+      expect(() => compileTemplate(markdown)).not.toThrow();
+      expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+    }
+  });
+
+  it("跨行行内代码、转义反引号与列表围栏不产生插值", () => {
+    const texts = ["`a\nb` {{7*7}}", "`\n`{{7*7}}", "\\``x`{{7*7}}`"];
+
+    for (const text of texts) {
+      const code = compileTemplate(
+        getPageMarkdown(createPage([{ tag: "text", text }]), { location: "probe/multiline-code" }),
+      );
+
+      expect(code).not.toContain("_toDisplayString");
+    }
+
+    const fence = compileTemplate(
+      getPageMarkdown(createPage([], "- ```js\n  {{7*7}}\n  ```"), {
+        location: "probe/list-fence",
+      }),
+    );
+
+    expect(fence).not.toContain("_toDisplayString");
+    expect(fence).toContain("{{7*7}}");
   });
 
   it("crlf 围栏代码由 v-pre 保护", () => {

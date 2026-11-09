@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { getPageMarkdown } from "../src/page/markdown.js";
 import type { PageConfig } from "../src/page/schema.js";
 import { getPageText } from "../src/page/text.js";
+import { escapeVueInterpolation } from "../src/vue-interpolation.js";
 
 const raw = "{{ 7*7 }}";
 const neutralized = "{<!-- -->{ 7*7 }<!-- -->}";
@@ -441,6 +442,8 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
       "<https://e/%7B%7B7*7%7D%7D>",
       "<a%7B%7B7*7%7D%7D@b.com>",
       "<a&#123;&#123;7*7&#125;&#125;@b.com>",
+      "<a&lcub;&lcub;7*7&rcub;&rcub;@b.com>",
+      "<https://e/&lcub;&lcub;7*7&rcub;&rcub;>",
       "- >     `{{7*7}}`",
       "    {{7*7}}",
     ];
@@ -456,6 +459,28 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     }
   });
 
+  it("转义行内与关闭 plaintext 标签且不误伤行内代码", () => {
+    const desces = ["前文 <plaintext> 后文 {{7*7}}", "</plaintext>"];
+
+    for (const desc of desces) {
+      const markdown = getPageMarkdown(createPage([], desc), {
+        location: "probe/inline-plaintext",
+      });
+      const html = markdownIt.render(markdown);
+
+      expect(markdown).not.toContain("{{");
+      expect(html).not.toContain("{{");
+      expect(html).not.toContain("<plaintext");
+    }
+
+    const codeMarkdown = getPageMarkdown(createPage([], "`<textarea>` 与 `{{ 7 * 7 }}`"), {
+      location: "probe/inline-code-fidelity",
+    });
+
+    expect(codeMarkdown).toContain("`<textarea>` 与 `{{ 7 * 7 }}`");
+    expect(codeMarkdown).not.toContain("<!-- -->");
+  });
+
   it("保留描述代码样本中的标签与花括号", () => {
     const markdown = getPageMarkdown(
       createPage(
@@ -467,6 +492,33 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
 
     expect(markdown).toContain("<plaintext>{{ 7*7 }}</plaintext>");
     expect(markdown).toContain("`<template>{{ 7*7 }}</template>`");
+  });
+
+  it("中和跨行行内代码与转义反引号中的插值", () => {
+    const texts = ["`a\nb` {{7*7}}", "`\n`{{7*7}}", "\\``x`{{7*7}}`"];
+
+    for (const text of texts) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", text }]), {
+        location: "probe/multiline-code",
+      });
+      const html = markdownIt.render(markdown);
+
+      expect(markdown).not.toContain("{{");
+      expect(html).not.toContain("{{");
+    }
+  });
+
+  it("保留 v-pre 列表围栏与引用式链接定义", () => {
+    const fence = escapeVueInterpolation("- ```js\n  {{7*7}}\n  ```");
+
+    expect(fence).toContain("{{7*7}}");
+    expect(fence).not.toContain("<!-- -->");
+
+    const reference = escapeVueInterpolation("[ref]: https://example.com/{{7*7}}\n\n[a][ref]");
+    const html = markdownIt.render(reference);
+
+    expect(reference).toContain("https://example.com/%7B%7B7*7%7D%7D");
+    expect(html).toContain('href="https://example.com/%7B%7B7*7%7D%7D"');
   });
 
   it("不影响文本管线的原始内容", () => {

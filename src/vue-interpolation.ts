@@ -124,104 +124,6 @@ const getListItemFenceInfo = (
 };
 
 /**
- * 标记列表项内的围栏代码块
- *
- * 这些围栏不在行首，不能按顶层围栏遮蔽；其中的花括号一律拆开，避免 :no-v-pre 时进入 Vue 模板。
- *
- * @param lines 全部行
- * @param htmlBlockLines 原始 HTML 块行号
- * @returns 列表项围栏的行号集合
- */
-const collectListItemFenceLines = (lines: string[], htmlBlockLines: Set<number>): Set<number> => {
-  const result = new Set<number>();
-
-  for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index)) continue;
-
-    const fence = getListItemFenceInfo(lines[index]);
-
-    if (!fence) continue;
-
-    result.add(index);
-    let closed = false;
-
-    for (let next = index + 1; next < lines.length; next += 1) {
-      const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
-      const candidate = getFenceInfo(candidateLine);
-
-      if (
-        candidate &&
-        candidate.marker === fence.marker &&
-        candidate.length >= fence.length &&
-        markdownFenceClose.test(candidateLine)
-      ) {
-        for (let cursor = index; cursor <= next; cursor += 1) result.add(cursor);
-
-        index = next;
-        closed = true;
-        break;
-      }
-    }
-
-    if (!closed) {
-      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
-      break;
-    }
-  }
-
-  return result;
-};
-
-/**
- * 标记引用块或顶层围栏代码块所在的行
- *
- * `desc` 会被逐行加上 `> `，围栏代码块因此不在行首；这些行不能按普通行做标签遮蔽。
- *
- * @param lines 全部行
- * @param htmlBlockLines 原始 HTML 块行号
- * @returns 围栏代码块行号
- */
-const collectBlockquoteFenceLines = (lines: string[], htmlBlockLines: Set<number>): Set<number> => {
-  const result = new Set<number>();
-
-  for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index)) continue;
-
-    const fence = getFenceInfo(stripBlockquotePrefix(lines[index]));
-
-    if (!fence) continue;
-
-    result.add(index);
-    let closed = false;
-
-    for (let next = index + 1; next < lines.length; next += 1) {
-      const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
-      const candidate = getFenceInfo(candidateLine);
-
-      if (
-        candidate &&
-        candidate.marker === fence.marker &&
-        candidate.length >= fence.length &&
-        markdownFenceClose.test(candidateLine)
-      ) {
-        for (let cursor = index; cursor <= next; cursor += 1) result.add(cursor);
-
-        index = next;
-        closed = true;
-        break;
-      }
-    }
-
-    if (!closed) {
-      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
-      break;
-    }
-  }
-
-  return result;
-};
-
-/**
  * 判断围栏代码块是否会被 VuePress 标记为 v-pre
  *
  * `:no-v-pre` 会关闭 VuePress 的 v-pre，此时不能把代码原文交给 Vue 解析。
@@ -237,6 +139,144 @@ const hasFenceVPre = (info: string): boolean => {
   if (/&(?:#\d+|#x[\da-f]+|[a-z][\da-z]+);/iu.test(unescapedInfo)) return false;
 
   return !/:no-v-pre\b/u.test(unescapedInfo);
+};
+
+/**
+ * 判断候选行是否与围栏开头匹配
+ *
+ * @param candidate 候选行的围栏信息
+ * @param fence 开头围栏信息
+ * @param candidateLine 候选行
+ * @returns 是否构成闭合围栏
+ */
+const isMatchingFenceClose = (
+  candidate: ReturnType<typeof getFenceInfo>,
+  fence: NonNullable<ReturnType<typeof getFenceInfo>>,
+  candidateLine: string,
+): boolean =>
+  candidate != null &&
+  candidate.marker === fence.marker &&
+  candidate.length >= fence.length &&
+  markdownFenceClose.test(candidateLine);
+
+/**
+ * 记录围栏行范围
+ *
+ * @param target 围栏行号集合与保护标记
+ * @param from 起始行
+ * @param to 结束行
+ */
+const addFenceLineRange = (
+  target: { lines: Set<number>; protectedLines: Set<number>; vPreProtected: boolean },
+  from: number,
+  to: number,
+): void => {
+  for (let cursor = from; cursor <= to; cursor += 1) {
+    target.lines.add(cursor);
+    if (target.vPreProtected) target.protectedLines.add(cursor);
+  }
+};
+
+/**
+ * 标记列表项内的围栏代码块
+ *
+ * 这些围栏不在行首，不能按顶层围栏遮蔽；其中的花括号一律拆开，避免 :no-v-pre 时进入 Vue 模板。
+ *
+ * @param lines 全部行
+ * @param htmlBlockLines 原始 HTML 块行号
+ * @returns 列表项围栏的行号集合
+ */
+const collectListItemFenceLines = (
+  lines: string[],
+  htmlBlockLines: Set<number>,
+): { lines: Set<number>; protectedLines: Set<number> } => {
+  const result = new Set<number>();
+  const protectedLines = new Set<number>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (htmlBlockLines.has(index)) continue;
+
+    const fence = getListItemFenceInfo(lines[index]);
+
+    if (!fence) continue;
+
+    result.add(index);
+    let closed = false;
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
+      const candidate = getFenceInfo(candidateLine);
+
+      if (isMatchingFenceClose(candidate, fence, candidateLine)) {
+        addFenceLineRange(
+          { lines: result, protectedLines, vPreProtected: hasFenceVPre(fence.info) },
+          index,
+          next,
+        );
+        index = next;
+        closed = true;
+        break;
+      }
+    }
+
+    if (!closed) {
+      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
+      break;
+    }
+  }
+
+  return { lines: result, protectedLines };
+};
+
+/**
+ * 标记引用块或顶层围栏代码块所在的行
+ *
+ * `desc` 会被逐行加上 `> `，围栏代码块因此不在行首；这些行不能按普通行做标签遮蔽。
+ *
+ * @param lines 全部行
+ * @param htmlBlockLines 原始 HTML 块行号
+ * @returns 围栏代码块行号
+ */
+const collectBlockquoteFenceLines = (
+  lines: string[],
+  htmlBlockLines: Set<number>,
+): { lines: Set<number>; protectedLines: Set<number> } => {
+  const result = new Set<number>();
+  const protectedLines = new Set<number>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (htmlBlockLines.has(index)) continue;
+
+    const fence = getFenceInfo(stripBlockquotePrefix(lines[index]));
+
+    if (!fence) continue;
+
+    result.add(index);
+    let closed = false;
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
+      const candidate = getFenceInfo(candidateLine);
+
+      if (isMatchingFenceClose(candidate, fence, candidateLine)) {
+        addFenceLineRange(
+          { lines: result, protectedLines, vPreProtected: hasFenceVPre(fence.info) },
+          index,
+          next,
+        );
+        index = next;
+        closed = true;
+        break;
+      }
+    }
+
+    if (!closed) {
+      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
+      break;
+    }
+  }
+
+  return { lines: result, protectedLines };
 };
 
 /**
@@ -360,8 +400,9 @@ const getBacktickRunEnd = (content: string, start: number): number => {
 const findCodeSpanStart = (content: string, from: number): number => {
   let start = content.indexOf("`", from);
 
-  while (start !== -1 && isEscaped(content, start))
-    start = content.indexOf("`", getBacktickRunEnd(content, start));
+  // 反斜杠只转义第一个反引号，其后的反引号仍可开启代码段；
+  // 因此这里只前进一个字符，不能跳过整段反引号串。
+  while (start !== -1 && isEscaped(content, start)) start = content.indexOf("`", start + 1);
 
   return start;
 };
@@ -420,6 +461,8 @@ const splitVueBraceRun = (run: string, atom: RegExp): string =>
   run.replaceAll(atom, "$&<!-- -->").replace(/<!-- -->$/u, "");
 
 // oxlint-disable eslint/max-lines -- 插值中和的遮蔽顺序需要共享内部状态，拆分文件只会增加跨文件耦合
+// oxlint-disable eslint/max-lines-per-function -- 同上，跨行扫描与遮蔽必须在同一函数内维护顺序
+// oxlint-disable eslint/max-statements -- 跨行扫描需要顺序维护段落、行偏移与代码段状态
 
 const splitVueBraceRuns = (value: string): string =>
   value
@@ -449,7 +492,8 @@ const hasBraceLikeAutolinkContent = (value: string): boolean =>
   /[{}]/u.test(value) ||
   /%(?:7[bB]|7[dD])/u.test(value) ||
   /&#(?:0*123|x0*7[bB]);/iu.test(value) ||
-  /&lbrace;|&rbrace;/iu.test(value);
+  /&(?:l|r)brace;/iu.test(value) ||
+  /&(?:l|r)cub;/iu.test(value);
 
 /**
  * 清洗 autolink，使其在 markdown-it 解码后仍不包含花括号
@@ -742,15 +786,46 @@ const isInsideInlineCode = (line: string, position: number): boolean => {
 };
 
 /**
+ * 收集单行内的行内代码区间
+ *
+ * @param line 单行内容
+ * @returns 行内代码的起止区间（升序）
+ */
+const collectInlineCodeRanges = (line: string): { start: number; end: number }[] => {
+  const ranges: { start: number; end: number }[] = [];
+  let index = 0;
+
+  while (index < line.length) {
+    const start = findCodeSpanStart(line, index);
+
+    if (start === -1) break;
+
+    const markerEnd = getBacktickRunEnd(line, start);
+    const close = findCodeSpanClose(line, markerEnd, markerEnd - start);
+
+    if (close === -1) {
+      index = markerEnd;
+      continue;
+    }
+
+    const closeEnd = getBacktickRunEnd(line, close);
+    ranges.push({ start, end: closeEnd });
+    index = closeEnd;
+  }
+
+  return ranges;
+};
+
+/**
  * 标记原始文本元素所在的行
  *
  * `textarea` / `script` / `style` / `title` 等元素内部按 HTML 规则是文本，标签样式的字符串不会成为元素或属性， 不能按标签遮蔽其中的花括号。
  *
  * @param lines 全部行
- * @returns 原始文本元素行号
+ * @returns 各行对应的原始文本元素标签
  */
-const collectHtmlRawTextLines = (lines: string[]): Set<number> => {
-  const result = new Set<number>();
+const collectHtmlRawTextLines = (lines: string[]): Map<number, string> => {
+  const result = new Map<number, string>();
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = stripBlockquotePrefix(lines[index]);
@@ -769,7 +844,8 @@ const collectHtmlRawTextLines = (lines: string[]): Set<number> => {
       }
     }
 
-    for (let cursor = index; cursor <= end; cursor += 1) result.add(cursor);
+    for (let cursor = index; cursor <= end; cursor += 1)
+      result.set(cursor, start.groups.tag.toLowerCase());
 
     index = end;
   }
@@ -778,18 +854,156 @@ const collectHtmlRawTextLines = (lines: string[]): Set<number> => {
 };
 
 /**
+ * 记录跨行行内代码的字符区间
+ *
+ * CommonMark 的行内代码可以跨行；逐行配对会把闭合反引号与后续反引号错配， 使花括号被误当成代码内容而逃过中和。
+ *
+ * @param lines 全部行
+ * @param isCandidate 该行是否按行内内容处理
+ * @returns 每行需遮蔽的区间（升序）
+ */
+const collectMultiLineCodeSpans = (
+  lines: string[],
+  isCandidate: (index: number) => boolean,
+): Map<number, { start: number; end: number }[]> => {
+  const spans = new Map<number, { start: number; end: number }[]>();
+  let index = 0;
+
+  while (index < lines.length) {
+    if (!isCandidate(index) || lines[index].trim() === "") {
+      index += 1;
+      continue;
+    }
+
+    let paragraphEnd = index;
+
+    while (
+      paragraphEnd + 1 < lines.length &&
+      isCandidate(paragraphEnd + 1) &&
+      lines[paragraphEnd + 1].trim() !== ""
+    )
+      paragraphEnd += 1;
+
+    const offsets: number[] = [];
+    let text = "";
+
+    for (let lineIndex = index; lineIndex <= paragraphEnd; lineIndex += 1) {
+      offsets.push(text.length);
+      text += lines[lineIndex];
+      if (lineIndex < paragraphEnd) text += "\n";
+    }
+
+    const locate = (offset: number): { line: number; column: number } => {
+      let lineIndex = 0;
+
+      while (lineIndex < offsets.length - 1 && offsets[lineIndex + 1] <= offset) lineIndex += 1;
+
+      return { line: lineIndex, column: offset - offsets[lineIndex] };
+    };
+
+    let search = 0;
+
+    while (search < text.length) {
+      const codeStart = findCodeSpanStart(text, search);
+
+      if (codeStart === -1) break;
+
+      const openEnd = getBacktickRunEnd(text, codeStart);
+      const markerLength = openEnd - codeStart;
+      const closeStart = findCodeSpanClose(text, openEnd, markerLength);
+
+      if (closeStart === -1) break;
+
+      const closeEnd = closeStart + markerLength;
+      const startPosition = locate(codeStart);
+      const endPosition = locate(closeEnd);
+
+      if (startPosition.line !== endPosition.line) {
+        for (let lineIndex = startPosition.line; lineIndex <= endPosition.line; lineIndex += 1) {
+          const lineStart = lineIndex === startPosition.line ? startPosition.column : 0;
+          const lineEnd =
+            lineIndex === endPosition.line
+              ? endPosition.column
+              : (offsets[lineIndex + 1] ?? text.length) - offsets[lineIndex] - 1;
+          const ranges = spans.get(index + lineIndex) ?? [];
+
+          ranges.push({ start: lineStart, end: lineEnd });
+          spans.set(index + lineIndex, ranges);
+        }
+      }
+
+      search = closeEnd;
+    }
+
+    index = paragraphEnd + 1;
+  }
+
+  return spans;
+};
+
+/**
+ * 按行遮蔽跨行行内代码
+ *
+ * @param lines 全部行
+ * @param isCandidate 该行是否按行内内容处理
+ * @param stash 遮蔽函数
+ * @returns 逐行结果
+ */
+const maskMultiLineCodeSpans = (
+  lines: string[],
+  isCandidate: (index: number) => boolean,
+  stash: (value: string) => string,
+): string[] => {
+  const spans = collectMultiLineCodeSpans(lines, isCandidate);
+  const result = [...lines];
+
+  for (const [lineIndex, ranges] of spans) {
+    let line = result[lineIndex];
+
+    for (const range of [...ranges].sort((left, right) => right.start - left.start)) {
+      line =
+        line.slice(0, range.start) +
+        stash(line.slice(range.start, range.end)) +
+        line.slice(range.end);
+    }
+
+    result[lineIndex] = line;
+  }
+
+  return result;
+};
+
+/** Markdown 引用式链接定义（`[ref]: destination`，含引用块前缀） */
+const markdownReferenceDefinition =
+  /^(?<prefix>(?:[ \t]*>[ \t]?)*[ \t]*\[[^\]\n]+\]:[ \t]*)(?<destination><[^<>\n]*>|[^\s]+)(?<rest>.*)$/u;
+
+/**
+ * 转义引用式链接目标中的花括号，保持 URL 语义
+ *
+ * @param destination 链接目标
+ * @returns 处理后的链接目标
+ */
+const sanitizeReferenceDestination = (destination: string): string =>
+  /[{}`]/u.test(destination)
+    ? destination.replaceAll("{", "%7B").replaceAll("}", "%7D").replaceAll("`", "%60")
+    : destination;
+
+/**
  * 遮蔽围栏代码块
  *
  * @param lines 全部行
  * @param htmlBlockLines 原始 HTML 块行号
- * @param listFenceLines 列表项围栏行号
+ * @param fenceInfo 列表项与引用块围栏信息
  * @param stash 遮蔽函数
  * @returns 逐行结果
  */
 const maskFenceBlocks = (
   lines: string[],
   htmlBlockLines: Set<number>,
-  listFenceLines: Set<number>,
+  fenceInfo: {
+    list: { lines: Set<number>; protectedLines: Set<number> };
+    blockquote: { lines: Set<number>; protectedLines: Set<number> };
+  },
   stash: (value: string) => string,
 ): { lines: string[]; fenceLines: Set<number> } => {
   const result: string[] = [];
@@ -798,8 +1012,19 @@ const maskFenceBlocks = (
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
 
-    if (htmlBlockLines.has(index) || listFenceLines.has(index)) {
+    if (htmlBlockLines.has(index)) {
       result.push(line);
+      continue;
+    }
+
+    // 列表项与引用块内的围栏在 VuePress 下同样有 v-pre（除非显式 :no-v-pre），
+    // 必须原样保留；未受保护的围栏交给后续全局拆分。
+    if (fenceInfo.list.lines.has(index) || fenceInfo.blockquote.lines.has(index)) {
+      result.push(
+        fenceInfo.list.protectedLines.has(index) || fenceInfo.blockquote.protectedLines.has(index)
+          ? stash(line)
+          : line,
+      );
       continue;
     }
 
@@ -862,26 +1087,46 @@ const maskMarkdownSyntax = (
   const htmlCommentLines = collectHtmlCommentLines(lines);
   const rawTextLines = collectHtmlRawTextLines(lines);
   const tableBlockLines = collectTableBlockLines(lines);
-  const listFenceLines = collectListItemFenceLines(lines, htmlBlockLines);
-  const blockquoteFenceLines = collectBlockquoteFenceLines(lines, htmlBlockLines);
-  const fenceResult = maskFenceBlocks(lines, htmlBlockLines, listFenceLines, stash);
+  const listFenceInfo = collectListItemFenceLines(lines, htmlBlockLines);
+  const blockquoteFenceInfo = collectBlockquoteFenceLines(lines, htmlBlockLines);
+  const fenceResult = maskFenceBlocks(
+    lines,
+    htmlBlockLines,
+    { list: listFenceInfo, blockquote: blockquoteFenceInfo },
+    stash,
+  );
   const isCodeContext = (index: number, line: string): boolean =>
-    listFenceLines.has(index) ||
-    blockquoteFenceLines.has(index) ||
+    listFenceInfo.lines.has(index) ||
+    blockquoteFenceInfo.lines.has(index) ||
     fenceResult.fenceLines.has(index) ||
     isIndentedCodeLine(line);
   const tagMasked = fenceResult.lines
     .map((line, index) =>
       htmlBlockLines.has(index) && !rawTextLines.has(index) && !isCodeContext(index, line)
         ? line.replaceAll(markdownHtmlTag, (match: string, offset: number) =>
-            isEscaped(line, offset) ? match : stash(match),
+            isEscaped(line, offset)
+              ? match
+              : stash(/^<\/?plaintext\b/iu.test(match) ? escapePlaintextTags(match) : match),
           )
         : line,
     )
     .join("\n");
+  const taggedLines = tagMasked.split("\n");
+  // 跨行行内代码先逐行遮蔽，避免逐行配对时的反引号错配。
+  const multiLineMaskedLines = maskMultiLineCodeSpans(
+    taggedLines,
+    (index) =>
+      !isCodeContext(index, taggedLines[index]) &&
+      !htmlBlockLines.has(index) &&
+      !htmlCommentLines.has(index) &&
+      !rawTextLines.has(index) &&
+      !tableBlockLines.has(index) &&
+      // 文本组件会转义 HTML；这类行里的反引号是普通字符，按保守策略仍逐行中和。
+      !/[&](?:gt|lt|quot);/u.test(taggedLines[index]),
+    stash,
+  );
   // 注释与行内代码按源码顺序处理，避免注释里的反引号与正文反引号错误配对。
-  const masked = tagMasked
-    .split("\n")
+  const masked = multiLineMaskedLines
     .map((line, index) => {
       if (isIndentedCodeLine(line)) return splitVueBraceRuns(line);
 
@@ -892,18 +1137,34 @@ const maskMarkdownSyntax = (
       if (isCodeContext(index, line)) return line;
 
       if (rawTextLines.has(index)) {
-        return /^<plaintext\b/iu.test(stripContainerPrefixes(line))
-          ? escapePlaintextTags(line)
+        return rawTextLines.get(index) === "plaintext"
+          ? splitVueBraceRuns(escapePlaintextTags(line))
           : line;
       }
 
-      if (htmlBlockLines.has(index)) return line;
+      if (htmlBlockLines.has(index))
+        return /<\/?plaintext\b/iu.test(line) ? splitVueBraceRuns(escapePlaintextTags(line)) : line;
+
+      // 引用式链接定义的 URL 不能拆开花括号，否则定义失效；改为百分号编码。
+      const withoutReferences = line.replace(
+        markdownReferenceDefinition,
+        (_, prefix: string, destination: string, rest: string) =>
+          prefix + sanitizeReferenceDestination(destination) + rest,
+      );
+
+      // 行内代码优先于链接解析：与行内代码重叠的伪链接不能先遮蔽，
+      // 否则其中的反引号会被移出，使代码段配对错位、正文花括号逃过中和。
+      const inlineCodeRanges = collectInlineCodeRanges(withoutReferences);
+      // 只有链接起点落在更早开始的行内代码段内时，才是 markdown-it 会先解析为代码的伪链接；
+      // 若链接起点在代码段之前（如 autolink 内出现反引号），markdown-it 仍会解析该链接，必须遮蔽。
+      const startsInsideInlineCode = (offset: number): boolean =>
+        inlineCodeRanges.some((range) => range.start < offset && offset < range.end);
 
       // 先遮蔽真实链接（destination/title）与 autolink，再做行内代码配对：
       // markdown-it 不把它们当作行内内容，其中的反引号不能与正文反引号配对。
-      const withoutLinks = line
+      const withoutLinks = withoutReferences
         .replaceAll(markdownLinkOrImage, (match: string, offset: number) => {
-          if (isEscaped(line, offset)) return match;
+          if (isEscaped(withoutReferences, offset) || startsInsideInlineCode(offset)) return match;
 
           // 只遮蔽 destination/title；标签文字仍要参与花括号中和。
           const destination = match.indexOf("](") + 1;
@@ -911,7 +1172,7 @@ const maskMarkdownSyntax = (
           return match.slice(0, destination) + stash(match.slice(destination));
         })
         .replaceAll(markdownAutolink, (match: string, offset: number) => {
-          if (isEscaped(line, offset)) return match;
+          if (isEscaped(withoutReferences, offset) || startsInsideInlineCode(offset)) return match;
 
           // autolink 的可见文字会被 markdown-it 解码，其中的反引号也会破坏正文代码段配对；
           // 先清洗再加遮蔽，避免解码后重新出现 {{ }} 或反引号。
