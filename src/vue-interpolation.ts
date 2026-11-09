@@ -53,6 +53,7 @@ const ampersandEntityPattern = /^(?:amp|AMP)$/u;
 
 /** 命名花括号实体 */
 const braces: Record<string, string> = {
+  bsol: "\\",
   lcub: "{",
   lbrace: "{",
   rcub: "}",
@@ -180,6 +181,17 @@ const neutralizeDecodedBraces = (value: string): string => {
       result += decoded.character === "{" ? "{<!-- -->" : "}<!-- -->";
       index = decoded.end;
       continue;
+    }
+
+    // 实体解码出的反斜杠紧邻字面花括号时，等价于 Markdown 转义花括号；改写成字面反斜杠，交给反斜杠归一化处理
+    if (decoded?.character === "\\") {
+      const next = value[decoded.end];
+
+      if (next === "{" || next === "}") {
+        result += "\\";
+        index = decoded.end;
+        continue;
+      }
     }
 
     result += "&";
