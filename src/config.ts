@@ -23,10 +23,18 @@ const DEFAULT_CONFIG: Config = {
 /**
  * 去除路径或 URL 末尾的一个或多个斜杠
  *
+ * 使用手写循环从尾部线性扫描：`/\/+$/u` 这类正则在无匹配的恶意输入（如大量斜杠后接普通字符）上会回溯成多项式时间， 因此这里避免使用正则。
+ *
  * @param value 待规范化的路径或 URL
  * @returns 去除末尾斜杠后的值
  */
-const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/u, "");
+const stripTrailingSlashes = (value: string): string => {
+  let end = value.length;
+
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+
+  return end === value.length ? value : value.slice(0, end);
+};
 
 /**
  * 规范化配置中的路径与 URL

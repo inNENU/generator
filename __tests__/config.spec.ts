@@ -97,3 +97,46 @@ describe(config, () => {
     expect(generatorConfig).toStrictEqual(defaults);
   });
 });
+
+describe("末尾斜杠规范化", () => {
+  // 通过 `config()` 规范化 `assets` 并返回结果，避免直接依赖未导出的辅助函数
+  const normalize = (assets: string): string => {
+    resetConfig();
+
+    try {
+      config({ assets });
+
+      return generatorConfig.assets;
+    } finally {
+      resetConfig();
+    }
+  };
+
+  it("移除全部尾斜杠且不改动其它字符", () => {
+    expect(normalize("https://a///")).toBe("https://a");
+    expect(normalize("/a/")).toBe("/a");
+    expect(normalize("a/b")).toBe("a/b");
+    expect(normalize("/a/b")).toBe("/a/b");
+    expect(normalize("a//b")).toBe("a//b");
+    expect(normalize("///")).toBe("");
+    expect(normalize("")).toBe("");
+  });
+
+  it("线性处理超长尾斜杠", () => {
+    expect(normalize("/".repeat(200_000))).toBe("");
+    expect(normalize(`x${"/".repeat(200_000)}`)).toBe("x");
+  });
+
+  it("病态输入不被回溯拖慢，且无尾斜杠时原样返回", () => {
+    const pathological = `${"/".repeat(200_000)}x`;
+    const start = performance.now();
+    const result = normalize(pathological);
+    const cost = performance.now() - start;
+
+    // 末尾字符是 `x`，没有可移除的斜杠，长度与结尾内容都应保持原样
+    expect(result).toHaveLength(pathological.length);
+    expect(result.endsWith("/x")).toBe(true);
+    // 多项式正则实现在该输入上约需 12s，线性实现通常 < 1ms，这里留足余量避免监测抖动
+    expect(cost).toBeLessThan(1000);
+  });
+});
