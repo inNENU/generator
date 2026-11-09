@@ -36,10 +36,32 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(markdown).toContain("{<!-- -->{7*7}<!-- -->}");
   });
 
-  it("保留顶层围栏代码块中的插值（VuePress 会加 v-pre）", () => {
+  it("顶层围栏代码块也按保守策略中和", () => {
     const markdown = renderText("```js\nconst a = { b: {{7*7}} };\n```");
 
-    expect(markdown).toContain("const a = { b: {{7*7}} };");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(markdown).toContain("const a = { b: {<!-- -->{7*7}<!-- -->} };");
+  });
+
+  it("组件原始 HTML 内的栅栏内容同样中和", () => {
+    const markdown = getPageMarkdown(
+      {
+        title: "t",
+        content: [
+          {
+            tag: "card",
+            name: "n",
+            title: "t",
+            path: "guide/about",
+            desc: "x\n```js\n{{7*7}}\n```\n",
+          },
+        ],
+      },
+      { mode: "web" },
+    );
+
+    expect(markdown).not.toMatch(/\{\{7\*\}\}/u);
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
   });
 
   it("中和 :no-v-pre 顶层围栏中的插值", () => {

@@ -79,10 +79,31 @@ describe("vue 插值中和的编译级验证", () => {
     expect(hasInterpolation(escapeVueInterpolation(markdown))).toBe(false);
   });
 
-  it("顶层 v-pre 围栏保留原文且不产生插值", () => {
+  it("顶层围栏也中和，但仍不产生插值", () => {
     const markdown = escapeVueInterpolation("```js\nconst a = { b: {{7*7}} };\n```");
 
-    expect(markdown).toBe("```js\nconst a = { b: {{7*7}} };\n```");
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(hasInterpolation(markdown)).toBe(false);
+  });
+
+  it("组件原始 HTML 块中的栅栏不经 markdown-it 解析，也不会执行", () => {
+    const markdown = getPageMarkdown(
+      {
+        title: "t",
+        content: [
+          {
+            tag: "card",
+            name: "n",
+            title: "t",
+            path: "guide/about",
+            desc: "x\n```js\n{{7*7}}\n```\n",
+          },
+        ],
+      },
+      { mode: "web" },
+    );
+
+    expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
     expect(hasInterpolation(markdown)).toBe(false);
   });
 
