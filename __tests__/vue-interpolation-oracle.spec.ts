@@ -193,15 +193,22 @@ describe("vue 编译级插值防护", () => {
       "-     ```js\n      {{7*7}}",
       "-\t\t```js {{7*7}}",
       "```md :no-v-pre\n- ```js {{7*7}}\n```",
+      "```md :no-v-pre\n- ```js {{7*7}}",
+      "~~~md :no-v-pre\n1. ```js {{7*7}}\n~~~",
     ];
 
     for (const text of payloads) {
       const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text }]), {
         location: "oracle/list-indent",
       });
+      const descMarkdown = getPageMarkdown(createPage([], text), {
+        location: "oracle/list-indent-desc",
+      });
 
       expect(markdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
       expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+      expect(compileTemplate(descMarkdown)).not.toContain("_toDisplayString");
     }
   });
 

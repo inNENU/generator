@@ -267,12 +267,19 @@ const collectListItemFenceLines = (
   lines: string[],
   htmlBlockLines: Set<number>,
   topLevelFenceLines: Set<number>,
+  blockquoteFenceLines: Set<number>,
 ): { lines: Set<number>; protectedLines: Set<number> } => {
   const result = new Set<number>();
   const protectedLines = new Set<number>();
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index) || topLevelFenceLines.has(index)) continue;
+    if (
+      htmlBlockLines.has(index) ||
+      topLevelFenceLines.has(index) ||
+      // 引用块内围栏的正文不会被解析为 Markdown，不能再按列表围栏收集。
+      blockquoteFenceLines.has(index)
+    )
+      continue;
 
     const fence = getListItemFenceInfo(lines[index]);
 
@@ -1211,11 +1218,16 @@ const maskMarkdownSyntax = (
   const rawTextLines = collectHtmlRawTextLines(lines);
   const tableBlockLines = collectTableBlockLines(lines);
   const topLevelFenceLines = collectTopLevelFenceLines(lines, htmlBlockLines);
-  const listFenceInfo = collectListItemFenceLines(lines, htmlBlockLines, topLevelFenceLines);
   const blockquoteFenceInfo = collectBlockquoteFenceLines(
     lines,
     htmlBlockLines,
     topLevelFenceLines,
+  );
+  const listFenceInfo = collectListItemFenceLines(
+    lines,
+    htmlBlockLines,
+    topLevelFenceLines,
+    blockquoteFenceInfo.lines,
   );
   const fenceResult = maskFenceBlocks(
     lines,
