@@ -1,4 +1,6 @@
+import { figure as figurePlugin } from "@mdit/plugin-figure";
 import { compile } from "@vue/compiler-dom";
+import { createMarkdown as createVuePressMarkdown } from "@vuepress/markdown";
 import MarkdownIt from "markdown-it";
 import { describe, expect, it } from "vitest";
 
@@ -127,5 +129,42 @@ describe("vue 插值中和的编译级验证", () => {
 
     expect(markdown).not.toMatch(/\{\{7\*7\}\}/u);
     expect(hasInterpolation(markdown)).toBe(false);
+  });
+});
+
+describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
+  /**
+   * 用真实 VuePress Markdown 与 figure 插件渲染
+   *
+   * @param markdown 生成的 Markdown
+   * @returns 渲染后的 HTML
+   */
+  const renderWithFigure = (markdown: string): string => {
+    const instance = createVuePressMarkdown();
+
+    // @vuepress/markdown 依赖 @types/markdown-it@14，而本仓库直接依赖 markdown-it@15，类型不兼容但运行时兼容
+    instance.use(figurePlugin as unknown as Parameters<typeof instance.use>[0]);
+
+    return instance.render(markdown);
+  };
+
+  const payloads: [string, string][] = [
+    ["desc 实体 title", '![a](x "&#123;&#123;7*7&#125;&#125;")'],
+    ["desc 大写 X 实体 title", '![a](x "&#X7B;&#X7B;7*7&#X7D;&#X7D;")'],
+    ["desc 双编码实体 title", '![a](x "&amp;#123;&amp;#123;7*7&amp;#125;&amp;#125;")'],
+    ["desc 命名实体 title", '![a](x "&lcub;&lcub;7*7&rcub;&rcub;")'],
+    ["desc 混合实体与字面花括号", '![a](x "&#123;{7*7&#125;}")'],
+    ["text 括号 title", "x ![a](x (&lcub;&lcub;7*7&rcub;&rcub;))"],
+  ];
+
+  it.each(payloads)("中和后 figure 标题不执行插值：%s", (_name, desc) => {
+    const markdown = getPageMarkdown(
+      { title: "t", desc, content: [{ tag: "text", text: "x" }] },
+      { mode: "web" },
+    );
+    const html = renderWithFigure(markdown);
+
+    expect(html).not.toMatch(/\{\{7\*7\}\}/u);
+    expect(compile(html, { mode: "function" }).code).not.toContain("_toDisplayString");
   });
 });

@@ -36,9 +36,32 @@ const splitVueBraceRuns = (value: string): string =>
     .replaceAll(vueInterpolationOpenRun, (run) => splitBraceRun(run, "<!-- -->"))
     .replaceAll(vueInterpolationCloseRun, (run) => splitBraceRun(run, "<!-- -->"));
 
-/** 会被 HTML/Markdown 解码成花括号的实体（含大写 X、左右花括号两种形式） */
+/** 会被 URL 解码成花括号的百分号编码 */
+const encodedBracePattern = /%(?:7[bB]|7[dD])/gu;
+
+/** 会被 HTML/Markdown 解码成花括号的实体（含大小写十六进制、左右花括号与多层 `&amp;` 前缀） */
 const decodedBracePattern =
-  /&(?:#(?:0*(?:123|125)|x0*7(?:[bB]|[dD]));|l(?:cub|brace);|r(?:cub|brace);)/giu;
+  /&(?:amp;)*(?:#(?:0*(?:123|125)|x0*7(?:[bB]|[dD]))|l(?:cub|brace)|r(?:cub|brace));/giu;
+
+/**
+ * 中和会被后续解码还原成花括号的实体
+ *
+ * 实体在 Markdown、@mdit/plugin-figure 等插件以及 Vue 编译过程中可能被多次解码，仅再加一层 `&amp;` 不足以覆盖 全部解码链。这里直接把实体改写成「花括号 +
+ * HTML 注释」，无论解码多少次都只会得到被注释隔开的单个花括号。
+ *
+ * @param value 原始 Markdown
+ * @returns 不会解码出 `{{` / `}}` 的 Markdown
+ */
+const neutralizeDecodedBraces = (value: string): string =>
+  value
+    .replaceAll(decodedBracePattern, (match) => {
+      const entity = match.replace(/^&(?:amp;)*/iu, "");
+      const isOpenBrace = /^(?:#0*123|#x0*7b|l(?:cub|brace));$/iu.test(entity);
+
+      return isOpenBrace ? "{<!-- -->" : "}<!-- -->";
+    })
+    .replaceAll(encodedBracePattern, (match) => `%25${match.slice(1)}`)
+    .replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
 
 /**
  * 还原 Markdown 反斜杠转义后的花括号文本
@@ -73,7 +96,6 @@ const normalizeEscapedBraces = (value: string): string => {
     }
 
     const repeated = Math.floor((end - index) / 2);
-
     const backslashes = String.fromCodePoint(0x5c).repeat(repeated * 2);
 
     result += `${backslashes}${brace}`;
@@ -82,23 +104,6 @@ const normalizeEscapedBraces = (value: string): string => {
 
   return result;
 };
-
-/** 会被 URL 解码成花括号的百分号编码 */
-const encodedBracePattern = /%(?:7[bB]|7[dD])/gu;
-
-/**
- * 中和会被后续解码还原成花括号的文本
- *
- * 实体与百分号编码在 markdown-it / 浏览器解码后可能重新形成 `{{`， 必须在做字面拆分前先转义，避免绕过。
- *
- * @param value 原始 Markdown
- * @returns 不会解码出花括号的 Markdown
- */
-const neutralizeDecodedBraces = (value: string): string =>
-  value
-    .replaceAll(decodedBracePattern, (match) => `&amp;${match.slice(1)}`)
-    .replaceAll(encodedBracePattern, (match) => `%25${match.slice(1)}`)
-    .replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
 
 /**
  * 中标 Markdown 输出中的 Vue 插值，避免站点构建时被当作模板执行
