@@ -2,7 +2,7 @@ import { getYamlValue } from "../helpers/index.js";
 import { sanitizeUrl } from "../helpers/url.js";
 import { ValidationError, runValidation } from "../helpers/validation.js";
 import type { MarkdownOptions } from "../typings.js";
-import { getIconLink } from "../utils.js";
+import { escapeVueInterpolation, getIconLink } from "../utils.js";
 import { renderComponentMarkdown } from "./markdown-renderers.js";
 import type { PageConfig } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
@@ -154,7 +154,7 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
       // 描述是页面配置字段，处理它时切回配置阶段，确保异常文案指向配置而不是内容
       phase = "config";
       blocks.push(
-        desc
+        escapeVueInterpolation(desc)
           .split("\n")
           .map((line) => `> ${line}`)
           .join("\n>\n"),
