@@ -115,7 +115,6 @@ vi.spyOn(console, "error").mockImplementation(() => {});
 describe(formatMarkdownDestination, () => {
   it.each([
     "https://example.com/plain.png",
-    "https://example.com/a(b).png",
     "https://example.com/?a=1&b=2",
     "https://example.com/a%20b.png",
     "tel:0431-85099999",
@@ -125,13 +124,16 @@ describe(formatMarkdownDestination, () => {
     expect(formatMarkdownDestination(url)).toBe(url);
   });
 
-  it("空白、尖括号与不成对括号使用尖括号包裹", () => {
+  it("空白与括号使用尖括号包裹，尖括号与反斜杠做百分号编码", () => {
     expect(formatMarkdownDestination("https://example.com/a b.png")).toBe(
       "<https://example.com/a b.png>",
     );
     expect(formatMarkdownDestination("https://example.com/x)a")).toBe("<https://example.com/x)a>");
+    expect(formatMarkdownDestination("https://example.com/a(b).png")).toBe(
+      "<https://example.com/a(b).png>",
+    );
     expect(formatMarkdownDestination("https://example.com/a<b>.png")).toBe(
-      "<https://example.com/a&lt;b&gt;.png>",
+      "https://example.com/a%3Cb%3E.png",
     );
   });
 
@@ -144,15 +146,6 @@ describe(formatMarkdownDestination, () => {
     expect(parseMedia(line)).toStrictEqual([
       { type: "link", href: "https://example.com/a%0Ab%09c%5Cd.png", text: "文件" },
     ]);
-  });
-
-  it("裸目标中的 HTML 字符引用被固定", () => {
-    expect(formatMarkdownDestination("https://example.com/?a=1&copy;=2")).toBe(
-      "https://example.com/?a=1%26copy;=2",
-    );
-    expect(formatMarkdownDestination("https://example.com/?a=1&b=2")).toBe(
-      "https://example.com/?a=1&b=2",
-    );
   });
 
   it.each([
@@ -313,7 +306,7 @@ describe("站点管线链接", () => {
     const lines = markdown.split("\n").filter((line) => line.startsWith("- [查看详情]"));
 
     expect(lines).toHaveLength(2);
-    expect(parseMedia(lines[0])[0].href).toContain("username=a%29b%28c");
+    expect(parseMedia(lines[0])[0].href).toContain("username=a)b(c");
     expect(parseMedia(lines[1])).toStrictEqual([
       {
         type: "link",

@@ -29,6 +29,20 @@ export interface ActionMarkdownOptions {
 }
 
 /**
+ * 生成代码围栏
+ *
+ * 围栏长度必须大于内容中最长的连续反引号，否则内容里的连续反引号会提前闭合围栏，把后续内容当作正文解析。
+ *
+ * @param content 代码块内容
+ * @returns 至少三个反引号组成的围栏
+ */
+const getCodeFence = (content: string): string => {
+  const longest = (content.match(/`+/gu) ?? []).reduce((max, run) => Math.max(max, run.length), 0);
+
+  return "`".repeat(Math.max(3, longest + 1));
+};
+
+/**
  * 生成 action 组件 Markdown
  *
  * @param action Action 组件数据
@@ -66,8 +80,10 @@ export const getActionMarkdown = (
       ));
 
   const body = isLink
-    ? `[${escapeMarkdownLinkLabel(escapeHtml(header ?? safeContent))}](${formatMarkdownDestination(safeContent)})`
-    : `\`\`\`text\n${content}\n\`\`\``;
+    ? `[${escapeMarkdownLinkLabel(escapeHtml(header ?? safeContent))}](${formatMarkdownDestination(
+        safeContent,
+      )})`
+    : `${getCodeFence(content)}text\n${content}\n${getCodeFence(content)}`;
 
   if (options.mode === "miniapp") {
     return `\

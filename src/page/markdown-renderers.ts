@@ -158,7 +158,9 @@ const renderTextComponentMarkdown = (
               return `- ${escapeHtml(item.text)}${icon}（小程序：\`${converted.miniapp}\`）`;
             }
 
-            return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(converted.web)})）`;
+            return `- ${escapeHtml(item.text)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(
+              converted.web,
+            )})）`;
           }
 
           const itemDesc = "desc" in item && item.desc ? ` - ${escapeHtml(item.desc)}` : "";
@@ -199,7 +201,9 @@ ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
           return `- ${escapeHtml(cardTitle)}${icon}（小程序：\`${converted.miniapp}\`）\n\n`;
         }
 
-        return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(converted.web)})）\n\n`;
+        return `- ${escapeHtml(cardTitle)}（小程序：\`${converted.miniapp}\`，[网页版](${formatMarkdownDestination(
+          converted.web,
+        )})）\n\n`;
       }
 
       const itemDesc = cardDesc ? ` - ${escapeHtml(cardDesc)}` : "";
@@ -319,7 +323,7 @@ ${name ? `- 名称: ${escapeHtml(name)}\n` : ""}\
 ${detail ? `- 详情: ${escapeHtml(detail)}\n` : ""}\
 ${accountDesc ? `- 描述: ${escapeHtml(accountDesc)}\n` : ""}\
 ${qq ? `- QQ: ${escapeHtml(String(qq))}\n` : ""}\
-${wxid ? `- 微信公众号二维码: ![](${formatMarkdownDestination(`https://open.weixin.qq.com/qr/code?${new URLSearchParams({ username: wxid }).toString()}`)})\n` : ""}\
+${wxid ? `- 微信公众号二维码: ![](${formatMarkdownDestination(`https://open.weixin.qq.com/qr/code?username=${encodeURIComponent(wxid)}`)})\n` : ""}\
 ${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
 ${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${formatMarkdownDestination(mailUrl)})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 
@@ -329,17 +333,21 @@ ${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${
     case "audio": {
       const { src, name } = component;
       const audioLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
-      const label = `音频${name ? `: ${escapeMarkdownLinkLabel(escapeHtml(name))}` : ""}`;
+      const label = `音频${name ? `: ${escapeHtml(name)}` : ""}`;
 
-      return audioLink ? `[${label}](${formatMarkdownDestination(audioLink)})\n\n` : `${label}\n\n`;
+      return audioLink
+        ? `[${escapeMarkdownLinkLabel(label)}](${formatMarkdownDestination(audioLink)})\n\n`
+        : `${label}\n\n`;
     }
 
     case "video": {
       const { src, title: videoTitle } = component;
       const videoLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
-      const label = `视频${videoTitle ? `: ${escapeMarkdownLinkLabel(escapeHtml(videoTitle))}` : ""}`;
+      const label = `视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}`;
 
-      return videoLink ? `[${label}](${formatMarkdownDestination(videoLink)})\n\n` : `${label}\n\n`;
+      return videoLink
+        ? `[${escapeMarkdownLinkLabel(label)}](${formatMarkdownDestination(videoLink)})\n\n`
+        : `${label}\n\n`;
     }
 
     default: {

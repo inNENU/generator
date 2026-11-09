@@ -37,7 +37,11 @@ export const getPhoneMarkdown = (phone: PhoneComponentOptions, location = ""): s
 ::: info ${escapeHtml(header || `${lName}${fName} 联系方式`)}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
-- 电话: ${telUrl ? `[${escapeMarkdownLinkLabel(escapeHtml(String(num)))}](${formatMarkdownDestination(telUrl)})` : escapeHtml(String(num))}
+- 电话: ${
+    telUrl
+      ? `[${escapeMarkdownLinkLabel(escapeHtml(String(num)))}](${formatMarkdownDestination(telUrl)})`
+      : escapeHtml(String(num))
+  }
 ${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
 ${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
 ${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\

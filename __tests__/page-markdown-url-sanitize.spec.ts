@@ -80,12 +80,14 @@ describe("站点 Markdown URL 协议过滤", () => {
       danger: "javascript:alert(1)",
       mixed: " JaVaScRiPt:alert(1)",
       safe: "https://example.com/action",
+      injection: "https://example.com/a) <img src=x onerror=alert(1)>",
     };
     const markdown = getPageMarkdown(
       createPage([
         { tag: "action", header: "危险操作", content: "danger" },
         { tag: "action", header: "混合大小写操作", content: "mixed" },
         { tag: "action", header: "安全操作", content: "safe" },
+        { tag: "action", header: "注入操作", content: "injection" },
         { tag: "action", header: "原始危险地址", content: "javascript:alert(1)" },
       ]),
       {
@@ -98,6 +100,42 @@ describe("站点 Markdown URL 协议过滤", () => {
     expect(markdown).not.toContain("]( JaVaScRiPt:");
     expect(markdown).toContain("```text\njavascript:alert(1)\n```");
     expect(markdown).toContain("[安全操作](https://example.com/action)");
+    // 注入样本必须整体作为一个目标地址，不能留下可执行的 raw HTML。
+    expect(markdown).toContain(
+      "[注入操作](<https://example.com/a) %3Cimg src=x onerror=alert(1)%3E>)",
+    );
+    expect(markdown).not.toMatch(/<img src=x/u);
+  });
+
+  it("carousel 的目标地址不会截断并注入 raw HTML", () => {
+    const markdown = getPageMarkdown(
+      createPage([
+        {
+          tag: "carousel",
+          images: ["https://example.com/a) <img src=x onerror=alert(1)>"],
+        },
+      ]),
+      { location: "test/carousel" },
+    );
+
+    expect(markdown).toContain("![''](<https://example.com/a) %3Cimg src=x onerror=alert(1)%3E>)");
+    expect(markdown).not.toMatch(/<img[^>]*onerror/iu);
+  });
+
+  it("official 的 username 编码后不会截断链接", () => {
+    const markdown = renderSite([
+      {
+        tag: "text",
+        header: "官方账号",
+        text: "正文",
+        action: "official",
+        username: "a b(c)&x=1",
+      },
+    ]);
+
+    expect(markdown).toContain(
+      "- [查看详情](<https://open.weixin.qq.com/qr/code?username=a%20b(c)%26x%3D1>)",
+    );
   });
 
   it("text 组件的 article/path 详情链接拒绝危险协议", () => {
