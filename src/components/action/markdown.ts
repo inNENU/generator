@@ -1,5 +1,10 @@
 import { sanitizeUrl } from "../../helpers/url.js";
-import { escapeHtml, getFileLink } from "../../utils.js";
+import {
+  escapeHtml,
+  escapeMarkdownLinkLabel,
+  formatMarkdownDestination,
+  getFileLink,
+} from "../../utils.js";
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
 
@@ -61,7 +66,7 @@ export const getActionMarkdown = (
       ));
 
   const body = isLink
-    ? `[${escapeHtml(header ?? safeContent)}](${safeContent})`
+    ? `[${escapeMarkdownLinkLabel(escapeHtml(header ?? safeContent))}](${formatMarkdownDestination(safeContent)})`
     : `\`\`\`text\n${content}\n\`\`\``;
 
   if (options.mode === "miniapp") {

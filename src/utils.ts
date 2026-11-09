@@ -247,6 +247,73 @@ export const escapeHtml = (content: string): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
+/** Markdown 链接文字中需要转义的字符 */
+const markdownLabelEscapePattern = /[\\[\]]/gu;
+
+/**
+ * 转义 Markdown 链接文字
+ *
+ * 链接文字中的 `[` / `]` 会提前结束链接，`\` 会被当作 CommonMark 转义前缀。 调用前应先用 `escapeHtml` 处理 HTML 特殊字符。
+ *
+ * @param label 链接文字
+ * @returns 可安全放入 `[]` 的链接文字
+ */
+export const escapeMarkdownLinkLabel = (label: string): string =>
+  label.replaceAll(markdownLabelEscapePattern, (char) => `\\${char}`);
+
+/** 链接目标中必须编码的字符：控制字符会让链接跨行，反斜杠会被当作 CommonMark 转义前缀 */
+const markdownDestinationEscapePattern = /[\p{Cc}\\]/gu;
+
+/** Markdown 会解码裸目标中的 HTML 字符引用，这些 `&` 需要固定 */
+const markdownEntityAmpersandPattern = /&(?=(?:#\d{1,7}|#x[0-9a-f]{1,6}|[a-z][a-z0-9]{1,31});)/giu;
+
+/**
+ * 判断 Markdown 链接目标是否需要尖括号包裹
+ *
+ * 空白与尖括号会提前结束裸目标；括号必须成对，否则链接会在第一个多余的 `)` 处截断。 成对括号符合 CommonMark 语法，保持裸目标可避免改变既有产物。
+ *
+ * @param destination 已编码特殊字符的目标
+ * @returns 是否需要尖括号包裹
+ */
+const needsAngleBracketDestination = (destination: string): boolean => {
+  if (/[\s<>]/u.test(destination)) return true;
+
+  let depth = 0;
+
+  for (const char of destination) {
+    if (char === "(") {
+      depth += 1;
+    } else if (char === ")") {
+      if (depth === 0) return true;
+
+      depth -= 1;
+    }
+  }
+
+  return depth !== 0;
+};
+
+/**
+ * 格式化 Markdown 链接 / 图片目标
+ *
+ * 控制字符与反斜杠先做百分号编码，避免链接跨行或被当作转义；普通地址保持原样， 仅在出现空白、尖括号或不成对括号时用尖括号包裹，保证既有产物字节不变。
+ *
+ * 调用方仍需先用 `sanitizeUrl` 拒绝危险协议。
+ *
+ * @param url 链接目标
+ * @returns 可直接写入 `(...)` 的 Markdown 目标
+ */
+export const formatMarkdownDestination = (url: string): string => {
+  const destination = url.replaceAll(markdownDestinationEscapePattern, (char) =>
+    encodeURIComponent(char),
+  );
+
+  if (!needsAngleBracketDestination(destination))
+    return destination.replaceAll(markdownEntityAmpersandPattern, "%26");
+
+  return `<${escapeHtml(destination)}>`;
+};
+
 /** 容器正文转义选项 */
 export interface EscapeContainerBodySyntaxOptions {
   /**

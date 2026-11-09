@@ -3,6 +3,7 @@ import type { EscapeContainerBodySyntaxOptions } from "../../utils.js";
 import {
   escapeContainerBodySyntax,
   escapeHtml,
+  formatMarkdownDestination,
   getMarkdownPath,
   indentMarkdownListItem,
 } from "../../utils.js";
@@ -50,20 +51,28 @@ const getTextBodyEscapeOptions = (shouldUseContainer: boolean): EscapeContainerB
  */
 const getActionContent = (text: TextComponentOptions): string => {
   if ("action" in text) {
-    if (text.action === "official")
-      return `- [查看详情](https://open.weixin.qq.com/qr/code?username=${text.username})\n\n`;
+    if (text.action === "official") {
+      // 用户名作为查询参数编码，避免 `&` / `=` / `#` 注入额外参数或提前结束链接
+      const query = new URLSearchParams({ username: text.username }).toString();
+
+      return `- [查看详情](${formatMarkdownDestination(
+        `https://open.weixin.qq.com/qr/code?${query}`,
+      )})\n\n`;
+    }
 
     if (text.action !== "article") return "";
 
     const url = sanitizeUrl(text.url);
 
-    return url ? `- [查看详情](${url})\n\n` : "";
+    return url ? `- [查看详情](${formatMarkdownDestination(url)})\n\n` : "";
   }
 
   if ("path" in text && text.path) {
     const safePath = getSafeUrl(getMarkdownPath(text.path));
 
-    return safePath?.kind === "relative" ? `- [查看详情](${safePath.url})\n\n` : "";
+    return safePath?.kind === "relative"
+      ? `- [查看详情](${formatMarkdownDestination(safePath.url)})\n\n`
+      : "";
   }
 
   return "";
