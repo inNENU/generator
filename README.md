@@ -73,10 +73,14 @@ component still needs to show its label.
 
 ## Entry points
 
-- `innenu-generator`: full public API (page, component, schema, helpers, generators).
+- `innenu-generator`: full public API (page, component, schema, generators; helper re-exports kept for compatibility but documented as internal).
 - `innenu-generator/schema`: zod schemas and validators for page components (`textComponentSchema`, `checkText`, ...). This subpath does
   not include the page config schema.
 - `innenu-generator/typings`: type-only subpath with the shared TypeScript types.
+
+The helper modules re-exported through `src/helpers/index.ts` are exposed from `innenu-generator` for compatibility only. They are internal
+implementation details with no cross-version stability guarantee and may change in minor releases; the documented page, component,
+schema and generator APIs are the stable surface.
 
 ### JSON Schema files
 

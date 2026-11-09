@@ -11,6 +11,7 @@ const compiledCache = new WeakMap<object, unknown>();
  *
  * @param schema 需编译的 Zod schema
  * @returns 编译副本（类型与原 schema 一致）
+ * @internal
  */
 export const useCompiled = <TSchema extends object & Parameters<typeof zod.compile>[0]>(
   schema: TSchema,

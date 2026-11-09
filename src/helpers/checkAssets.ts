@@ -101,6 +101,7 @@ const collectAssetReferences = (
  * @param strict 是否在存在未使用资源时抛出 `ValidationError`，默认为 `false`（仅记录日志）
  * @returns 未被使用的资源路径列表
  * @throws {ValidationError} 当 `strict` 为 `true` 且存在未使用资源时抛出
+ * @internal
  */
 export const checkAssets = (
   pageFolders: string[],

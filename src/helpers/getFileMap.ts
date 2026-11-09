@@ -11,18 +11,21 @@ import {
   resolveFileSymlink,
 } from "./fileTraversal.js";
 
+/** @internal */
 export interface FileInfo {
   type: "file";
   filename: string;
   content: string;
 }
 
+/** @internal */
 export interface DirInfo {
   type: "dir";
   dirname: string;
   content: FileMapItem[];
 }
 
+/** @internal */
 export type FileMapItem = FileInfo | DirInfo;
 
 /**
@@ -97,6 +100,7 @@ const getFileMapInfo = (state: TraversalState, folder: string): FileMapItem[] | 
  * @param ext 文件扩展名（不含 `.`），可传数组同时匹配多个扩展名；不传则返回所有文件
  * @returns 文件映射列表
  * @throws {Error} 当解析后的路径不存在或不是目录时抛出错误
+ * @internal
  */
 export const getFileMap = (folder: string, ext?: FileExtension): FileMapItem[] => {
   const base = resolve(folder);

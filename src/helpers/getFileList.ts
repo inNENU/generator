@@ -11,6 +11,7 @@ import {
   resolveFileSymlink,
 } from "./fileTraversal.js";
 
+/** @internal */
 export interface DirContent {
   /** 文件夹 */
   dirs: string[];
@@ -82,6 +83,7 @@ const getFiles = (state: TraversalState, base: string, dir: string): string[] =>
  * @param cwd 解析相对路径时使用的工作目录，默认为 process.cwd()
  * @returns 相对于 dirPath 的文件路径列表
  * @throws {Error} 当解析后的路径不存在或不是目录时抛出错误
+ * @internal
  */
 export const getFileList = (
   dirPath: string,

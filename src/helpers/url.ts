@@ -1,7 +1,15 @@
-/** 安全 URL 的类型 */
+/**
+ * 安全 URL 的类型
+ *
+ * @internal
+ */
 export type SafeUrlKind = "http" | "mailto" | "relative" | "tel";
 
-/** 经过协议校验的 URL */
+/**
+ * 经过协议校验的 URL
+ *
+ * @internal
+ */
 export interface SafeUrl {
   /** 可安全写入 `href`、`src` 或 Markdown 链接的地址 */
   url: string;
@@ -155,6 +163,7 @@ const normalizeForValidation = (value: string): string | null => {
  *
  * @param value 待校验的 URL
  * @returns 安全 URL 及类型，危险或不合法时返回 `null`
+ * @internal
  */
 export const getSafeUrl = (value: string | null | undefined): SafeUrl | null => {
   if (typeof value !== "string") return null;
@@ -190,6 +199,7 @@ export const getSafeUrl = (value: string | null | undefined): SafeUrl | null => 
  *
  * @param value 待校验的 URL
  * @returns 安全 URL，危险或不合法时返回 `null`
+ * @internal
  */
 export const sanitizeUrl = (value: string | null | undefined): string | null =>
   getSafeUrl(value)?.url ?? null;

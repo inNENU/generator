@@ -48,9 +48,11 @@ const assertValidRef = (ref: string, name: string): void => {
  * 获取当前分支名
  *
  * @returns 当前分支名
+ * @internal
  */
 export const getCurrentBranch = (): string => runGit(["branch", "--show-current"]).trim();
 
+/** @internal */
 export interface ChangedFilesInfo {
   added: string[];
   modified: string[];
@@ -63,6 +65,7 @@ export interface ChangedFilesInfo {
  * 路径按 `-z` 的 NUL 分隔原样解析：`--name-only` 默认会把 CJK 路径输出为带引号的八进制 转义串，按行切分只能拿到假路径；改用 NUL 分隔后文件名原样返回。
  *
  * @returns 变更的文件路径列表；无变更时返回空数组
+ * @internal
  */
 export const getCurrentChangedFiles = (): string[] => {
   const tokens = runGit(["diff", "--name-only", "-z", "HEAD"]).split("\0");
@@ -85,6 +88,7 @@ export const getCurrentChangedFiles = (): string[] => {
  * @param before 起始提交（可选；缺省时读取 GITHUB_EVENT_BEFORE）
  * @param after 结束提交（可选；缺省时读取 GITHUB_EVENT_AFTER）
  * @returns 变更的文件信息，包含新增、修改和删除的文件
+ * @internal
  */
 export const getLastChangedFiles = (before?: string, after?: string): ChangedFilesInfo => {
   // 环境变量为空时视为未提供（CI 中非 push 事件可能为空串），显式传入的空串则会被校验拒绝

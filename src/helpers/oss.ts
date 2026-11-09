@@ -19,7 +19,11 @@ const UPLOAD_CONCURRENCY = 5;
 /** OSS 对象 key 非法时的错误前缀 */
 const INVALID_KEY_MESSAGE = "OSS 对象 key 非法";
 
-/** 初始化 OSS 客户端 */
+/**
+ * 初始化 OSS 客户端
+ *
+ * @internal
+ */
 export const initOSS = (): void => {
   if (client) return;
 
@@ -48,7 +52,11 @@ export const initOSS = (): void => {
   });
 };
 
-/** 重置 OSS 客户端，便于测试或环境变量变化后重建 */
+/**
+ * 重置 OSS 客户端，便于测试或环境变量变化后重建
+ *
+ * @internal
+ */
 export const resetOSSClient = (): void => {
   client = null;
 };
@@ -76,6 +84,7 @@ const getClient = (): OSS => {
  * @returns 规范化后的对象 key
  * @throws {TypeError} 当 key 不是字符串时抛出
  * @throws {Error} 当 key 为空或包含非法路径段时抛出中文错误
+ * @internal
  */
 export const normalizeObjectKey = (key: string): string => {
   if (typeof key !== "string") throw new TypeError(`${INVALID_KEY_MESSAGE}：key 必须是字符串`);
@@ -151,7 +160,11 @@ const normalizeDeletePrefix = (prefix: string): string => {
   }
 };
 
-/** `removeOSSFiles` 的选项 */
+/**
+ * `removeOSSFiles` 的选项
+ *
+ * @internal
+ */
 export interface RemoveOSSFilesOptions {
   /** 允许删除的 key 前缀，提供后所有 key 都必须位于该前缀之下 */
   prefix?: string;
@@ -166,6 +179,7 @@ export interface RemoveOSSFilesOptions {
  * @param filePaths 文件路径列表，元素可以是本地路径，也可以是包含本地路径与线上路径的对象
  * @throws {Error} 当线上 key 非法时抛出中文错误
  * @throws {AggregateError} 当存在上传失败时抛出，包含所有失败 key 与原始错误
+ * @internal
  */
 export const uploadOSSFiles = async (
   filePaths: (string | { local: string; online: string })[],
@@ -225,6 +239,7 @@ export const uploadOSSFiles = async (
  * @param options 删除选项，可通过 `prefix` 限定只删除某个前缀下的对象
  * @throws {Error} 当 key 非法或存在不以允许前缀开头的 key 时抛出中文错误，且不会删除任何对象
  * @throws {AggregateError} 当存在删除失败时抛出，包含所有失败 key 与原始错误
+ * @internal
  */
 export const removeOSSFiles = async (
   filePaths: string[],

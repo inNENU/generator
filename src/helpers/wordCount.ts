@@ -40,6 +40,7 @@ const getEmojiNumber = (content: string): number => {
  *
  * @param content 需要统计字数的内容
  * @returns 内容中的字数
+ * @internal
  */
 export const getWordNumber = (content: string): number => {
   if (!content) return 0;
@@ -57,6 +58,7 @@ export const getWordNumber = (content: string): number => {
  *
  * @param content JSON 内容
  * @returns 提取的文本
+ * @internal
  */
 export const getJSONValue = (content: unknown): string => {
   if (typeof content === "number") return content.toString();
@@ -236,6 +238,7 @@ const getComponentWordNumber = (component: ComponentOptions): number =>
  *
  * @param page 页面配置
  * @returns 页面字数
+ * @internal
  */
 export const getPageWordCount = (page: PageConfig): number => {
   if (!page) return 0;
@@ -260,6 +263,7 @@ export const getPageWordCount = (page: PageConfig): number => {
  *
  * @param dirPath 目录路径
  * @returns 总字数
+ * @internal
  */
 export const getJSONWordCount = (dirPath: string): number => {
   let words = 0;
@@ -286,6 +290,7 @@ export const getJSONWordCount = (dirPath: string): number => {
  *
  * @param dirPath 目录路径
  * @returns 总字数
+ * @internal
  */
 export const getFolderPageWordCount = (dirPath: string): number => {
   let words = 0;
