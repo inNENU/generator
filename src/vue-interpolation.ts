@@ -168,6 +168,51 @@ const decodeEntityChain = (
 };
 
 /**
+ * 跳过反斜杠/实体编码的反斜杠，找到紧随其后的花括号
+ *
+ * 实体解码出的反斜杠与字面反斜杠在多次解析后可能相互抵消，只检查紧邻字符仍会漏掉 `&#92;\\{`、`&#92;&#92;{`
+ * 等组合。这里沿反斜杠（字面或实体形式）继续向前找，直到遇到花括号。
+ *
+ * @param value 输入文本
+ * @param start 起始位置
+ * @returns 花括号与其结束位置，若中间出现其他字符则返回 `null`
+ */
+const findBraceAfterBackslashes = (
+  value: string,
+  start: number,
+): { character: "{" | "}"; end: number } | null => {
+  let position = start;
+
+  while (position < value.length) {
+    const character = value[position];
+
+    if (character === "\\") {
+      position += 1;
+      continue;
+    }
+
+    if (character === "{" || character === "}") return { character, end: position + 1 };
+
+    if (character !== "&") return null;
+
+    const decoded = decodeEntityChain(value, position);
+
+    if (!decoded) return null;
+
+    if (decoded.character === "\\" || decoded.character === "{" || decoded.character === "}") {
+      if (decoded.character !== "\\") return { character: decoded.character, end: decoded.end };
+
+      position = decoded.end;
+      continue;
+    }
+
+    return null;
+  }
+
+  return null;
+};
+
+/**
  * 中和会被后续解码还原成花括号的实体
  *
  * 实体在 Markdown、插件（如 `@mdit/plugin-figure` 对图片 title 的二次解析）以及 Vue 编译过程中可能被多次解码，
@@ -197,15 +242,9 @@ const neutralizeDecodedBraces = (value: string): string => {
 
     // 实体解码出的反斜杠紧邻花括号（字面或实体编码）时，等价于 Markdown 转义花括号；直接按花括号中和
     if (decoded?.character === "\\") {
-      const next = value[decoded.end];
-      const nextBrace =
-        next === "{" || next === "}"
-          ? { character: next, end: decoded.end + 1 }
-          : next === "&"
-            ? decodeEntityChain(value, decoded.end)
-            : null;
+      const nextBrace = findBraceAfterBackslashes(value, decoded.end);
 
-      if (nextBrace?.character === "{" || nextBrace?.character === "}") {
+      if (nextBrace) {
         result = appendNeutralizedBrace(result, nextBrace.character);
         index = nextBrace.end;
         continue;
