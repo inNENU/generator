@@ -166,6 +166,25 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("可解码 autolink 与容器内缩进代码不产生插值", () => {
+    const desces = [
+      "<https://e/%7B%7B7*7%7D%7D>",
+      "<a%7B%7B7*7%7D%7D@b.com>",
+      "<a&#123;&#123;7*7&#125;&#125;@b.com>",
+      "`x <https://e/`> {{7*7}} `",
+      "- >     `{{7*7}}`",
+      "    {{7*7}}",
+    ];
+
+    for (const desc of desces) {
+      const code = compileTemplate(
+        getPageMarkdown(createPage([], desc), { location: "probe/decoded-autolink" }),
+      );
+
+      expect(code).not.toContain("_toDisplayString");
+    }
+  });
+
   it("crlf 围栏代码由 v-pre 保护", () => {
     const page = createPage([{ tag: "text", text: "```\r\n{{ 7*7 }}\r\n```" }]);
     const code = compileTemplate(getPageMarkdown(page, { location: "probe/crlf-fence" }));

@@ -436,6 +436,39 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(markdown).not.toContain("&#123;");
   });
 
+  it("中和可解码 autolink 与容器内缩进代码中的插值", () => {
+    const desces = [
+      "<https://e/%7B%7B7*7%7D%7D>",
+      "<a%7B%7B7*7%7D%7D@b.com>",
+      "<a&#123;&#123;7*7&#125;&#125;@b.com>",
+      "- >     `{{7*7}}`",
+      "    {{7*7}}",
+    ];
+
+    for (const desc of desces) {
+      const markdown = getPageMarkdown(createPage([], desc), {
+        location: "probe/decoded-autolink",
+      });
+      const html = markdownIt.render(markdown);
+
+      expect(markdown).not.toContain("{{");
+      expect(html).not.toContain("{{");
+    }
+  });
+
+  it("保留描述代码样本中的标签与花括号", () => {
+    const markdown = getPageMarkdown(
+      createPage(
+        [],
+        "```html\n<plaintext>{{ 7*7 }}</plaintext>\n```\n\n`<template>{{ 7*7 }}</template>`",
+      ),
+      { location: "probe/code-fidelity" },
+    );
+
+    expect(markdown).toContain("<plaintext>{{ 7*7 }}</plaintext>");
+    expect(markdown).toContain("`<template>{{ 7*7 }}</template>`");
+  });
+
   it("不影响文本管线的原始内容", () => {
     const page = createPage([{ tag: "text", header: `标题 ${raw}`, text: `正文 ${raw}` }]);
     const text = getPageText(page, "probe/text");

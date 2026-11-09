@@ -91,14 +91,20 @@ const stripBlockquotePrefix = (line: string): string => line.replace(/^(?: {0,3}
  * @param line 单行文本
  * @returns 是否是缩进代码
  */
-const isIndentedCodeLine = (line: string): boolean => {
-  const stripped = stripBlockquotePrefix(line);
+const stripContainerPrefixes = (line: string): string => {
+  let rest = line;
 
-  return (
-    /^(?: {4}|\t)/u.test(stripped) ||
-    /^(?: {0,3})(?:[-+*]|\d{1,9}[.)])(?:[ \t]{4,}|[ \t]*\t)/u.test(stripped)
-  );
+  for (;;) {
+    const match = /^(?: {0,3}>[ \t]?| {0,3}(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$))/u.exec(rest);
+
+    if (!match) return rest;
+
+    rest = rest.slice(match[0].length);
+  }
 };
+
+const isIndentedCodeLine = (line: string): boolean =>
+  /^(?: {4}|\t)/u.test(stripContainerPrefixes(line));
 
 /**
  * 读取列表项内围栏代码块的信息
@@ -413,6 +419,58 @@ const findHtmlTag = (content: string, from: number): { index: number; length: nu
 const splitVueBraceRun = (run: string, atom: RegExp): string =>
   run.replaceAll(atom, "$&<!-- -->").replace(/<!-- -->$/u, "");
 
+// oxlint-disable eslint/max-lines -- 插值中和的遮蔽顺序需要共享内部状态，拆分文件只会增加跨文件耦合
+
+const splitVueBraceRuns = (value: string): string =>
+  value
+    .replaceAll(vueInterpolationOpenRun, (run) => splitVueBraceRun(run, vueInterpolationOpenAtom))
+    .replaceAll(vueInterpolationCloseRun, (run) =>
+      splitVueBraceRun(run, vueInterpolationCloseAtom),
+    );
+
+/**
+ * 转义 `plaintext` 标签
+ *
+ * `plaintext` 是废弃的原始文本元素，Vue 编译器会把它当作缺少结束标签的原始文本元素。
+ *
+ * @param value 可能包含 `plaintext` 标签的文本
+ * @returns 转义后的文本
+ */
+const escapePlaintextTags = (value: string): string =>
+  value.replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
+
+/**
+ * 判断 autolink 解码后是否可能出现花括号
+ *
+ * @param value Autolink 源文本
+ * @returns 是否包含解码后可能还原成花括号的内容
+ */
+const hasBraceLikeAutolinkContent = (value: string): boolean =>
+  /[{}]/u.test(value) ||
+  /%(?:7[bB]|7[dD])/u.test(value) ||
+  /&#(?:0*123|x0*7[bB]);/iu.test(value) ||
+  /&lbrace;|&rbrace;/iu.test(value);
+
+/**
+ * 清洗 autolink，使其在 markdown-it 解码后仍不包含花括号
+ *
+ * 同时移除会干扰代码段配对的反引号。
+ *
+ * @param match Autolink 源文本
+ * @returns 清理后的文本
+ */
+const sanitizeAutolink = (match: string): string => {
+  const safe = hasBraceLikeAutolinkContent(match)
+    ? match
+        .replaceAll("%", "%25")
+        .replaceAll("{", "%257B")
+        .replaceAll("}", "%257D")
+        .replaceAll("&", "&amp;")
+    : match;
+
+  return safe.replaceAll("`", "%60");
+};
+
 /**
  * 按源码顺序遮蔽行内代码、HTML 注释与 HTML 标签
  *
@@ -446,7 +504,8 @@ const maskInlineSyntax = (
   while (index < source.length) {
     const codeStart = findCodeSpanStart(source, index);
     const commentStart = source.indexOf("<!--", index);
-    const tag = findHtmlTag(source, index);
+    const nextLt = source.indexOf("<", index);
+    const tag = nextLt === -1 ? null : findHtmlTag(source, nextLt);
 
     if (
       commentStart !== -1 &&
@@ -471,8 +530,10 @@ const maskInlineSyntax = (
 
     // 标签与代码段按源码顺序处理：代码段先出现时整段保留，属性中的反引号不会破坏代码边界。
     if (tag && (codeStart === -1 || tag.index < codeStart)) {
+      const tagText = source.slice(tag.index, tag.index + tag.length);
+
       result += source.slice(index, tag.index);
-      result += stash(source.slice(tag.index, tag.index + tag.length));
+      result += stash(/^<\/?plaintext\b/iu.test(tagText) ? escapePlaintextTags(tagText) : tagText);
       index = tag.index + tag.length;
       continue;
     }
@@ -649,6 +710,38 @@ const collectHtmlCommentLines = (lines: string[]): Set<number> => {
 };
 
 /**
+ * 判断指定位置是否落在行内代码片段中
+ *
+ * 原始文本元素只在行内代码之外生效；代码片段中的 `<template>` 等文本不应改变代码原文。
+ *
+ * @param line 单行内容
+ * @param position 字符下标
+ * @returns 是否位于行内代码中
+ */
+const isInsideInlineCode = (line: string, position: number): boolean => {
+  let from = 0;
+
+  while (from < line.length) {
+    const start = findCodeSpanStart(line, from);
+
+    if (start === -1 || start > position) return false;
+
+    const markerEnd = getBacktickRunEnd(line, start);
+    const close = findCodeSpanClose(line, markerEnd, markerEnd - start);
+
+    if (close === -1) return false;
+
+    const closeEnd = getBacktickRunEnd(line, close);
+
+    if (position >= markerEnd && position < closeEnd) return true;
+
+    from = closeEnd;
+  }
+
+  return false;
+};
+
+/**
  * 标记原始文本元素所在的行
  *
  * `textarea` / `script` / `style` / `title` 等元素内部按 HTML 规则是文本，标签样式的字符串不会成为元素或属性， 不能按标签遮蔽其中的花括号。
@@ -660,7 +753,9 @@ const collectHtmlRawTextLines = (lines: string[]): Set<number> => {
   const result = new Set<number>();
 
   for (let index = 0; index < lines.length; index += 1) {
-    const start = htmlRawTextStart.exec(stripBlockquotePrefix(lines[index]));
+    const line = stripBlockquotePrefix(lines[index]);
+    const starts = [...line.matchAll(new RegExp(htmlRawTextStart.source, "giu"))];
+    const start = starts.find((match) => !isInsideInlineCode(line, match.index ?? 0));
 
     if (!start?.groups?.tag) continue;
 
@@ -788,12 +883,21 @@ const maskMarkdownSyntax = (
   const masked = tagMasked
     .split("\n")
     .map((line, index) => {
+      if (isIndentedCodeLine(line)) return splitVueBraceRuns(line);
+
       if (htmlCommentLines.has(index))
         // 注释本身不可见，实体编码后整体遮蔽，避免后续把实体再拆成嵌套注释。
         return stash(line.replaceAll("{", "&#123;").replaceAll("}", "&#125;"));
 
-      if (htmlBlockLines.has(index) || rawTextLines.has(index) || isCodeContext(index, line))
-        return line;
+      if (isCodeContext(index, line)) return line;
+
+      if (rawTextLines.has(index)) {
+        return /^<plaintext\b/iu.test(stripContainerPrefixes(line))
+          ? escapePlaintextTags(line)
+          : line;
+      }
+
+      if (htmlBlockLines.has(index)) return line;
 
       // 先遮蔽真实链接（destination/title）与 autolink，再做行内代码配对：
       // markdown-it 不把它们当作行内内容，其中的反引号不能与正文反引号配对。
@@ -809,9 +913,9 @@ const maskMarkdownSyntax = (
         .replaceAll(markdownAutolink, (match: string, offset: number) => {
           if (isEscaped(line, offset)) return match;
 
-          // autolink 内出现花括号时保留原文交给最终拆分，但其中的反引号不能参与行内代码配对，
-          // 否则 `{{ 7*7 }}` 会被当成代码段内容原样留下。
-          return /[{}]/u.test(match) ? match.replaceAll("`", (tick) => stash(tick)) : stash(match);
+          // autolink 的可见文字会被 markdown-it 解码，其中的反引号也会破坏正文代码段配对；
+          // 先清洗再加遮蔽，避免解码后重新出现 {{ }} 或反引号。
+          return stash(sanitizeAutolink(match));
         });
 
       return tableBlockLines.has(index)
@@ -864,7 +968,5 @@ export const escapeVueInterpolation = (content: string): string => {
       ),
   );
 
-  // `plaintext` 是废弃的原始文本元素，Vue 编译器会把它当作缺少结束标签的原始文本元素。
-  // 转义标签本身，交给 markdown-it 输出为可见文本，避免编译失败。
-  return escaped.replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
+  return escaped;
 };
