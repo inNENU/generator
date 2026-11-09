@@ -8,7 +8,9 @@ import { convertSVGToDataURI, getFileList } from "../helpers/index.js";
  * 生成 SVG 图标文件
  *
  * 输出文件名保持与源文件一致（不含 `.svg` 扩展名，供小程序 `readFile("icon/<名称>")` 直接使用）： 根目录图标写成 data URI 文件，一级子目录聚合成同名
- * JSON（`{ 图标名: data URI }`）。生成前会先校验布局，遇到无法安全表达的输入（超过一级的嵌套、根图标与分类同名、 大小写不敏感的文件系统上重名）直接抛错，避免静默覆盖。
+ * JSON（`{ 图标名: data URI }`）。同一分类内的多个图标是合法布局，会聚合到同一个 JSON。
+ *
+ * 生成前会先校验布局，遇到无法安全表达的输入（超过一级的嵌套、根图标与分类同名、大小写不敏感的文件系统上重名）直接抛错，避免静默覆盖。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
@@ -37,21 +39,35 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
     return parts.length === 2 ? { filePath, category: parts[0], name } : { filePath, name };
   });
 
-  // 输出名共享同一命名空间（根图标文件与分类 JSON 文件同目录），大小写不敏感的文件系统上还会互相覆盖。
-  const outputNames = new Map<string, IconEntry>();
+  interface OutputEntry {
+    /** 输出名（根图标文件名或分类 JSON 文件名） */
+    name: string;
+    /** 是否来自分类目录 */
+    isCategory: boolean;
+    /** 来源文件（用于冲突报错） */
+    filePath: string;
+  }
+
+  // 根图标文件与分类 JSON 写入同一目录，共享大小写不敏感的命名空间。
+  // 同一分类目录内的多个图标会聚合进同一个 JSON（键为图标名），只需登记一次分类输出名。
+  const outputNames = new Map<string, OutputEntry>();
 
   entries.forEach((entry) => {
-    const outputName = entry.category ?? entry.name;
-    const key = outputName.toLowerCase();
+    const name = entry.category ?? entry.name;
+    const key = name.toLowerCase();
     const existing = outputNames.get(key);
+    const isCategory = typeof entry.category === "string";
 
     if (existing) {
+      // 同一分类内的图标是合法的聚合输出，不构成冲突。
+      if (existing.isCategory && existing.name === entry.category) return;
+
       throw new Error(
-        `图标输出名冲突: "${outputName}" 同时来自 ${existing.filePath} 与 ${entry.filePath}`,
+        `图标输出名冲突: "${name}" 同时来自 ${existing.filePath} 与 ${entry.filePath}`,
       );
     }
 
-    outputNames.set(key, entry);
+    outputNames.set(key, { name, isCategory, filePath: entry.filePath });
   });
 
   if (!existsSync(targetFolder)) mkdirSync(targetFolder, { recursive: true });
