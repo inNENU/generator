@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { sanitizeUrl } from "../../helpers/url.js";
 import { escapeHtml, getFileLink } from "../../utils.js";
 import type { ImageComponentOptions } from "./schema.js";
 import { checkImage } from "./schema.js";
@@ -9,8 +10,9 @@ export const getImgMarkdown = (img: ImageComponentOptions, location = ""): strin
 
   checkImage(img, location);
 
-  const processedSrc = getFileLink(img.src);
-  const src = processedSrc ?? img.src;
+  const src = sanitizeUrl(getFileLink(img.src) ?? img.src);
+
+  if (!src) return "";
 
   const { desc } = img;
 

@@ -1,3 +1,4 @@
+// oxlint-disable no-script-url -- 安全测试需要构造危险协议样本
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
@@ -60,5 +61,72 @@ describe("页面 Markdown frontmatter", () => {
 
     expect(markdown).toContain('cite:\n  - "来源: 校内"');
     expect(getFrontmatter(markdown).cite).toStrictEqual(["来源: 校内"]);
+  });
+
+  it.each([
+    ["javascript:alert(1)"],
+    ["JaVaScRiPt:alert(1)"],
+    ["data:text/html,<script>alert(1)</script>"],
+    ["vbscript:msgbox(1)"],
+    ["&#106;avascript:alert(1)"],
+    ["&#x0000006a;avascript:alert(1)"],
+    ["javascript&#x000003a;alert(1)"],
+    ["javascript&#00000058;alert(1)"],
+  ])("丢弃危险来源 %s", (cite) => {
+    const markdown = getPageMarkdown(createPage({ cite }), { location: "guide/dangerous-cite" });
+    const frontmatter = getFrontmatter(markdown);
+
+    expect(markdown).not.toMatch(/^cite:/mu);
+    expect(frontmatter).not.toHaveProperty("cite");
+    // 页面存在来源、只是无法安全展示，不能误标为原创。
+    expect(frontmatter).not.toHaveProperty("isOriginal");
+  });
+
+  it("混合合法与非法来源时只保留合法项", () => {
+    const markdown = getPageMarkdown(
+      createPage({
+        cite: [
+          "https://example.com/source",
+          "javascript:alert(1)",
+          "data:text/html,<script>alert(1)</script>",
+          "来源: 校内",
+          "&#106;avascript:alert(1)",
+        ],
+      }),
+      { location: "guide/mixed-cite" },
+    );
+
+    expect(getFrontmatter(markdown).cite).toStrictEqual([
+      "https://example.com/source",
+      "来源: 校内",
+    ]);
+    expect(markdown).not.toContain("javascript:");
+    expect(markdown).not.toContain("<script>");
+    expect(markdown).not.toContain("isOriginal");
+  });
+
+  it("来源为字符串时同样逐条校验", () => {
+    const markdown = getPageMarkdown(createPage({ cite: "javascript:alert(1)" }), {
+      location: "guide/string-cite",
+    });
+
+    expect(markdown).not.toMatch(/^cite:/mu);
+    expect(getFrontmatter(markdown)).not.toHaveProperty("isOriginal");
+  });
+
+  it("合法 icon 写入 frontmatter", () => {
+    const markdown = getPageMarkdown(createPage({ icon: "https://example.com/icon.svg" }), {
+      location: "guide/icon",
+    });
+
+    expect(markdown).toContain("icon: https://example.com/icon.svg");
+  });
+
+  it("危险 icon 协议不写入 frontmatter", () => {
+    const markdown = getPageMarkdown(createPage({ icon: "javascript:alert(1).svg" }), {
+      location: "guide/dangerous-icon",
+    });
+
+    expect(markdown).not.toMatch(/^icon:/mu);
   });
 });

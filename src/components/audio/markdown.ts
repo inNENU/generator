@@ -1,3 +1,4 @@
+import { sanitizeUrl } from "../../helpers/url.js";
 import { escapeHtml, getFileLink } from "../../utils.js";
 import type { AudioComponentOptions } from "./schema.js";
 import { checkAudio } from "./schema.js";
@@ -12,9 +13,13 @@ export const getAudioMarkdown = (audio: AudioComponentOptions, location = ""): s
   // `@vuepress/plugin-media` 自 rc.110 起用 AudioPlayer（Video.js）取代了原先的 VidStack，
   // 组件没有 title 属性，名称/作者改为渲染在播放器上方的 Markdown 文本。
   const caption = [name, author].filter(Boolean).join(" ");
+  const safeSrc = sanitizeUrl(getFileLink(src));
+  const captionContent = caption ? `${escapeHtml(caption)}\n\n` : "";
+
+  if (!safeSrc) return captionContent;
 
   return `\
-${caption ? `${escapeHtml(caption)}\n\n` : ""}<AudioPlayer src="${escapeHtml(getFileLink(src) ?? "")}" />
+${captionContent}<AudioPlayer src="${escapeHtml(safeSrc)}" />
 
 `;
 };

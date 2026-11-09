@@ -1,7 +1,59 @@
+import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getFileLink, getHTMLPath, getIconLink } from "../../utils.js";
 import type { CardComponentOptions } from "./schema.js";
 import { checkCard } from "./schema.js";
+
+/** 卡片可点击区域的目标地址 */
+interface CardLink {
+  /** 已校验的地址 */
+  href: string;
+  /** 是否使用站内 RouteLink */
+  route: boolean;
+}
+
+/**
+ * 计算卡片可点击区域的目标地址
+ *
+ * @param card 卡片组件
+ * @param urlConverter 站点 URL 转换器
+ * @returns 安全的目标地址，危险或缺失时返回 `null`
+ */
+const getCardLink = (
+  card: CardComponentOptions,
+  urlConverter: NonNullable<MarkdownOptions["urlConverter"]>,
+): CardLink | null => {
+  if ("action" in card) {
+    if (card.action === "official") {
+      return {
+        href: `https://open.weixin.qq.com/qr/code?username=${card.username}`,
+        route: false,
+      };
+    }
+
+    if (card.action === "article") {
+      const articleUrl = sanitizeUrl(card.url);
+
+      return articleUrl ? { href: articleUrl, route: false } : null;
+    }
+
+    return null;
+  }
+
+  if ("path" in card && card.path) {
+    const safePath = getSafeUrl(getHTMLPath(card.path));
+
+    return safePath?.kind === "relative" ? { href: safePath.url, route: true } : null;
+  }
+
+  if ("url" in card && card.url) {
+    const resolvedUrl = sanitizeUrl(urlConverter(card.url));
+
+    return resolvedUrl ? { href: resolvedUrl, route: resolvedUrl.startsWith("/") } : null;
+  }
+
+  return null;
+};
 
 export const getCardMarkdown = (
   card: CardComponentOptions,
@@ -11,8 +63,12 @@ export const getCardMarkdown = (
 
   checkCard(card, location);
 
-  const logo = getIconLink(card.logo);
-  const cover = card.cover ? getFileLink(card.cover) : null;
+  const link = getCardLink(card, urlConverter);
+
+  if (!link) return "";
+
+  const logo = sanitizeUrl(getIconLink(card.logo));
+  const cover = sanitizeUrl(card.cover ? getFileLink(card.cover) : null);
 
   const { name, desc, title } = card;
 
@@ -52,43 +108,14 @@ ${
 </div>
 `;
 
-  if ("action" in card) {
-    if (card.action === "official") {
-      return `<a class="innenu-card" href="https://open.weixin.qq.com/qr/code?username=${escapeHtml(card.username)}" target="_blank">
-${cardContent}
-</a>`;
-    }
-
-    if (card.action === "article") {
-      return `<a class="innenu-card" href="${escapeHtml(card.url)}" target="_blank">
-${cardContent}
-</a>`;
-    }
-
-    return "";
-  } else if ("path" in card && card.path) {
-    return `\
-<RouteLink class="innenu-card" to="${escapeHtml(getHTMLPath(card.path))}">
-${cardContent}
-</RouteLink>
-
-`;
-  } else if ("url" in card && card.url) {
-    const resolvedUrl = urlConverter(card.url);
-
-    if (resolvedUrl == null) return "";
-
-    return resolvedUrl.startsWith("/")
-      ? `\
-<RouteLink class="innenu-card" to="${escapeHtml(resolvedUrl)}">
+  return link.route
+    ? `\
+<RouteLink class="innenu-card" to="${escapeHtml(link.href)}">
 ${cardContent}
 </RouteLink>
 
 `
-      : `<a class="innenu-card" href="${escapeHtml(resolvedUrl)}" target="_blank">
+    : `<a class="innenu-card" href="${escapeHtml(link.href)}" target="_blank">
 ${cardContent}
 </a>`;
-  }
-
-  return "";
 };
