@@ -232,6 +232,109 @@ describe(Queue, () => {
 
     expect(results).toStrictEqual(["hello"]);
   });
+
+  it("should process a large batch in order with the index cursor", async () => {
+    const count = 50_000;
+    const queue = new Queue(1);
+    const order: number[] = [];
+    let lengthAtHalf = count;
+
+    await new Promise<void>((resolve) => {
+      for (let index = 0; index < count; index += 1) {
+        // oxlint-disable-next-line no-loop-func -- 每轮迭代都有独立的 index 绑定
+        queue.add((next) => {
+          order.push(index);
+
+          // oxlint-disable-next-line vitest/no-conditional-in-test
+          if (index === count / 2) lengthAtHalf = queue.funcQueue.length;
+
+          // 用微任务完成，避免同步 next() 形成数万层递归
+          queueMicrotask(() => {
+            next();
+
+            // oxlint-disable-next-line vitest/no-conditional-in-test
+            if (index === count - 1) resolve();
+          });
+        });
+      }
+    });
+
+    expect(order).toHaveLength(count);
+    expect(order.every((value, index) => value === index)).toBe(true);
+    expect(queue.running).toBe(0);
+    expect(queue.head).toBe(0);
+    expect(queue.funcQueue).toStrictEqual([]);
+    // 索引实现会压缩数组，已消费的任务不应一直留在 funcQueue 中
+    expect(lengthAtHalf).toBeLessThan(count);
+  });
+
+  it("should reset the cursor when clear() is called after tasks were consumed", () => {
+    const queue = new Queue(1);
+    const executed: string[] = [];
+    let releaseQueued: (() => void) | undefined, releaseRunning: (() => void) | undefined;
+
+    queue.add((next) => {
+      executed.push("running");
+      releaseRunning = next;
+    });
+    queue.add((next) => {
+      executed.push("queued-1");
+      releaseQueued = next;
+    });
+    queue.add((next) => {
+      executed.push("queued-2");
+      next();
+    });
+
+    releaseRunning?.();
+
+    expect({
+      executed,
+      head: queue.head,
+      queuedLength: queue.funcQueue.length,
+    }).toStrictEqual({ executed: ["running", "queued-1"], head: 1, queuedLength: 2 });
+
+    queue.clear();
+
+    expect({ funcQueue: queue.funcQueue, head: queue.head }).toStrictEqual({
+      funcQueue: [],
+      head: 0,
+    });
+
+    // clear() 之后延迟调用旧任务的 next() 不应复活已清除的任务
+    releaseQueued?.();
+    queue.next();
+
+    expect({
+      executed,
+      running: queue.running,
+      funcQueue: queue.funcQueue,
+      head: queue.head,
+    }).toStrictEqual({ executed: ["running", "queued-1"], running: 0, funcQueue: [], head: 0 });
+  });
+
+  it("should ignore next() calls once the cursor reached the end", () => {
+    const queue = new Queue(2);
+    const executed: number[] = [];
+
+    queue.add((next) => {
+      executed.push(1);
+      next();
+    });
+    queue.add((next) => {
+      executed.push(2);
+      next();
+    });
+
+    // 队列已空时重复调度必须是 no-op
+    queue.next();
+    queue.next();
+
+    expect(executed).toStrictEqual([1, 2]);
+    expect(queue.running).toBe(0);
+    expect(queue.head).toBe(0);
+    expect(queue.funcQueue).toStrictEqual([]);
+  });
 });
 
 describe(createPromiseQueue, () => {
@@ -354,6 +457,23 @@ describe(createPromiseQueue, () => {
 
     // Results should be in original order, not completion order
     expect(results).toStrictEqual([1, 2, 3]);
+  });
+
+  it("should complete a large batch and keep the original order", async () => {
+    const count = 50_000;
+    const started: number[] = [];
+    const tasks = Array.from({ length: count }, (_, index) => (): Promise<number> => {
+      started.push(index);
+
+      return Promise.resolve(index);
+    });
+
+    const results = await createPromiseQueue(tasks, 16);
+
+    expect(results).toHaveLength(count);
+    expect(results.every((value, index) => value === index)).toBe(true);
+    expect(started).toHaveLength(count);
+    expect(new Set(started).size).toBe(count);
   });
 });
 
@@ -575,5 +695,43 @@ describe("createPromiseQueue resilience", () => {
     );
 
     expect(results).toStrictEqual([1, 2, 3]);
+  });
+
+  it("should include the first failure summary in the AggregateError message", async () => {
+    const error = await createPromiseQueue(
+      [
+        (): Promise<void> => Promise.reject(new Error("first failure detail")),
+        (): Promise<void> => Promise.reject(new Error("second failure detail")),
+      ],
+      2,
+    ).then(
+      () => undefined,
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(AggregateError);
+
+    const aggregate = error as AggregateError;
+
+    expect(aggregate.message).toContain("有 2 个任务执行失败");
+    expect(aggregate.message).toContain("首个错误");
+    expect(aggregate.message).toContain("first failure detail");
+    // 只摘要首个错误，其余错误仍完整保留在 errors 中
+    expect(aggregate.message).not.toContain("second failure detail");
+    expect(aggregate.errors.map((item: unknown) => (item as Error).message)).toStrictEqual([
+      "first failure detail",
+      "second failure detail",
+    ]);
+  });
+
+  it("should use a nested AggregateError message as the first failure summary", async () => {
+    const nested = new AggregateError([new Error("inner detail")], "嵌套任务失败摘要");
+    const error = await createPromiseQueue([(): Promise<void> => Promise.reject(nested)], 1).then(
+      () => undefined,
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(AggregateError);
+    expect((error as AggregateError).message).toContain("嵌套任务失败摘要");
   });
 });

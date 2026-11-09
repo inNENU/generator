@@ -220,7 +220,7 @@ export const checkJSON = async (path: string): Promise<void> => {
 
     throw new AggregateError(
       errors,
-      `检查目录 ${path} 失败:\n${errors.map((error) => `- ${error.message}`).join("\n")}`,
+      `检查目录 ${path} 失败: 共 ${errors.length} 个错误（首个错误: ${getErrorMessage(errors[0])}）`,
     );
   }
 };

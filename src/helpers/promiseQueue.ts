@@ -20,6 +20,29 @@ const assertCapacity = (capacity: number): void => {
     throw new RangeError(`并发数必须为正整数，当前值为 ${String(capacity)}`);
 };
 
+/** 数组压缩阈值：已消费任务数达到该值后才考虑压缩，避免小队列频繁搬移 */
+const COMPACT_THRESHOLD = 1024;
+
+/** 错误摘要的最大长度，避免嵌套的 AggregateError 生成过长的 message */
+const MAX_ERROR_SUMMARY_LENGTH = 200;
+
+/**
+ * 获取错误的首行摘要
+ *
+ * @param error 错误原因
+ * @returns 用于 message 的简短摘要
+ */
+const getErrorSummary = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  const summary = message.replaceAll(/\s+/gu, " ").trim();
+
+  if (!summary) return "未知错误";
+
+  return summary.length > MAX_ERROR_SUMMARY_LENGTH
+    ? `${summary.slice(0, MAX_ERROR_SUMMARY_LENGTH)}…`
+    : summary;
+};
+
 /** 一个队列，在上一个函数执行完毕后执行 `next()` 才会开始执行下一个函数。 */
 export class Queue {
   constructor(
@@ -29,8 +52,15 @@ export class Queue {
     assertCapacity(capacity);
   }
 
-  /** 回调队列 */
+  /**
+   * 回调队列
+   *
+   * 已执行的任务不会立即从数组中删除，而是通过 `head` 游标跳过，避免 `shift()` 的 O(n) 搬移； 已消费的任务积累到一定比例后再压缩数组。
+   */
   funcQueue: Task[] = [];
+
+  /** 下一个待执行任务在 `funcQueue` 中的下标 */
+  head = 0;
 
   /** 正在运行的数量 */
   running = 0;
@@ -40,48 +70,65 @@ export class Queue {
     // 防御其它路径（如任务重复调用回调）在额度已满时继续调度，保证 running 不超过 capacity
     if (this.running >= this.capacity) return;
 
+    if (this.head >= this.funcQueue.length) {
+      // 队列已空：释放对已执行任务的引用
+      this.funcQueue = [];
+      this.head = 0;
+      return;
+    }
+
     /** 即将执行的任务 */
-    const task = this.funcQueue.shift();
+    const task = this.funcQueue[this.head];
 
-    if (task) {
-      // oxlint-disable-next-line typescript/no-unsafe-assignment
-      const { func, ctx, args } = task;
+    this.head += 1;
 
-      /** 当前任务是否已经结算，保证 `next` 幂等，避免 running 被重复递减 */
-      let settled = false;
+    if (this.head >= this.funcQueue.length) {
+      // 队列刚好被取空，直接释放整个数组
+      this.funcQueue = [];
+      this.head = 0;
+    } else if (this.head >= COMPACT_THRESHOLD && this.head * 2 >= this.funcQueue.length) {
+      // 已消费一半以上：压缩数组，均摊 O(1)，避免数组无限增长
+      this.funcQueue = this.funcQueue.slice(this.head);
+      this.head = 0;
+    }
 
-      /** 归还当前任务占用的并发额度 */
-      const settle = (): void => {
-        if (settled) return;
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    const { func, ctx, args } = task;
 
-        settled = true;
-        this.running -= 1;
-      };
+    /** 当前任务是否已经结算，保证 `next` 幂等，避免 running 被重复递减 */
+    let settled = false;
 
-      /** 任务完成回调，重复调用只会生效一次 */
-      const handleNext = (): void => {
-        // settle 已是幂等的，这里提前返回是为了避免重复调度下一个任务而突破并发上限
-        if (settled) return;
+    /** 归还当前任务占用的并发额度 */
+    const settle = (): void => {
+      if (settled) return;
 
-        settle();
-        this.next();
-      };
+      settled = true;
+      this.running -= 1;
+    };
 
-      this.running += 1;
+    /** 任务完成回调，重复调用只会生效一次 */
+    const handleNext = (): void => {
+      // settle 已是幂等的，这里提前返回是为了避免重复调度下一个任务而突破并发上限
+      if (settled) return;
 
-      try {
-        func.apply(ctx, [
-          handleNext,
-          // oxlint-disable-next-line typescript/no-unsafe-assignment
-          ...Array.prototype.slice.call(args, 0),
-        ]);
-      } catch (err) {
-        // 任务同步抛错时也必须归还并发额度并继续调度，否则队列会永久卡死
-        settle();
-        this.next();
-        // 继续调度后再把错误交给调用方
-        throw err;
-      }
+      settle();
+      this.next();
+    };
+
+    this.running += 1;
+
+    try {
+      func.apply(ctx, [
+        handleNext,
+        // oxlint-disable-next-line typescript/no-unsafe-assignment
+        ...Array.prototype.slice.call(args, 0),
+      ]);
+    } catch (err) {
+      // 任务同步抛错时也必须归还并发额度并继续调度，否则队列会永久卡死
+      settle();
+      this.next();
+      // 继续调度后再把错误交给调用方
+      throw err;
     }
   }
 
@@ -111,6 +158,7 @@ export class Queue {
   /** 清除队列，不再执行尚未执行的函数 */
   clear(): void {
     this.funcQueue = [];
+    this.head = 0;
   }
 }
 
@@ -132,27 +180,24 @@ export const createPromiseQueue = async <T>(
   /** 预分配结果数组 */
   const results: T[] = Array.from({ length: promiseList.length });
 
-  /** 带索引的任务队列 */
-  const queue: { index: number; task: () => Promise<T> }[] = promiseList.map((task, index) => ({
-    index,
-    task,
-  }));
+  /** 下一个待执行任务的下标，多个 worker 共享；自增是同步的，不会重复领取任务 */
+  let nextIndex = 0;
 
   /** 执行失败的任务 */
   const failures: { index: number; error: unknown }[] = [];
 
   const runWorker = async (): Promise<void> => {
-    while (queue.length > 0) {
-      const item = queue.shift();
+    while (nextIndex < promiseList.length) {
+      const index = nextIndex;
 
-      if (item) {
-        try {
-          // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
-          results[item.index] = await item.task();
-        } catch (err) {
-          // 单个任务失败只记录错误，继续处理队列中剩余的任务
-          failures.push({ index: item.index, error: err });
-        }
+      nextIndex += 1;
+
+      try {
+        // oxlint-disable-next-line no-await-in-loop -- intentionally sequential execution
+        results[index] = await promiseList[index]();
+      } catch (err) {
+        // 单个任务失败只记录错误，继续处理队列中剩余的任务
+        failures.push({ index, error: err });
       }
     }
   };
@@ -169,7 +214,7 @@ export const createPromiseQueue = async <T>(
 
     throw new AggregateError(
       failures.map(({ error }) => error),
-      `有 ${failures.length} 个任务执行失败`,
+      `有 ${failures.length} 个任务执行失败（首个错误: ${getErrorSummary(failures[0].error)}）`,
     );
   }
 
