@@ -42,6 +42,8 @@ const pageText = getPageText(page, "home");
 Page generators take a `PageConfig` object as their first argument. The page path is a separate argument for `getPageJSON(page, pagePath,
 diffFiles?, options?)` and `getPageText(page, pagePath, options?)`, while `getPageMarkdown(page, options?)` reads it from
 `options.location` because the Markdown options object already carries the rendering context.
+`getPageJSON` looks up the source YAML under `pageFolder` by default. If a page's source lives elsewhere, pass `sourcePath` so `diffFiles`
+can still refresh its `time`; `getMapPageJSON` resolves map sources under `mapFolder` automatically.
 
 `config()` accepts:
 
@@ -64,6 +66,10 @@ the same output. Date-only values (`YYYY-MM-DD`) keep their date without a time 
 Markdown generation targets the VuePress site only. The WeChat miniapp and the native App consume the JSON artifacts, so there is no
 Markdown rendering requirement for them; the `env` field is therefore respected only for `"web"` in the Markdown pipeline (components
 marked for other environments are skipped there by design). Use `getPageJSON` for Mini Program / App content.
+
+Link destinations are validated before rendering. Relative paths and anchors, `http:`, `https:`, `mailto:` and telephone `tel:` URLs
+are allowed; other schemes such as `javascript:` or `data:` are dropped, or rendered as non-clickable text when the surrounding
+component still needs to show its label.
 
 ## Entry points
 

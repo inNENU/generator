@@ -392,6 +392,60 @@ export const escapeHtml = (content: string): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
+/**
+ * 转义 Markdown 链接文字 / 图片替代文字
+ *
+ * `]` 会提前结束链接文字，`[` 可能开启嵌套链接，反斜杠则会影响转义本身的语义。 生成链接前统一转义，避免链接文字被解释成额外的 Markdown 结构。
+ *
+ * @param label 链接文字或图片替代文字（应已做 HTML 转义）
+ * @returns 可安全写入 `[label]` / `![alt]` 的文字
+ */
+export const escapeMarkdownLinkLabel = (label: string): string =>
+  label
+    .replaceAll("\\", String.raw`\\`)
+    .replaceAll("[", String.raw`\[`)
+    .replaceAll("]", String.raw`\]`)
+    .replaceAll(/\r\n|[\r\n]/gu, " ");
+
+/** Markdown 目标地址中必须百分号编码的字符 */
+const destinationEncodings: Record<string, string> = {
+  "<": "%3C",
+  ">": "%3E",
+  "\\": "%5C",
+};
+
+/** 需要用尖括号包裹才能被 CommonMark 正确解析的目标地址字符 */
+const angleBracketDestinationPattern = /[\s()]/u;
+
+/**
+ * 格式化 Markdown 链接 / 图片目标地址
+ *
+ * 直接把 URL 拼进 `[label](destination)` 会被 CommonMark 在空白、`)` 处截断，后续内容因此变成正文， 其中的 `<img onerror>`
+ * 等片段会被当成 raw HTML 执行。这里统一处理：
+ *
+ * - `<`、`>`、反斜杠与控制字符一律百分号编码，URL 无法提前结束目标地址，也无法注入 HTML；
+ * - 含空白或圆括号的地址用 `<...>` 包裹，CommonMark 会把它整体当作目标地址。
+ *
+ * 其余字符保持原样，避免合法地址在产物中发生无意义变化。
+ *
+ * @param destination 已经过协议校验的目标地址
+ * @returns 可安全写入 Markdown 链接的目标地址
+ */
+export const formatMarkdownDestination = (destination: string): string => {
+  if (!destination) return "";
+
+  const encoded = destination
+    .replaceAll(
+      // oxlint-disable-next-line no-control-regex -- 控制字符必须显式编码，否则会截断 Markdown 目标地址
+      /[\u0000-\u001F\u007F]/gu,
+      (char) => `%${(char.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(2, "0")}`,
+    )
+    .replaceAll(/[<>\\]/gu, (char) => destinationEncodings[char] ?? char);
+
+  // 尖括号内的地址允许空白与圆括号，并且仍会被 Markdown 解析为单一目标地址。
+  return angleBracketDestinationPattern.test(encoded) ? `<${encoded}>` : encoded;
+};
+
 /** 容器正文转义选项 */
 export interface EscapeContainerBodySyntaxOptions {
   /**

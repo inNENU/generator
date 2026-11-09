@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 
 import * as zod from "zod";
 
+import { isAssetFileCheckEnabled } from "../helpers/assetCheck.js";
 import { resolveAssetLink } from "../utils.js";
 
 export const envSchema = zod.enum(["web", "wx", "app"]).meta({
@@ -156,6 +157,8 @@ const refineInternalAsset = (link: string, label: string, ctx: zod.RefinementCtx
     return;
   }
 
+  if (!isAssetFileCheckEnabled()) return;
+
   if (!existsSync(`./${resolved.path}`))
     ctx.addIssue({ code: "custom", message: `${label} ${link} 不存在` });
 };
@@ -239,7 +242,7 @@ export const internalIconSchema = zod
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u, {
     error: ({ input }) => `图标 ${String(input)} 只能包含小写字母、数字和连字符`,
   })
-  .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
+  .refine((icon) => !isAssetFileCheckEnabled() || existsSync(`./data/icon/${icon}.svg`), {
     error: ({ input }) => `图标文件 ${String(input)} 不存在`,
     abort: true,
   });

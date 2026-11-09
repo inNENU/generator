@@ -1,4 +1,5 @@
-import { escapeHtml } from "../../utils.js";
+import { sanitizeUrl } from "../../helpers/url.js";
+import { escapeHtml, escapeMarkdownLinkLabel, formatMarkdownDestination } from "../../utils.js";
 import type { PhoneComponentOptions } from "./schema.js";
 import { checkPhone } from "./schema.js";
 
@@ -28,16 +29,24 @@ export const getPhoneMarkdown = (phone: PhoneComponentOptions, location = ""): s
     site,
   } = phone;
 
+  const telUrl = sanitizeUrl(`tel:${num}`);
+  const siteUrl = sanitizeUrl(site);
+  const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
+
   return `\
 ::: info ${escapeHtml(header || `${lName}${fName} 联系方式`)}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
-- 电话: [${escapeHtml(String(num))}](tel:${num})
+- 电话: ${
+    telUrl
+      ? `[${escapeMarkdownLinkLabel(escapeHtml(String(num)))}](${formatMarkdownDestination(telUrl)})`
+      : escapeHtml(String(num))
+  }
 ${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
 ${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
 ${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\
-${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
-${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
+${mail ? (mailUrl ? `- 邮箱: [${escapeMarkdownLinkLabel(escapeHtml(mail))}](${formatMarkdownDestination(mailUrl)})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 ${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
 ${title ? `- 职位: ${escapeHtml(title)}\n` : ""}\
 ${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
