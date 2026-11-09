@@ -2,15 +2,14 @@ import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
 import { collectZodIssues } from "../../helpers/validation.js";
-import { envListSchema } from "../../schema/common.js";
+import { envListSchema, singleLineTextSchema } from "../../schema/common.js";
 
 export const tableSchema = zod
   .strictObject({
     /** 文字标签 */
     tag: zod.literal("table"),
     /** 表格标题 */
-    caption: zod
-      .string()
+    caption: singleLineTextSchema("表格标题")
       .meta({
         description: "表格标题",
       })

@@ -2,14 +2,13 @@ import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
 import { collectZodIssues } from "../../helpers/validation.js";
-import { envListSchema } from "../../schema/common.js";
+import { envListSchema, singleLineTextSchema } from "../../schema/common.js";
 
 export const actionSchema = zod
   .strictObject({
     tag: zod.literal("action"),
     /** 标题 */
-    header: zod
-      .string()
+    header: singleLineTextSchema("标题")
       .meta({
         description: "标题",
       })

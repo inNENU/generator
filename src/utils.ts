@@ -248,6 +248,18 @@ export const escapeHtml = (content: string): string =>
     .replaceAll("'", "&#39;");
 
 /**
+ * 将标题等行内文本压成单行
+ *
+ * 这类文本会被拼进 `:::` 容器头、Markdown 标题行或 HTML 标签属性，换行会让容器 / 标题提前结束， 其后的内容因此被当成新的 Markdown 语法（例如 `header:
+ * "咨询\n::: danger"` 会提前闭合容器）。生成前统一把换行替换为单个空格并去掉首尾空白。不含换行的值原样返回，避免 `header: " "` 这类既有空白标题的输出发生变化。
+ *
+ * @param content 行内文本
+ * @returns 单行文本
+ */
+export const normalizeInlineText = (content: string): string =>
+  /[\r\n]/u.test(content) ? content.replaceAll(/\s*(?:\r\n?|\n)\s*/gu, " ").trim() : content;
+
+/**
  * 转义 Markdown 链接文字 / 图片替代文字
  *
  * `]` 会提前结束链接文字，`[` 可能开启嵌套链接，反斜杠则会影响转义本身的语义。 生成链接前统一转义，避免链接文字被解释成额外的 Markdown 结构。

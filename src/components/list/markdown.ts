@@ -1,6 +1,6 @@
 import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { MarkdownOptions } from "../../typings.js";
-import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
+import { escapeHtml, getHTMLPath, getIconLink, normalizeInlineText } from "../../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
 import { checkFunctionalList, checkList } from "./schema.js";
 
@@ -17,7 +17,7 @@ export const getListMarkdown = (
 ${
   header
     ? `\
-#### ${escapeHtml(header)} {.innenu-list-header}
+#### ${escapeHtml(normalizeInlineText(header))} {.innenu-list-header}
 
 `
     : ""

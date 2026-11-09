@@ -1,6 +1,6 @@
 import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { MarkdownOptions } from "../../typings.js";
-import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
+import { escapeHtml, getHTMLPath, getIconLink, normalizeInlineText } from "../../utils.js";
 import type { GridComponentOptions } from "./schema.js";
 import { checkGrid } from "./schema.js";
 
@@ -18,7 +18,7 @@ export const getGridMarkdown = (
 ${
   header
     ? `\
-#### ${escapeHtml(header)} {.innenu-grid-header}
+#### ${escapeHtml(normalizeInlineText(header))} {.innenu-grid-header}
 
 `
     : ""

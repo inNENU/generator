@@ -1,4 +1,4 @@
-import { convertStyle, escapeHtml } from "../../utils.js";
+import { convertStyle, escapeHtml, normalizeInlineText } from "../../utils.js";
 import type { TitleComponentOptions } from "./schema.js";
 import { checkTitle } from "./schema.js";
 
@@ -13,11 +13,11 @@ export const getTitleMarkdown = (component: TitleComponentOptions, location = ""
 
   return style
     ? `\
-## <span style="${escapeHtml(style)}">${escapeHtml(text)}</span>
+## <span style="${escapeHtml(style)}">${escapeHtml(normalizeInlineText(text))}</span>
 
 `
     : `\
-## ${escapeHtml(component.text)}
+## ${escapeHtml(normalizeInlineText(component.text))}
 
 `;
 };

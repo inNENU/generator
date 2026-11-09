@@ -1,5 +1,10 @@
 import { sanitizeUrl } from "../../helpers/url.js";
-import { escapeHtml, escapeMarkdownLinkLabel, formatMarkdownDestination } from "../../utils.js";
+import {
+  escapeHtml,
+  escapeMarkdownLinkLabel,
+  formatMarkdownDestination,
+  normalizeInlineText,
+} from "../../utils.js";
 import type { PhoneComponentOptions } from "./schema.js";
 import { checkPhone } from "./schema.js";
 
@@ -34,7 +39,7 @@ export const getPhoneMarkdown = (phone: PhoneComponentOptions, location = ""): s
   const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
 
   return `\
-::: info ${escapeHtml(header || `${lName}${fName} 联系方式`)}
+::: info ${escapeHtml(normalizeInlineText(header || `${lName}${fName} 联系方式`))}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
 - 电话: ${

@@ -6,6 +6,7 @@ import {
   formatMarkdownDestination,
   getMarkdownPath,
   indentMarkdownListItem,
+  normalizeInlineText,
 } from "../../utils.js";
 import type { TextComponentOptions } from "./schema.js";
 import { checkText } from "./schema.js";
@@ -101,10 +102,10 @@ ${
 ${
   shouldUseContainer
     ? `::: ${text.type === "danger" ? "caution" : text.type}${
-        typeof header === "string" ? ` ${escapeHtml(header)}` : ""
+        typeof header === "string" ? ` ${escapeHtml(normalizeInlineText(header))}` : ""
       }`
     : typeof header === "string"
-      ? `### ${escapeHtml(header)}`
+      ? `### ${escapeHtml(normalizeInlineText(header))}`
       : ""
 }
 ${texts.map((item) => renderTextBodyItem(item, tag, bodyEscapeOptions)).join("\n\n") || ""}

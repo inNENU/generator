@@ -12,7 +12,13 @@ const chineseErrorMap = zod.locales.zhCN().localeError as unknown as (
  */
 const formatZodIssue = (issue: zod.core.$ZodIssue): string => {
   const result = chineseErrorMap(issue);
-  const message = typeof result === "string" ? result : (result?.message ?? issue.message);
+  const localized = typeof result === "string" ? result : result?.message;
+  // `refine` 等自定义校验的提示是作者特意写的中文文案，但 zhCN locale 对 custom issue 只给通用的
+  // 「无效输入」，会把它覆盖掉；因此这里优先使用 issue 自带的提示（zod 未指定时为 Invalid input）。
+  const message =
+    issue.code === "custom" && issue.message !== "Invalid input"
+      ? issue.message
+      : (localized ?? issue.message);
   const path = issue.path ?? [];
 
   return path.length > 0 ? `${message}（位置: ${path.join(".")}）` : message;

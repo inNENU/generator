@@ -12,6 +12,17 @@ export const envListSchema = zod.array(envSchema).optional().meta({
   description: "环境列表",
 });
 
+/**
+ * 生成不允许换行的单行文本 schema
+ *
+ * 标题、图注等字段会被拼进 Markdown 标题行或 `:::` 容器头，换行会提前结束标题 / 容器， 因此在校验层直接拒绝；错误消息按字段的中文名本地化。
+ *
+ * @param label 字段的中文名，用于错误消息
+ * @returns 单行字符串 schema
+ */
+export const singleLineTextSchema = (label: string): zod.ZodString =>
+  zod.string().refine((value) => !/[\r\n]/u.test(value), `${label}不能包含换行`);
+
 export const imageModeSchema = zod
   .enum([
     "widthFix",

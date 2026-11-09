@@ -1,4 +1,4 @@
-import { escapeHtml } from "../../utils.js";
+import { escapeHtml, normalizeInlineText } from "../../utils.js";
 import type { TableComponentOptions } from "./schema.js";
 import { checkTable } from "./schema.js";
 
@@ -15,7 +15,7 @@ export const getTableMarkdown = (table: TableComponentOptions, location = ""): s
   const { caption, header, body } = table;
 
   return `\
-${caption ? `### ${escapeHtml(caption)}\n\n` : ""}\
+${caption ? `### ${escapeHtml(normalizeInlineText(caption))}\n\n` : ""}\
 | ${header.map((cell) => formatCell(cell)).join(" | ")} |
 | ${header.map(() => ":-:").join(" | ")} |
 | ${body.map((item) => item.map((cell) => formatCell(cell)).join(" | ")).join(" |\n| ")} |

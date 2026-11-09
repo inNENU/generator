@@ -2,7 +2,7 @@ import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
 import { formatZodError } from "../../helpers/validation.js";
-import { envListSchema, locSchema } from "../../schema/common.js";
+import { envListSchema, locSchema, singleLineTextSchema } from "../../schema/common.js";
 
 const pointSchema = zod.strictObject({
   /** 位置信息 */
@@ -36,7 +36,7 @@ export const locationSchema = zod
   .strictObject({
     tag: zod.literal("location"),
     /** 地点标题 */
-    header: zod.string().min(1, "地点标题不能为空").meta({
+    header: singleLineTextSchema("地点标题").min(1, "地点标题不能为空").meta({
       description: "地点标题",
     }),
     /** 位置点信息 */
