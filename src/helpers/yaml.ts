@@ -277,9 +277,30 @@ const isGenerationManifest = (filename: string): boolean =>
   filename.endsWith(".json");
 
 /**
+ * 获取路径的真实路径
+ *
+ * 同一个物理目录可能通过符号链接、`/var` 与 `/private/var` 等别名访问。生成清单按真实路径命名，
+ * 避免同一份源在同一目标下写出两个清单：两个清单会互相保护，导致陈旧输出永远清不掉。
+ *
+ * 路径不存在（例如源文件夹刚被删除）时回退到 `resolve`，保证函数不会抛错。
+ *
+ * @param filePath 原始路径
+ * @returns 真实路径或规范化后的绝对路径
+ */
+const getCanonicalPath = (filePath: string): string => {
+  const absolutePath = resolve(filePath);
+
+  try {
+    return realpathSync(absolutePath);
+  } catch {
+    return absolutePath;
+  }
+};
+
+/**
  * 获取某个（源文件夹、目标扩展名）组合的生成清单文件名
  *
- * 文件名带源文件夹路径与扩展名的哈希，保证多个源共用同一目标文件夹时各用各的清单，不会互相覆盖或按对方的清单清理。
+ * 文件名带源文件夹真实路径与扩展名的哈希，保证多个源共用同一目标文件夹时各用各的清单，不会互相覆盖或按对方的清单清理。 同一个物理源经符号链接或 `/var` 别名访问时仍指向同一个清单。
  *
  * @param sourceFolder 源文件夹
  * @param extension 目标文件扩展名
@@ -287,7 +308,7 @@ const isGenerationManifest = (filename: string): boolean =>
  */
 const getGenerationManifestName = (sourceFolder: string, extension: ".json" | ".md"): string => {
   const sourceHash = createHash("sha256")
-    .update(`${resolve(sourceFolder)}\0${extension}`)
+    .update(`${getCanonicalPath(sourceFolder)}\0${extension}`)
     .digest("hex")
     .slice(0, 16);
 
@@ -459,30 +480,37 @@ const hasOutputFiles = (
  *
  * 多个源共用同一目标文件夹时，即使不同源恰好映射到同一相对路径，也不能由其中一个源把另一个源仍在生成的文件删掉。
  *
+ * 只要存在无法读取或格式无效的其它清单，就无法确认它保护了哪些路径，调用方必须放弃本次清理； 否则可能删掉另一个源仍在生成的文件。
+ *
  * @param targetFolder 目标文件夹
  * @param ownManifestName 当前管线的清单文件名
- * @returns 其它清单记录的文件集合
+ * @returns 其它清单记录的文件集合，以及是否存在无法读取的其它清单
  */
-const getProtectedOutputPaths = (targetFolder: string, ownManifestName: string): Set<string> => {
-  const protectedPaths = new Set<string>();
+const getProtectedOutputPaths = (
+  targetFolder: string,
+  ownManifestName: string,
+): { files: Set<string>; hasUnreadableManifest: boolean } => {
+  const files = new Set<string>();
+  let hasUnreadableManifest = false;
   let entries;
 
   try {
     entries = readdirSync(targetFolder, { withFileTypes: true });
   } catch {
-    return protectedPaths;
+    return { files, hasUnreadableManifest };
   }
 
   for (const entry of entries) {
     if (entry.name === ownManifestName || !entry.isFile() || !isGenerationManifest(entry.name))
       continue;
 
-    const files = readGenerationManifest(resolve(targetFolder, entry.name));
+    const protectedFiles = readGenerationManifest(resolve(targetFolder, entry.name));
 
-    if (files) for (const filePath of files) protectedPaths.add(filePath);
+    if (protectedFiles) for (const filePath of protectedFiles) files.add(filePath);
+    else hasUnreadableManifest = true;
   }
 
-  return protectedPaths;
+  return { files, hasUnreadableManifest };
 };
 
 /**
@@ -602,7 +630,7 @@ const syncGeneratedOutputs = (
   extension: ".json" | ".md",
   generatedFiles: Iterable<string>,
 ): void => {
-  if (resolve(sourceFolder) === resolve(targetFolder)) return;
+  if (getCanonicalPath(sourceFolder) === getCanonicalPath(targetFolder)) return;
   if (!existsSync(targetFolder)) return;
 
   const targetRoot = resolve(targetFolder);
@@ -623,12 +651,19 @@ const syncGeneratedOutputs = (
     console.warn(`目标文件夹中缺少生成清单，本次不会清理陈旧输出: ${targetRoot}`);
 
   if (previousFiles) {
-    const protectedFiles = getProtectedOutputPaths(targetRoot, manifestName);
+    const { files: protectedFiles, hasUnreadableManifest } = getProtectedOutputPaths(
+      targetRoot,
+      manifestName,
+    );
 
-    for (const filePath of previousFiles) {
-      if (currentFiles.has(filePath) || protectedFiles.has(filePath)) continue;
+    if (hasUnreadableManifest) {
+      console.warn(`目标文件夹中存在无法读取的生成清单，本次不会清理陈旧输出: ${targetRoot}`);
+    } else {
+      for (const filePath of previousFiles) {
+        if (currentFiles.has(filePath) || protectedFiles.has(filePath)) continue;
 
-      removeStaleOutputFile(targetRoot, targetRealRoot, filePath);
+        removeStaleOutputFile(targetRoot, targetRealRoot, filePath);
+      }
     }
   }
 
@@ -640,7 +675,10 @@ const syncGeneratedOutputs = (
  *
  * 清理只依据生成清单：只删除「清单中记录过、本次未生成」的文件，清单之外的文件（手写文档、其它工具产物、其它源的输出）永远不会被删除。目标文件夹中还没有清单时按首次运行保守处理：不删除任何文件，只写入本次生成的文件清单。
  *
- * 仅在源与目标文件夹不同时执行；清单文件带源文件夹与扩展名的哈希，多个源共用同一目标文件夹时互不影响。清理不会跟随符号链接目录，删除前还会用 `realpath` 确认文件仍位于目标文件夹内。
+ * 仅在源与目标文件夹不同时执行（按真实路径比较，符号链接别名视为同一目录）；清单文件带源文件夹真实路径与扩展名的哈希，多个源共用同一目标文件夹时互不影响。只要目标文件夹中存在无法读取的其它清单，本次就完全跳过清理，避免误删其它源仍在生成的文件。清理不会跟随符号链接目录，删除前还会用
+ * `realpath` 确认文件仍位于目标文件夹内。
+ *
+ * 只把 `.yml` 当作源文件（转换函数也只读取 `.yml`），`源名.yaml` 不会进入生成集。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
@@ -651,7 +689,7 @@ export const removeStaleOutputs = (
   targetFolder: string,
   extension: ".json" | ".md",
 ): void => {
-  if (resolve(sourceFolder) === resolve(targetFolder)) return;
+  if (getCanonicalPath(sourceFolder) === getCanonicalPath(targetFolder)) return;
   if (!existsSync(targetFolder)) return;
 
   if (!existsSync(sourceFolder)) {
@@ -668,6 +706,9 @@ export const removeStaleOutputs = (
 
 /**
  * 将源文件夹下的所有 YAML 文件转换为 JSON 文件
+ *
+ * 本次实际写出的文件会记入目标文件夹的生成清单，下一次运行据此清理源文件已删除的旧输出。 空 YAML 与转换函数返回 `null`/`undefined`
+ * 的文件会被跳过且不写入清单：如果该文件上次生成过输出， 下一次运行会把它按陈旧输出删除（旧实现会永久保留）。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹，默认为源文件夹
@@ -729,6 +770,8 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
  *
  * 与 `convertYamlFilesToJson` 不同，本函数不把转换函数返回的 `null`/`undefined` 视为“跳过”： 转换函数被声明为返回
  * `string`，当前消费者都返回 Markdown 文本；若运行时返回 `null`/`undefined`， 写入会失败并计入聚合错误，而不是静默跳过该文件。
+ *
+ * 空 YAML 文件仍会被跳过且不写入生成清单；如果该文件上次生成过 Markdown，下一次运行会把它按陈旧输出删除。
  *
  * @param sourceFolder 源文件夹
  * @param convertFunction 转换函数，接收解析后的数据与文件路径，返回 Markdown 内容
