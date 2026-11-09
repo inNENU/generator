@@ -4,10 +4,20 @@ import path from "node:path";
 import type { ComponentOptions, PageConfig } from "../page/schema.js";
 import { getFileList } from "./getFileList.js";
 
-const urlPattern = /(?:https?:\/\/|www\.)\S+/giu;
+/**
+ * 链接匹配：以 `http(s)://` 或 `www.` 开头，遇到空白、CJK 文字（含注音）或全角标点即终止。
+ *
+ * 不能用 `\S+`：中文正文里的 URL 常与汉字、全角括号或中文标点直接相邻，`\S+` 会把这些字符一并吞掉，导致整句字数少算。URL 本身不计入字数，截断处残留的标点不影响统计。
+ *
+ * 已知取舍：半角标点（如 `)`）与 emoji 不在排除集中，会随 URL 一起被吞掉；由于 URL 本身不计字数，只有紧跟其后的非文字内容受影响，链接后的中文仍能正常计入。
+ */
+const urlPattern =
+  /(?:https?:\/\/|www\.)[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}\u3000-\u303F\uFF00-\uFFEF]+/giu;
 /** 站内资源别名链接：`$img/a.png`、`$video/demo.mp4`、`$file/doc.pdf` 等 */
 const aliasLinkPattern = /\$[\w-]+\/[^\s)"'<>\]}]+/gu;
-const cjkPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
+/** CJK 文字（含注音、假名、谚文）按字统计，与拉丁语按词统计相对 */
+const cjkPattern =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Bopomofo}]/gu;
 const wordPattern = /[\p{L}\p{N}]+(?:['\u2019-][\p{L}\p{N}]+)*/gu;
 const emojiPattern = /\p{Extended_Pictographic}/u;
 

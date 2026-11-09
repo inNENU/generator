@@ -72,6 +72,100 @@ describe(Queue, () => {
     expect(order.indexOf("start-3")).toBeGreaterThan(order.indexOf("end-2"));
   });
 
+  it("should not exceed capacity when a task calls next twice while the queue is not empty", async () => {
+    const queue = new Queue(1);
+    const started: string[] = [];
+    let peakRunning = 0;
+    let completed = 0;
+
+    // 记录任务的启动顺序，以及任务开始时观察到的并发数
+    const track = (name: string, onStart: (next: () => void) => void): void => {
+      queue.add((next) => {
+        started.push(name);
+        peakRunning = Math.max(peakRunning, queue.running);
+        onStart(next);
+      });
+    };
+
+    const done = new Promise<void>((resolve) => {
+      const markDone = (): void => {
+        completed += 1;
+        // oxlint-disable-next-line vitest/no-conditional-in-test
+        if (completed === 3) resolve();
+      };
+
+      // 先占满容量为 1 的队列，让后续任务真正排队，重复 next() 才有机会多启动任务
+      queue.add((next) => {
+        track("first", (firstNext) => {
+          // 第一次 next 启动 second；此时 third 仍在队列中，
+          // 第二次 next 若不幂等就会额外启动 third，使 running 从 1 涨到 2
+          firstNext();
+          firstNext();
+          markDone();
+        });
+        track("second", (secondNext) => {
+          // 延后完成，保证 first 的重复 next 发生在 second 运行期间
+          queueMicrotask(() => {
+            secondNext();
+            markDone();
+          });
+        });
+        track("third", (thirdNext) => {
+          thirdNext();
+          markDone();
+        });
+
+        // 释放占位任务的额度，队列开始执行
+        next();
+      });
+    });
+
+    await done;
+
+    expect(peakRunning).toBeLessThanOrEqual(1);
+    expect(started).toStrictEqual(["first", "second", "third"]);
+    expect(queue.running).toBe(0);
+    expect(queue.funcQueue).toStrictEqual([]);
+  });
+
+  it("should ignore an external next() call while capacity is full", () => {
+    const queue = new Queue(1);
+    const started: string[] = [];
+    let peakRunning = 0;
+    const releases: (() => void)[] = [];
+
+    const track = (name: string): void => {
+      started.push(name);
+      peakRunning = Math.max(peakRunning, queue.running);
+    };
+
+    // first 占满唯一额度且不主动完成，second 只能排队
+    queue.add((next) => {
+      track("first");
+      releases.push(next);
+    });
+    queue.add((next) => {
+      track("second");
+      next();
+    });
+
+    expect(started).toStrictEqual(["first"]);
+
+    // 额度已满时外部直接调用 next() 必须 no-op，不能额外启动排队任务
+    queue.next();
+
+    expect(peakRunning).toBeLessThanOrEqual(1);
+    expect(started).toStrictEqual(["first"]);
+    expect(queue.funcQueue).toHaveLength(1);
+
+    releases.forEach((release) => release());
+
+    // 每条任务恰好启动一次（started 中无重复）
+    expect(started).toStrictEqual(["first", "second"]);
+    expect(queue.running).toBe(0);
+    expect(queue.funcQueue).toStrictEqual([]);
+  });
+
   it("should clear the queue", () => {
     const queue = new Queue(1);
     const executed: number[] = [];
@@ -97,6 +191,27 @@ describe(Queue, () => {
 
     queue.clear();
     expect(queue.funcQueue).toStrictEqual([]);
+  });
+
+  it("should keep clear() semantics when next() is called afterwards", () => {
+    const queue = new Queue(1);
+    const executed: string[] = [];
+
+    // 占住唯一额度，后续任务只能排队
+    queue.add(() => {
+      executed.push("running");
+    });
+    queue.add((next) => {
+      executed.push("queued");
+      next();
+    });
+
+    queue.clear();
+    queue.next();
+
+    expect(executed).toStrictEqual(["running"]);
+    expect(queue.funcQueue).toStrictEqual([]);
+    expect(queue.running).toBe(1);
   });
 
   it("should pass arguments to tasks", async () => {
@@ -285,6 +400,53 @@ describe("queue recovery", () => {
 
     expect(executed).toStrictEqual(["throwing", "after"]);
     expect(queue.running).toBe(0);
+  });
+
+  it("should not start queued work when a running task calls next() directly and then throws", () => {
+    const queue = new Queue(1);
+    const started: string[] = [];
+    let peakRunning = 0;
+    let runningWhenQueuedStarted = 0;
+    let startedAfterDirectNext: string[] = [];
+
+    const track = (name: string): void => {
+      started.push(name);
+      peakRunning = Math.max(peakRunning, queue.running);
+    };
+
+    let releaseBlocker: (() => void) | undefined;
+
+    // 占住唯一额度，让 throwing 与 queued 真正排队
+    queue.add((next) => {
+      track("blocker");
+      releaseBlocker = next;
+    });
+    queue.add(() => {
+      track("throwing");
+      // 直接调用队列的 next()（而非本任务的完成回调）：额度仍被 throwing 自己占用，
+      // 此时必须 no-op，不能提前启动 queued
+      queue.next();
+      startedAfterDirectNext = [...started];
+      throw new Error("boom");
+    });
+    queue.add((next) => {
+      track("queued");
+      runningWhenQueuedStarted = queue.running;
+      next();
+    });
+
+    expect(started).toStrictEqual(["blocker"]);
+
+    // throwing 同步抛错：错误交给调用方，同时归还额度并继续处理排队任务
+    expect(() => releaseBlocker?.()).toThrow("boom");
+
+    expect(peakRunning).toBeLessThanOrEqual(1);
+    expect(startedAfterDirectNext).toStrictEqual(["blocker", "throwing"]);
+    expect(started).toStrictEqual(["blocker", "throwing", "queued"]);
+    // queued 只能在 throwing 归还额度后启动，启动时只有它自己占用 running
+    expect(runningWhenQueuedStarted).toBe(1);
+    expect(queue.running).toBe(0);
+    expect(queue.funcQueue).toStrictEqual([]);
   });
 
   it("should settle a task only once when next is called repeatedly", async () => {

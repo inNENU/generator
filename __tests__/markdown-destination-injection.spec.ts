@@ -56,7 +56,7 @@ describe("站点 Markdown destination 注入", () => {
     expect(markdown).toContain(`![''](${wrappedPayload})`);
     expect(markdown).not.toContain("![''](https://example.com/a) <img");
     expect(markdown).not.toMatch(/<img src=x/u);
-    expect(markdown.match(/!\[[^\]]*\]\(<[^>\n]*>\)/gu)).toHaveLength(1);
+    expect(markdown.split("](<")).toHaveLength(2);
   });
 
   it("img 的 HTML 属性保持转义", () => {
@@ -92,7 +92,7 @@ describe("文本 Markdown destination 注入", () => {
       { urlConverter: () => converted },
     );
 
-    expect(text.match(/\[网页版\]\(<[^>\n]*>\)/gu)).toHaveLength(2);
+    expect(text.split("[网页版](<")).toHaveLength(3);
     expect(text).toContain(`[网页版](${wrappedPayload})`);
     expect(text).not.toMatch(/<img src=x/u);
   });

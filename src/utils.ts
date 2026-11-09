@@ -57,8 +57,138 @@ export const getHTMLPath = (filePath: string): string =>
       ? filePath.slice(0, -5)
       : `${filePath}.html`;
 
+/** 站内资源链接的解析结果 */
+export interface ResolvedAssetLink {
+  /** 资源根目录（如 `img`、`file`，或 `checkAssets` 传入的资源文件夹） */
+  root: string;
+  /** 规范化后的资源路径，不含查询串与锚点 */
+  path: string;
+  /** 查询串与锚点（含起始的 `?` 或 `#`），没有时为空字符串 */
+  suffix: string;
+}
+
+/** 不可作为资源根目录的片段：`.`、`..` 与 Windows 盘符 */
+const invalidAssetRootPattern = /^(?:\.{1,2}|[a-z]:)$/iu;
+
+/** Windows 盘符前缀（如 `C:foo`），盘符相对路径可能跳出资源目录 */
+const driveRootPattern = /^[a-z]:/iu;
+
+/** 控制字符；百分号解码后出现时同样拒绝 */
+const controlCharPattern = /\p{Cc}/u;
+
+/** 百分号编码的斜杠与反斜杠；URL 解析时会被还原为路径分隔符 */
+const encodedSeparatorPattern = /%2f|%5c/iu;
+
+/**
+ * 解码资源路径
+ *
+ * @param value 待解码的路径
+ * @returns 解码后的路径，编码不合法时返回 `null`
+ */
+const decodeAssetPath = (value: string): string | null => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * 判断资源根目录是否可用
+ *
+ * @param root 规范化后的资源根目录
+ * @param inferred 是否从链接中推断（而非调用方显式传入）
+ * @returns 资源根目录是否可用
+ */
+const isValidAssetRoot = (root: string, inferred: boolean): boolean => {
+  if (!root || root !== root.trim() || controlCharPattern.test(root)) return false;
+
+  if (invalidAssetRootPattern.test(root)) return false;
+
+  // 推断出的根目录必须是普通字面量：编码字符、盘符相对路径与 UNC 路径都不可信
+  if (inferred && (driveRootPattern.test(root) || root.startsWith("//") || root.includes("%")))
+    return false;
+
+  const decodedRoot = decodeAssetPath(root);
+
+  if (
+    decodedRoot == null ||
+    decodedRoot !== decodedRoot.trim() ||
+    controlCharPattern.test(decodedRoot)
+  )
+    return false;
+
+  if (invalidAssetRootPattern.test(decodedRoot)) return false;
+
+  return !(inferred && (driveRootPattern.test(decodedRoot) || decodedRoot.startsWith("//")));
+};
+
+/**
+ * 解析站内资源链接
+ *
+ * 资源链接以 `$` 开头，`$` 后的第一段为资源根目录（如 `$img/cover.png` 的 `img`）。解析时会剥离 `?query` 与 `#hash`、把反斜杠统一为正斜杠并做
+ * POSIX 规范化；空路径、目录路径、根目录为空/空白/控制字符/`.`/`..`/盘符/UNC 路径的链接，用百分号编码的斜杠或反斜杠（`%2f`/`%5c`）、百分号编码的点段 （如
+ * `%2e%2e`）以及用 `..` 逃出根目录的链接都会返回 `null`。字面量 `.`/`..` 段仍按 POSIX 规则归一，但归一后必须留在资源根目录内。
+ *
+ * @param link 资源链接
+ * @param root 资源根目录；省略时从链接中推断（已知目录的场景可显式传入）
+ * @returns 解析结果，链接无效时返回 `null`
+ */
+export const resolveAssetLink = (link: string, root?: string): ResolvedAssetLink | null => {
+  if (typeof link !== "string" || !link.startsWith("$")) return null;
+
+  const suffixIndex = link.search(/[?#]/u);
+  const rawLink = (suffixIndex === -1 ? link : link.slice(0, suffixIndex)).trimEnd();
+  const suffix = suffixIndex === -1 ? "" : link.slice(suffixIndex);
+  const body = rawLink.slice(1).replaceAll("\\", "/");
+  const inferredRoot = root == null;
+  const normalizedRoot = (root ?? body.split("/")[0] ?? "")
+    .replaceAll("\\", "/")
+    .replace(/\/+$/u, "");
+
+  if (!isValidAssetRoot(normalizedRoot, inferredRoot)) return null;
+
+  if (body !== normalizedRoot && !body.startsWith(`${normalizedRoot}/`)) return null;
+
+  // 编码斜杠/反斜杠会在 URL 解析时变成路径分隔符，无法用 POSIX 规范化安全处理
+  if (encodedSeparatorPattern.test(body)) return null;
+
+  const decodedBody = decodeAssetPath(body);
+
+  if (decodedBody == null || controlCharPattern.test(decodedBody)) return null;
+
+  const rawSegments = body.split("/");
+  const decodedSegments = decodedBody.split("/");
+
+  // 编码点段（`%2e`/`%2e%2e`）在 URL 中会被还原为 `.`/`..`，与字面量点段区别对待
+  if (
+    rawSegments.length !== decodedSegments.length ||
+    decodedSegments.some((segment, index) =>
+      segment === ".."
+        ? rawSegments[index] !== ".."
+        : segment === "."
+          ? rawSegments[index] !== "."
+          : false,
+    )
+  )
+    return null;
+
+  const resolved = path.posix.normalize(body);
+
+  if (
+    resolved === normalizedRoot ||
+    resolved.endsWith("/") ||
+    !resolved.startsWith(`${normalizedRoot}/`)
+  )
+    return null;
+
+  return { root: normalizedRoot, path: resolved, suffix };
+};
+
 /**
  * 检查文件是否存在
+ *
+ * 站内链接会按当前工作目录（cwd）解析，调用方需要先切换到资源仓库根目录。
  *
  * @param link 文件链接
  * @param location 文件所在位置
@@ -66,10 +196,20 @@ export const getHTMLPath = (filePath: string): string =>
  */
 export const checkFile = (link?: string, location = ""): string[] => {
   if (typeof link === "string" && link.startsWith("$")) {
-    const [localPath] = link.replace(/^\$/u, "./").split("?");
+    const folder = link.slice(1).split(/[\\/]/u)[0] ?? "";
+    const label = folder === "img" ? "图片" : "文件";
+    const resolved = resolveAssetLink(link);
 
-    if (!existsSync(localPath)) {
-      const message = `${link.startsWith("$img") ? "Image" : "File"} ${localPath} not exist${location ? ` in ${location}` : ""}.`;
+    if (!resolved) {
+      const message = `${label} ${link} 不是有效的资源路径${location ? `（位置: ${location}）` : ""}`;
+
+      console.error(message);
+
+      return [message];
+    }
+
+    if (!existsSync(`./${resolved.path}`)) {
+      const message = `${label} ${link} 不存在${location ? `（位置: ${location}）` : ""}`;
 
       console.error(message);
 
@@ -89,9 +229,13 @@ export const checkFile = (link?: string, location = ""): string[] => {
 export const getFileLink = (link?: string): string | null => {
   if (typeof link !== "string") return null;
 
-  if (link.startsWith("$")) return link.replace(/^\$/u, `${generatorConfig.assets}/`);
+  if (!link.startsWith("$")) return link;
 
-  return link;
+  const resolved = resolveAssetLink(link);
+
+  if (!resolved) return null;
+
+  return `${generatorConfig.assets}/${resolved.path}${resolved.suffix}`;
 };
 
 /**

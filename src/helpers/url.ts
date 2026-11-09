@@ -18,8 +18,32 @@ const schemePattern = /^(?<scheme>[a-z][a-z0-9+.-]*):/iu;
 /** `tel:` 只允许电话号码字符，避免把任意内容当作可执行地址 */
 const telPattern = /^tel:\+?[0-9][0-9\s().-]*$/iu;
 
-/** `mailto:` 只允许普通邮箱地址与可选查询串 */
-const mailtoPattern = /^mailto:[^\s@]+@[^\s@]+(?:\?[^\s]*)?$/iu;
+/**
+ * 校验 `mailto:` 地址
+ *
+ * 只允许普通邮箱地址与可选查询串：恰好一个 `@` 分隔非空的本地部分与域名，`@` 之前不允许空白（调用前已清理）， 查询串从域名内的 `?` 开始并允许包含 `@`。
+ *
+ * 手写线性扫描而不是正则，避免在恶意构造的重复 `@`/`?` 输入上触发灾难性回溯。
+ *
+ * @param normalized 已规范化的 URL
+ * @returns 是否为可接受的 `mailto:` 地址
+ */
+const isMailtoAddress = (normalized: string): boolean => {
+  const rest = normalized.slice("mailto:".length);
+  const firstAt = rest.indexOf("@");
+
+  if (firstAt <= 0) return false;
+
+  const secondAt = rest.indexOf("@", firstAt + 1);
+
+  if (secondAt === -1) return rest.length > firstAt + 1;
+
+  // 出现第二个 `@` 时，必须有一个 `?` 在第一个 `@` 之后、第二个 `@` 之前开始查询串，
+  // 且域名部分非空（`firstAt + 2` 起找 `?`）
+  for (let index = firstAt + 2; index < secondAt; index += 1) if (rest[index] === "?") return true;
+
+  return false;
+};
 
 /** 原始 URL 中不允许出现的控制字符 */
 const controlPattern = /\p{Cc}/u;
@@ -154,7 +178,7 @@ export const getSafeUrl = (value: string | null | undefined): SafeUrl | null => 
 
   if (!allowedSchemes.has(scheme)) return null;
 
-  if (scheme === "mailto") return mailtoPattern.test(normalized) ? { url, kind: "mailto" } : null;
+  if (scheme === "mailto") return isMailtoAddress(normalized) ? { url, kind: "mailto" } : null;
 
   if (scheme === "tel") return telPattern.test(normalized) ? { url, kind: "tel" } : null;
 

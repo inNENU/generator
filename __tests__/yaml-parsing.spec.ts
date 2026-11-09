@@ -16,6 +16,7 @@ import {
   checkYamlFiles,
   convertYamlFilesToJson,
   convertYamlFilesToMarkdown,
+  getYamlMap,
   parseYaml,
 } from "../src/helpers/yaml.js";
 
@@ -23,11 +24,94 @@ const createTempDir = (): string => mkdtempSync(path.join(tmpdir(), "innenu-yaml
 
 const removeDir = (dir: string): void => rmSync(dir, { force: true, recursive: true });
 
+/**
+ * 列出目标文件夹中的实际输出，忽略生成清单
+ *
+ * @param dir 目标文件夹
+ * @returns 排序后的文件名
+ */
+const listOutputs = (dir: string): string[] =>
+  readdirSync(dir)
+    .filter((filename) => !filename.startsWith(".innenu-generated."))
+    .sort();
+
 describe(parseYaml, () => {
   it("returns undefined for empty or comment-only documents", () => {
     expect(parseYaml("")).toBeUndefined();
     expect(parseYaml("  \n\t\n")).toBeUndefined();
     expect(parseYaml("# only a comment\n# another comment")).toBeUndefined();
+  });
+
+  it("returns undefined for documents without a scalar", () => {
+    expect(parseYaml("---")).toBeUndefined();
+    expect(parseYaml("---\n")).toBeUndefined();
+    expect(parseYaml("--- # comment only\n# another comment")).toBeUndefined();
+    expect(parseYaml("---\n...")).toBeUndefined();
+  });
+
+  it("only treats column-0 markers and directives as non-content", () => {
+    expect(parseYaml("%YAML 1.2\n---")).toBeUndefined();
+    expect(parseYaml("%TAG ! tag:example.com,2000:\n---")).toBeUndefined();
+    expect(parseYaml("...\n")).toBeUndefined();
+    expect(parseYaml("... # end of document")).toBeUndefined();
+
+    // 缩进的 `...` 以及出现在后续行的缩进 `---` 是普通标量，不是文档标记
+    expect(parseYaml("  ...")).toBe("...");
+    expect(parseYaml("---\n  ---")).toBe("---");
+    expect(parseYaml("\n  ---")).toBe("---");
+    expect(parseYaml("# c\n  ---")).toBe("---");
+  });
+
+  it("treats a stream-leading indented `---` as a document marker", () => {
+    // js-yaml 会把文件首行缩进的 `---` 当作文档开始标记，这里与之保持一致
+    expect(parseYaml("  ---")).toBeUndefined();
+    expect(parseYaml(" ---")).toBeUndefined();
+    expect(parseYaml("    ---")).toBeUndefined();
+    expect(parseYaml("\t---")).toBeUndefined();
+    expect(parseYaml("  ---\r\n")).toBeUndefined();
+    expect(parseYaml("  --- # c")).toBeUndefined();
+    expect(parseYaml("  ---\r\n# c\r\n")).toBeUndefined();
+  });
+
+  it("keeps content after a stream-leading indented `---`", () => {
+    // 首行缩进的文档标记不能把紧随其后的实际内容一起跳过
+    expect(parseYaml("  ---\n  foo")).toBe("foo");
+    expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
+  });
+
+  it("handles CRLF and CR line endings in markers and comments", () => {
+    expect(parseYaml("--- # c\r\n")).toBeUndefined();
+    expect(parseYaml("--- # c\r")).toBeUndefined();
+    expect(parseYaml("... # end\r\n")).toBeUndefined();
+    expect(parseYaml("... # end\r")).toBeUndefined();
+    expect(parseYaml("--- # c\r\n# d\r\n")).toBeUndefined();
+    expect(parseYaml("---\r\n")).toBeUndefined();
+
+    // 有实际内容时仍按原有语义解析
+    expect(parseYaml("---\r\ntitle: x\r\n")).toStrictEqual({ title: "x" });
+    expect(parseYaml("title: 首页\r\ncount: 2\r\n")).toStrictEqual({ count: 2, title: "首页" });
+  });
+
+  it("strips a leading BOM before checking marker-only documents", () => {
+    expect(parseYaml("\uFEFF---")).toBeUndefined();
+    expect(parseYaml("\uFEFF---\r\n")).toBeUndefined();
+    expect(parseYaml("\uFEFF--- # c\r\n")).toBeUndefined();
+  });
+
+  it("does not silently treat an indented directive-like line as an empty document", () => {
+    // `%` 指令必须位于第 0 列；缩进的 `%foo` 不是指令，而是非法 YAML，应报错而不是被当作空文档跳过
+    expect(() => parseYaml("  %foo")).toThrow(/YAML 解析失败/u);
+  });
+
+  it("only treats %YAML and %TAG directives as non-content", () => {
+    // 其它 `%` 行不再仅凭前缀被跳过，交给 js-yaml 判定：缺少 `---` 时是非法 YAML
+    expect(() => parseYaml("%foo")).toThrow(/YAML 解析失败/u);
+    expect(parseYaml("%foo\n---\ntitle: x")).toStrictEqual({ title: "x" });
+  });
+
+  it("keeps explicit empty string scalars", () => {
+    expect(parseYaml('""')).toBe("");
+    expect(parseYaml("''")).toBe("");
   });
 
   it("parses valid YAML", () => {
@@ -37,6 +121,19 @@ describe(parseYaml, () => {
   it("throws a Chinese error containing the file path", () => {
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/YAML 解析失败/u);
     expect(() => parseYaml("title: [", "pages/broken.yml")).toThrow(/pages\/broken\.yml/u);
+
+    const getError = (): unknown => {
+      try {
+        parseYaml("title: [", "pages/broken.yml");
+      } catch (err) {
+        return err;
+      }
+      return undefined;
+    };
+    const error = getError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
 
@@ -205,6 +302,65 @@ describe("yaml conversion output", () => {
     }
   });
 
+  it("skips null and undefined conversion results but writes other falsy values", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-skip-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      for (const name of ["null", "undefined", "empty", "zero", "false", "text"])
+        writeFileSync(path.join(source, `${name}.yml`), `name: ${name}`);
+
+      const results: Record<string, unknown> = {
+        null: null,
+        undefined,
+        empty: "",
+        zero: 0,
+        false: false,
+        text: "x",
+      };
+
+      convertYamlFilesToJson(source, target, (_data, filePath) => results[filePath]);
+
+      expect(listOutputs(target)).toStrictEqual([
+        "empty.json",
+        "false.json",
+        "text.json",
+        "zero.json",
+      ]);
+      expect(readFileSync(path.join(target, "empty.json"), "utf-8")).toBe('""');
+      expect(readFileSync(path.join(target, "zero.json"), "utf-8")).toBe("0");
+      expect(readFileSync(path.join(target, "false.json"), "utf-8")).toBe("false");
+      expect(readFileSync(path.join(target, "text.json"), "utf-8")).toBe('"x"');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not write an output for a document containing only markers", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "yaml-marker-"));
+
+    try {
+      const source = path.join(root, "source");
+      const target = path.join(root, "target");
+      mkdirSync(source, { recursive: true });
+
+      writeFileSync(path.join(source, "empty.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      convertYamlFilesToJson(source, target, (data) => data);
+
+      expect(existsSync(path.join(target, "empty.json"))).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("空 YAML 文件已跳过"));
+      warnSpy.mockRestore();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("removes stale json outputs when a source file is deleted", () => {
     const root = mkdtempSync(path.join(tmpdir(), "yaml-stale-json-"));
 
@@ -223,7 +379,7 @@ describe("yaml conversion output", () => {
 
       convertYamlFilesToJson(source, target, (data) => data);
 
-      expect(readdirSync(target).sort()).toStrictEqual(["a.json", "c.json"]);
+      expect(listOutputs(target)).toStrictEqual(["a.json", "c.json"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -265,6 +421,104 @@ describe("yaml conversion output", () => {
       expect(existsSync(path.join(root, "a.json"))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("yaml unsafe integers", () => {
+  it("warns when an integer exceeds the safe range", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+    try {
+      expect(parseYaml<{ id: number }>("id: 9007199254740993", "data/big.yml")).toStrictEqual({
+        id: 9_007_199_254_740_992,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("9007199254740993"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("data/big.yml"));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("引号"));
+
+      expect(parseYaml<{ id: number }>("id: -9007199254740993", "data/negative.yml")).toStrictEqual(
+        {
+          id: -9_007_199_254_740_992,
+        },
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("-9007199254740993"));
+
+      expect(parseYaml<{ id: number }>("id: !!int 0x20000000000001", "data/hex.yml")).toStrictEqual(
+        {
+          id: 9_007_199_254_740_992,
+        },
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("0x20000000000001"));
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("does not warn for safe integers or quoted long numbers", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+    try {
+      expect(parseYaml("id: 9007199254740991")).toStrictEqual({ id: 9_007_199_254_740_991 });
+      expect(parseYaml('id: "9007199254740993"')).toStrictEqual({ id: "9007199254740993" });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+});
+
+describe(getYamlMap, () => {
+  it("skips empty YAML files with a warning instead of throwing", () => {
+    const dir = createTempDir();
+
+    try {
+      writeFileSync(path.join(dir, "valid.yml"), "title: 首页\n");
+      writeFileSync(path.join(dir, "comment.yml"), "# 只有注释\n");
+      writeFileSync(path.join(dir, "marker.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      try {
+        expect(getYamlMap<{ title: string }, string>(dir, (data) => data.title)).toStrictEqual([
+          { type: "file", filename: "valid.yml", value: "首页" },
+        ]);
+        expect(warnSpy).toHaveBeenCalledTimes(2);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("空 YAML 文件已跳过"));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("comment.yml"));
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("marker.yml"));
+      } finally {
+        warnSpy.mockRestore();
+      }
+    } finally {
+      removeDir(dir);
+    }
+  });
+
+  it("keeps directories and drops only their empty files", () => {
+    const dir = createTempDir();
+
+    try {
+      mkdirSync(path.join(dir, "nested"));
+      writeFileSync(path.join(dir, "nested", "page.yml"), "title: 子页\n");
+      writeFileSync(path.join(dir, "nested", "empty.yml"), "---\n");
+
+      const warnSpy = vi.spyOn(console, "warn").mockReturnValue(undefined);
+
+      try {
+        expect(getYamlMap<{ title: string }, string>(dir, (data) => data.title)).toStrictEqual([
+          {
+            type: "dir",
+            dirname: "nested",
+            content: [{ type: "file", filename: "page.yml", value: "子页" }],
+          },
+        ]);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("empty.yml"));
+      } finally {
+        warnSpy.mockRestore();
+      }
+    } finally {
+      removeDir(dir);
     }
   });
 });
