@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as zod from "zod";
 
 // Importing the library must not mutate the host application's zod config.
-import { getPageJSON } from "../src/page/json.js";
+import { formatZodError } from "../src/helpers/validation.js";
 import { checkPageContent } from "../src/page/schema.js";
 import * as librarySchema from "../src/schema/index.js";
 
@@ -24,9 +24,15 @@ describe("library validation messages", () => {
 
     expect(issues.join("\n")).toMatch(/无效输入|期望/u);
     expect(issues.join("\n")).not.toMatch(/Invalid input|expected/u);
+  });
 
-    expect(() => getPageJSON({ title: 123, content: [] } as never, "test-page")).toThrow(
-      /无效输入|期望|页面配置校验失败/u,
-    );
+  it("should format a standard zod issue with the exact Chinese locale text", () => {
+    // 非 custom / invalid_union 分支：文案只由 zhCN locale 决定，
+    // 与自定义 message 的处理逻辑（以及后续对它的改动）解耦。
+    const result = zod.array(zod.string()).min(1).safeParse([]);
+
+    expect(result.success).toBe(false);
+    // 上一行已断言失败，`error` 必定存在；用断言避免在测试里写分支。
+    expect(formatZodError(result.error as zod.ZodError)).toBe("✖ 数值过小：期望 array >=1 项");
   });
 });
