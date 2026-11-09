@@ -628,6 +628,16 @@ const collectHtmlCommentLines = (lines: string[]): Set<number> => {
     if (!htmlCommentStart.test(stripBlockquotePrefix(lines[index]))) continue;
 
     const end = findLineWith(lines, index, "-->");
+    const commentText = lines
+      .slice(index, end + 1)
+      .map((line) => stripBlockquotePrefix(line))
+      .join("\n");
+    const start = commentText.indexOf("<!--");
+    const finish = commentText.indexOf("-->", start + 4);
+
+    // 只整体遮蔽合法注释；非法注释在 markdown-it 中是文本，实体编码后会被解码回花括号。
+    if (start === -1 || finish === -1 || !isValidHtmlComment(commentText.slice(start, finish + 3)))
+      continue;
 
     for (let next = index; next <= end; next += 1) result.add(next);
 
@@ -795,9 +805,13 @@ const maskMarkdownSyntax = (
 
           return match.slice(0, destination) + stash(match.slice(destination));
         })
-        .replaceAll(markdownAutolink, (match: string, offset: number) =>
-          isEscaped(line, offset) || /[{}]/u.test(match) ? match : stash(match),
-        );
+        .replaceAll(markdownAutolink, (match: string, offset: number) => {
+          if (isEscaped(line, offset)) return match;
+
+          // autolink 内出现花括号时保留原文交给最终拆分，但其中的反引号不能参与行内代码配对，
+          // 否则 `{{ 7*7 }}` 会被当成代码段内容原样留下。
+          return /[{}]/u.test(match) ? match.replaceAll("`", (tick) => stash(tick)) : stash(match);
+        });
 
       return tableBlockLines.has(index)
         ? splitTableRow(withoutLinks)

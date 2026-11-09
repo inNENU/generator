@@ -118,7 +118,13 @@ describe("vue 编译级插值防护", () => {
   });
 
   it("无空格伪链接、autolink 文本与闭合标签属性不产生插值", () => {
-    const payloads = ["x]({{7*7}})", "x <https://e.com/{{7*7}}>", 'x </x a="{{7*7}}">'];
+    const payloads = [
+      "x]({{7*7}})",
+      "x <https://e.com/{{7*7}}>",
+      "x <https://e.com/`{{7*7}}`>",
+      "x <https://e.com/``{{7*7}}``>",
+      'x </x a="{{7*7}}">',
+    ];
 
     for (const desc of payloads) {
       const code = compileTemplate(
@@ -135,7 +141,7 @@ describe("vue 编译级插值防护", () => {
         { tag: "text", text: '前 <a_b title="{{ 7*7 }}"> 后' },
         { tag: "text", text: "<!-- 注释 {{ 7*7 }} 结束 -->" },
       ],
-      '<!-- 描述 {{ 7*7 }} -->\n\n<a_b title="{{ 7*7 }}">',
+      '<!-- 描述 {{ 7*7 }} -->\n\n<!-->\n{{ 7*7 }}\n-->\n\n<!--->\n{{ 7*7 }}\n-->\n\n<a_b title="{{ 7*7 }}">',
     );
     const code = compileTemplate(getPageMarkdown(page, { location: "probe/html-block" }));
 

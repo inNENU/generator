@@ -180,7 +180,7 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
           { tag: "text", text: "``` js `x`\n{{ 7*7 }}\n```" },
           { tag: "text", text: "```:no\\-v-pre\n{{ 7*7 }}\n```" },
         ],
-        "<!--> {{ 7*7 }} -->\n\nx <!-- ` --> {{ 7*7 }} `\n\n<pre>\n</pre >\n`{{ 7*7 }}`\n</pre>",
+        "<!--> {{ 7*7 }} -->\n\n<!---> {{ 7*7 }} -->\n\n<!-->\n{{ 7*7 }}\n-->\n\n<!--->\n{{ 7*7 }}\n-->\n\nx <!-- ` --> {{ 7*7 }} `\n\n<pre>\n</pre >\n`{{ 7*7 }}`\n</pre>",
       ),
       { location: "probe/edge" },
     );
@@ -257,12 +257,16 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
   });
 
   it("处理无空格伪链接、autolink 文本与闭合标签属性", () => {
+    const desc = ["x <https://e.com/`{{7*7}}`>", "x <https://e.com/``{{7*7}}``>"].join("\n\n");
     const markdown = getPageMarkdown(
-      createPage([
-        { tag: "text", text: "x]({{7*7}})" },
-        { tag: "text", text: "x <https://e.com/{{7*7}}>" },
-        { tag: "text", text: 'x </x a="{{7*7}}">' },
-      ]),
+      createPage(
+        [
+          { tag: "text", text: "x]({{7*7}})" },
+          { tag: "text", text: "x <https://e.com/{{7*7}}>" },
+          { tag: "text", text: 'x </x a="{{7*7}}">' },
+        ],
+        desc,
+      ),
       { location: "probe/round-10" },
     );
     const html = markdownIt.render(markdown);
