@@ -390,3 +390,129 @@ export const escapeHtml = (content: string): string =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+
+/** 容器正文转义选项 */
+export interface EscapeContainerBodySyntaxOptions {
+  /**
+   * 是否转义行首的 `:::` 容器标记
+   *
+   * @default true
+   */
+  container?: boolean;
+  /**
+   * 围栏代码转义策略
+   *
+   * - `true`：转义所有行首围栏
+   * - `"unclosed"`：仅当正文中存在未闭合围栏时，转义所有行首围栏
+   * - `false`：保留围栏
+   *
+   * @default true
+   */
+  fence?: boolean | "unclosed";
+  /**
+   * 是否转义行首的 `#` 标题
+   *
+   * @default true
+   */
+  heading?: boolean;
+}
+
+/** 行首容器标记：最多三个空格后的三个及以上冒号 */
+const containerMarkerPattern = /^(?<indent> {0,3})(?<marker>:{3,})/u;
+
+/** 行首围栏代码：最多三个空格后的三个及以上反引号或波浪号 */
+const fencePattern = /^(?<indent> {0,3})(?<fence>`{3,}|~{3,})/u;
+
+/** 行首 ATX 标题：最多三个空格后的 1-6 个 `#`，后接空白 */
+const headingPattern = /^(?<indent> {0,3})(?<heading>#{1,6})(?=\s)/u;
+
+/** 行首围栏信息 */
+interface FenceMarker {
+  /** 围栏字符 */
+  char: "`" | "~";
+  /** 围栏字符数量 */
+  count: number;
+  /** 围栏标记后是否只有空白（可作为闭合围栏） */
+  bare: boolean;
+}
+
+/**
+ * 解析行首围栏标记
+ *
+ * @param line 正文行
+ * @returns 围栏信息，不存在时返回 `null`
+ */
+const getFenceMarker = (line: string): FenceMarker | null => {
+  const match = fencePattern.exec(line);
+
+  if (!match) return null;
+
+  const fence = match.groups?.fence ?? "";
+  const indent = match.groups?.indent ?? "";
+
+  return {
+    char: fence.startsWith("~") ? "~" : "`",
+    count: fence.length,
+    // 闭合围栏的标记后只能有空白，带信息的行只能作为开启围栏
+    bare: line.slice(indent.length + fence.length).trim() === "",
+  };
+};
+
+/**
+ * 判断正文中的围栏代码是否未闭合
+ *
+ * 按 CommonMark 规则配对：闭合围栏需与开启围栏字符相同、长度不小于开启围栏，且标记后只有空白。
+ *
+ * @param lines 正文各行
+ * @returns 是否存在未闭合的围栏
+ */
+const hasUnclosedFence = (lines: string[]): boolean => {
+  let open: FenceMarker | null = null;
+
+  for (const line of lines) {
+    const marker = getFenceMarker(line);
+
+    if (!marker) continue;
+
+    if (!open) open = marker;
+    else if (marker.char === open.char && marker.count >= open.count && marker.bare) open = null;
+  }
+
+  return open != null;
+};
+
+/**
+ * 转义容器正文中的块级 Markdown 语法
+ *
+ * 提示框正文会原样嵌入 `::: type` 容器；正文行首若出现 `:::`，会提前闭合容器。 逐行给这些行首加上反斜杠转义，渲染结果仍是原文字符，但不再被解析为块级语法。
+ *
+ * 默认转义容器标记、围栏代码与标题，与文本管线既有行为一致；站点管线可按需关闭标题 / 围栏转义， 以保留正常 Markdown 语义，或仅在围栏未成对时转义，避免正常代码块被拍平。
+ *
+ * @param text 已做 HTML 转义的正文
+ * @param options 转义选项
+ * @returns 转义后的正文
+ */
+export const escapeContainerBodySyntax = (
+  text: string,
+  options: EscapeContainerBodySyntaxOptions = {},
+): string => {
+  const { container = true, fence = true, heading = true } = options;
+  const lines = text.split("\n");
+  const shouldEscapeFence = fence === "unclosed" ? hasUnclosedFence(lines) : fence;
+
+  return lines
+    .map((line) => {
+      let escaped = line;
+
+      if (container)
+        escaped = escaped.replace(containerMarkerPattern, String.raw`$<indent>\$<marker>`);
+
+      if (shouldEscapeFence)
+        escaped = escaped.replace(fencePattern, String.raw`$<indent>\$<fence>`);
+
+      if (heading) escaped = escaped.replace(headingPattern, String.raw`$<indent>\$<heading>`);
+
+      return escaped;
+    })
+    .join("\n");
+};
