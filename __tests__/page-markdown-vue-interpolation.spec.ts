@@ -497,6 +497,39 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(html).not.toContain("{{");
   });
 
+  it("中和超出列表缩进规则与 :no-v-pre 围栏内的伪围栏", () => {
+    const pageContents = [
+      "-     ```js {{7*7}}",
+      "-     ```js\n      {{7*7}}",
+      "-\t\t```js {{7*7}}",
+      "1.     ```js {{7*7}}",
+    ];
+    const contributes = [
+      "```md :no-v-pre\n- ```js {{7*7}}\n```",
+      "~~~md :no-v-pre\n1. ```js {{7*7}}\n~~~",
+    ];
+
+    for (const content of pageContents) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text: content }]), {
+        location: "probe/list-indent",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], content), {
+        location: "probe/list-indent-desc",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+    }
+
+    for (const content of contributes) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text: content }]), {
+        location: "probe/no-v-pre",
+      });
+
+      expect(markdown).not.toContain("{{");
+    }
+  });
+
   it("转义行内与关闭 plaintext 标签且不误伤行内代码", () => {
     const desces = ["前文 <plaintext> 后文 {{7*7}}", "</plaintext>"];
 

@@ -116,11 +116,17 @@ const getListItemFenceInfo = (
   line: string,
 ): { marker: string; length: number; info: string } | null => {
   const match =
-    /^(?: {0,3})(?:[-+*]|\d{1,9}[.)])[ \t]+(?<fenceLine> {0,3}(?:`{3,}|~{3,}).*)$/u.exec(
+    /^(?<indent> {0,3})(?:[-+*]|\d{1,9}[.)])(?<spacing>[ \t]+)(?<fenceLine> {0,3}(?:`{3,}|~{3,}).*)$/u.exec(
       stripBlockquotePrefix(line),
     );
 
-  return match?.groups?.fenceLine ? getFenceInfo(match.groups.fenceLine) : null;
+  if (!match?.groups?.fenceLine) return null;
+
+  // CommonMark：列表标记后超过 4 列空白属于缩进代码块，不是围栏；tab 按 4 列展开。
+  // oxlint-disable-next-line eslint/no-use-before-define -- 常量表定义在文件后部以保持说明性辅助函数顺序
+  if (expandLeadingIndent(match.groups.spacing ?? "") > 4) return null;
+
+  return getFenceInfo(match.groups.fenceLine);
 };
 
 /**
@@ -224,16 +230,49 @@ const getBlockquoteDepth = (line: string): number => {
   }
 };
 
+/**
+ * 标记顶层围栏代码块所在的行
+ *
+ * 围栏内部的文本不会被 Markdown 解析，不能被当作列表项 / 引用块围栏收集， 否则 `:no-v-pre` 等未受保护的围栏内容会被错误保护。
+ *
+ * @param lines 全部行
+ * @param htmlBlockLines 原始 HTML 块行号
+ * @returns 顶层围栏行号集合
+ */
+const collectTopLevelFenceLines = (lines: string[], htmlBlockLines: Set<number>): Set<number> => {
+  const result = new Set<number>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (htmlBlockLines.has(index)) continue;
+
+    const fence = getFenceInfo(lines[index]);
+
+    if (!fence) continue;
+
+    // oxlint-disable-next-line eslint/no-use-before-define -- 围栏闭合查找与容器扫描共用同一实现
+    const closeIndex = findFenceClose(lines, index, fence);
+
+    if (closeIndex === -1) continue;
+
+    for (let next = index; next <= closeIndex; next += 1) result.add(next);
+
+    index = closeIndex;
+  }
+
+  return result;
+};
+
 // oxlint-disable-next-line eslint/max-statements -- 列表项围栏需要顺序维护容器缩进与引用深度
 const collectListItemFenceLines = (
   lines: string[],
   htmlBlockLines: Set<number>,
+  topLevelFenceLines: Set<number>,
 ): { lines: Set<number>; protectedLines: Set<number> } => {
   const result = new Set<number>();
   const protectedLines = new Set<number>();
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index)) continue;
+    if (htmlBlockLines.has(index) || topLevelFenceLines.has(index)) continue;
 
     const fence = getListItemFenceInfo(lines[index]);
 
@@ -302,17 +341,19 @@ const collectListItemFenceLines = (
  *
  * @param lines 全部行
  * @param htmlBlockLines 原始 HTML 块行号
+ * @param topLevelFenceLines 顶层围栏行号
  * @returns 围栏代码块行号
  */
 const collectBlockquoteFenceLines = (
   lines: string[],
   htmlBlockLines: Set<number>,
+  topLevelFenceLines: Set<number>,
 ): { lines: Set<number>; protectedLines: Set<number> } => {
   const result = new Set<number>();
   const protectedLines = new Set<number>();
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (htmlBlockLines.has(index)) continue;
+    if (htmlBlockLines.has(index) || topLevelFenceLines.has(index)) continue;
 
     const fence = getFenceInfo(stripBlockquotePrefix(lines[index]));
 
@@ -1169,8 +1210,13 @@ const maskMarkdownSyntax = (
   const htmlCommentLines = collectHtmlCommentLines(lines);
   const rawTextLines = collectHtmlRawTextLines(lines);
   const tableBlockLines = collectTableBlockLines(lines);
-  const listFenceInfo = collectListItemFenceLines(lines, htmlBlockLines);
-  const blockquoteFenceInfo = collectBlockquoteFenceLines(lines, htmlBlockLines);
+  const topLevelFenceLines = collectTopLevelFenceLines(lines, htmlBlockLines);
+  const listFenceInfo = collectListItemFenceLines(lines, htmlBlockLines, topLevelFenceLines);
+  const blockquoteFenceInfo = collectBlockquoteFenceLines(
+    lines,
+    htmlBlockLines,
+    topLevelFenceLines,
+  );
   const fenceResult = maskFenceBlocks(
     lines,
     htmlBlockLines,

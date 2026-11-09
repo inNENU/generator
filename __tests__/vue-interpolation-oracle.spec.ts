@@ -187,6 +187,24 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("列表缩进溢出与 :no-v-pre 围栏内不产生插值", () => {
+    const payloads = [
+      "-     ```js {{7*7}}",
+      "-     ```js\n      {{7*7}}",
+      "-\t\t```js {{7*7}}",
+      "```md :no-v-pre\n- ```js {{7*7}}\n```",
+    ];
+
+    for (const text of payloads) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text }]), {
+        location: "oracle/list-indent",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+    }
+  });
+
   it("引用块与列表围栏边界外不产生插值", () => {
     const desces = [
       "> ```js\n> {{7*7}}\n> ```",
