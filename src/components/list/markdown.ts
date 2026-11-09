@@ -1,3 +1,4 @@
+import { getSafeUrl, sanitizeUrl } from "../../helpers/url.js";
 import type { MarkdownOptions } from "../../typings.js";
 import { escapeHtml, getHTMLPath, getIconLink } from "../../utils.js";
 import type { FunctionalListComponentOptions, ListComponentOptions } from "./schema.js";
@@ -29,7 +30,7 @@ ${items
 
     const { icon, text, desc } = item;
 
-    const resolvedIcon = getIconLink(icon);
+    const resolvedIcon = sanitizeUrl(getIconLink(icon));
 
     const iconContent = resolvedIcon
       ? `\
@@ -67,7 +68,11 @@ ${listItemContent}
       }
 
       if (item.action === "article") {
-        return `<a class="innenu-list-item" href="${escapeHtml(item.url)}" target="_blank">
+        const articleUrl = sanitizeUrl(item.url);
+
+        if (!articleUrl) return "";
+
+        return `<a class="innenu-list-item" href="${escapeHtml(articleUrl)}" target="_blank">
 ${listItemContent}
 </a>`;
       }
@@ -76,15 +81,19 @@ ${listItemContent}
     }
 
     if ("path" in item && item.path) {
-      return `<RouteLink class="innenu-list-item" to="${escapeHtml(getHTMLPath(item.path))}">
+      const safePath = getSafeUrl(getHTMLPath(item.path));
+
+      if (safePath?.kind !== "relative") return "";
+
+      return `<RouteLink class="innenu-list-item" to="${escapeHtml(safePath.url)}">
 ${listItemContent}
 </RouteLink>`;
     }
 
     if ("url" in item && item.url && !("type" in item)) {
-      const resolvedUrl = urlConverter(item.url);
+      const resolvedUrl = sanitizeUrl(urlConverter(item.url));
 
-      if (resolvedUrl == null) return "";
+      if (!resolvedUrl) return "";
 
       return resolvedUrl.startsWith("/")
         ? `<RouteLink class="innenu-list-item" to="${escapeHtml(resolvedUrl)}">

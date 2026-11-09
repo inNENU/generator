@@ -1,3 +1,4 @@
+import { sanitizeUrl } from "../../helpers/url.js";
 import { escapeHtml, getAssetIconLink, getFileLink } from "../../utils.js";
 import type { DocComponentOptions } from "./schema.js";
 import { checkDoc } from "./schema.js";
@@ -8,8 +9,8 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
 
   checkDoc(doc, location);
 
-  const processedUrl = getFileLink(doc.url);
-  const url = processedUrl ?? doc.url;
+  const safeUrl = sanitizeUrl(getFileLink(doc.url) ?? doc.url);
+  const url = safeUrl ?? "";
 
   const { name } = doc;
 
@@ -19,6 +20,15 @@ export const getDocMarkdown = (doc: DocComponentOptions, location = ""): string 
   const docName = getDocDisplayName(name, url);
   const docNameContent = `<span class="innenu-doc-name">${escapeHtml(docName)}</span>`;
   const downloadable = doc.downloadable !== false;
+
+  if (!safeUrl) {
+    return `
+<span class="innenu-doc">
+  ${docIcon}
+  ${docNameContent}
+</span>
+`;
+  }
 
   return `
 ${

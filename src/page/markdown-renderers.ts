@@ -15,6 +15,7 @@ import { getTableMarkdown } from "../components/table/markdown.js";
 import { getTextMarkdown } from "../components/text/markdown.js";
 import { getTitleMarkdown } from "../components/title/markdown.js";
 import { getVideoMarkdown } from "../components/video/markdown.js";
+import { sanitizeUrl } from "../helpers/url.js";
 import type { MarkdownMode, UrlHandler } from "../typings.js";
 import { escapeContainerBodySyntax, escapeHtml, getFileLink } from "../utils.js";
 import type { ComponentOptions } from "./schema.js";
@@ -53,7 +54,16 @@ const toUrlConversion = (
 ): UrlConversion | null => {
   if (!converted) return null;
 
-  return typeof converted === "string" ? { miniapp: converted, web: converted } : converted;
+  if (typeof converted === "string") {
+    const url = sanitizeUrl(converted);
+
+    return url ? { miniapp: url, web: url } : null;
+  }
+
+  const miniapp = sanitizeUrl(converted.miniapp);
+  const web = sanitizeUrl(converted.web);
+
+  return miniapp && web ? { miniapp, web } : null;
 };
 
 /**
@@ -213,27 +223,27 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
 
     case "img": {
       const { src, desc: imgDesc } = component;
-      const imgLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+      const imgLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
 
-      return `![${escapeHtml(imgDesc ?? "")}](${imgLink})\n\n`;
+      return imgLink ? `![${escapeHtml(imgDesc ?? "")}](${imgLink})\n\n` : "";
     }
 
     case "carousel": {
-      return `${component.images
-        .map((link) => {
-          const imgLink = mode === "miniapp" ? link : (getFileLink(link) ?? "");
+      const images = component.images
+        .map((link) => sanitizeUrl(mode === "miniapp" ? link : (getFileLink(link) ?? "")))
+        .filter((link): link is string => link != null);
 
-          return `![''](${imgLink})\n\n`;
-        })
-        .join("\n")}\n\n`;
+      return images.length > 0
+        ? `${images.map((link) => `![''](${link})\n\n`).join("\n")}\n\n`
+        : "";
     }
 
     case "doc": {
       const { name, url } = component;
-      const docUrl = mode === "miniapp" ? url : (getFileLink(url) ?? url);
-      const docName = getDocDisplayName(name, url);
+      const docUrl = sanitizeUrl(mode === "miniapp" ? url : (getFileLink(url) ?? url));
+      const docName = getDocDisplayName(name, docUrl ?? "");
 
-      return `- [${escapeHtml(docName)}](${docUrl})\n\n`;
+      return docUrl ? `- [${escapeHtml(docName)}](${docUrl})\n\n` : `- ${escapeHtml(name)}\n\n`;
     }
 
     case "phone": {
@@ -257,16 +267,20 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
         site,
       } = component;
 
+      const telUrl = sanitizeUrl(`tel:${num}`);
+      const siteUrl = sanitizeUrl(site);
+      const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
+
       return `\
 #### ${escapeHtml(header || `${lName}${fName} 联系方式`)}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
-- 电话: [${escapeHtml(String(num))}](tel:${num})
+- 电话: ${telUrl ? `[${escapeHtml(String(num))}](${telUrl})` : escapeHtml(String(num))}
 ${workNum ? `- 工作电话: ${escapeHtml(String(workNum))}\n` : ""}\
 ${hostNum ? `- 公司电话: ${escapeHtml(String(hostNum))}\n` : ""}\
 ${homeNum ? `- 家庭电话: ${escapeHtml(String(homeNum))}\n` : ""}\
-${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
-${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
+${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 ${org ? `- 组织: ${escapeHtml(org)}\n` : ""}\
 ${contactTitle ? `- 职位: ${escapeHtml(contactTitle)}\n` : ""}\
 ${nick ? `- 昵称: ${escapeHtml(nick)}\n` : ""}\
@@ -279,32 +293,37 @@ ${postCode ? `- 邮编: ${escapeHtml(String(postCode))}\n` : ""}\
 
     case "account": {
       const { name, detail, desc: accountDesc, logo, qq, wxid, site, mail } = component;
+      const logoUrl = sanitizeUrl(mode === "miniapp" ? logo : (getFileLink(logo) ?? ""));
+      const siteUrl = sanitizeUrl(site);
+      const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
 
       return `\
-${logo ? `![${escapeHtml(name)}](${mode === "miniapp" ? logo : (getFileLink(logo) ?? "")})\n\n` : ""}\
+${logoUrl ? `![${escapeHtml(name)}](${logoUrl})\n\n` : ""}\
 ${name ? `- 名称: ${escapeHtml(name)}\n` : ""}\
 ${detail ? `- 详情: ${escapeHtml(detail)}\n` : ""}\
 ${accountDesc ? `- 描述: ${escapeHtml(accountDesc)}\n` : ""}\
 ${qq ? `- QQ: ${escapeHtml(String(qq))}\n` : ""}\
 ${wxid ? `- 微信公众号二维码: ![](https://open.weixin.qq.com/qr/code?username=${wxid})\n` : ""}\
-${site ? `- 网站: <${escapeHtml(site)}>\n` : ""}\
-${mail ? `- 邮箱: [${escapeHtml(mail)}](mailto:${mail})\n` : ""}\
+${siteUrl ? `- 网站: <${escapeHtml(siteUrl)}>\n` : ""}\
+${mail ? (mailUrl ? `- 邮箱: [${escapeHtml(mail)}](${mailUrl})\n` : `- 邮箱: ${escapeHtml(mail)}\n`) : ""}\
 
 `;
     }
 
     case "audio": {
       const { src, name } = component;
-      const audioLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+      const audioLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
+      const label = `音频${name ? `: ${escapeHtml(name)}` : ""}`;
 
-      return `[音频${name ? `: ${escapeHtml(name)}` : ""}](${audioLink})\n\n`;
+      return audioLink ? `[${label}](${audioLink})\n\n` : `${label}\n\n`;
     }
 
     case "video": {
       const { src, title: videoTitle } = component;
-      const videoLink = mode === "miniapp" ? src : (getFileLink(src) ?? "");
+      const videoLink = sanitizeUrl(mode === "miniapp" ? src : (getFileLink(src) ?? ""));
+      const label = `视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}`;
 
-      return `[视频${videoTitle ? `: ${escapeHtml(videoTitle)}` : ""}](${videoLink})\n\n`;
+      return videoLink ? `[${label}](${videoLink})\n\n` : `${label}\n\n`;
     }
 
     default: {
@@ -330,7 +349,7 @@ const renderVuePressComponentMarkdown = (
   const webUrlConverter: UrlHandler = (url) => {
     const converted = urlConverter(url);
 
-    return typeof converted === "string" ? converted : (converted?.web ?? null);
+    return sanitizeUrl(typeof converted === "string" ? converted : converted?.web);
   };
 
   switch (component.tag) {
