@@ -260,6 +260,35 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("列表续行围栏的伪闭合与引用前缀 tab 不产生插值", () => {
+    const textPayloads = [
+      "- item\n  ```js\n{{7*7}}\n  ```",
+      "- item\n  ~~~js\n{{7*7}}\n  ~~~",
+      "- item\n  ````js\n{{7*7}}\n  ````",
+      "1. item\n   ```js\n{{7*7}}\n   ```",
+      "- item\n  ```js\n\n{{7*7}}\n  ```",
+    ];
+    const descPayloads = [...textPayloads, "1. ```js\n\t{{7*7}}", "10. ```js\n\t{{7*7}}"];
+
+    for (const text of textPayloads) {
+      const markdown = getPageMarkdown(createPage([{ tag: "text", header: "h", text }]), {
+        location: "oracle/pseudo-close",
+      });
+
+      expect(markdown).not.toContain("{{");
+      expect(compileTemplate(markdown)).not.toContain("_toDisplayString");
+    }
+
+    for (const desc of descPayloads) {
+      const descMarkdown = getPageMarkdown(createPage([], desc), {
+        location: "oracle/pseudo-close-desc",
+      });
+
+      expect(descMarkdown).not.toContain("{{");
+      expect(compileTemplate(descMarkdown)).not.toContain("_toDisplayString");
+    }
+  });
+
   it("引用块与列表围栏边界外不产生插值", () => {
     const desces = [
       "> ```js\n> {{7*7}}\n> ```",

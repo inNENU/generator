@@ -211,6 +211,43 @@ const expandLeadingIndent = (value: string): number => {
 };
 
 /**
+ * 计算行首若干字符展开 tab 后的列号
+ *
+ * @param value 文本
+ * @param endIndex 截止下标（不含）
+ * @returns 展开 tab 后的列号
+ */
+const getTabExpandedColumn = (value: string, endIndex: number): number => {
+  let column = 0;
+
+  for (let index = 0; index < endIndex; index += 1)
+    column += value[index] === "\t" ? 4 - (column % 4) : 1;
+
+  return column;
+};
+
+/**
+ * 计算引用块内容行相对内容起始列的缩进
+ *
+ * Markdown-it 以原行内位置展开 tab（引用前缀也占列），不能先把 `>` 前缀剥掉再按 0 列展开。
+ *
+ * @param line 原始行
+ * @param stripped 去掉引用前缀后的行
+ * @returns 相对引用内容起始列的缩进宽度
+ */
+const getIndentWithinBlockquote = (line: string, stripped: string): number => {
+  const prefixLength = line.length - stripped.length;
+  const firstNonSpace = stripped.search(/\S/u);
+
+  if (firstNonSpace === -1) return 0;
+
+  return (
+    getTabExpandedColumn(line, prefixLength + firstNonSpace) -
+    getTabExpandedColumn(line, prefixLength)
+  );
+};
+
+/**
  * 计算行首引用块深度
  *
  * @param line 单行文本
@@ -311,7 +348,7 @@ const collectListItemFenceLines = (
 
       // 空行不结束列表项，围栏可以跨过。
       if (rawLine.trim() !== "") {
-        const indent = expandLeadingIndent(rawLine);
+        const indent = getIndentWithinBlockquote(lines[next], rawLine);
 
         // 非空行未缩进到列表内容列时会结束列表项，围栏也随之结束。
         if (indent < contentIndent) {
@@ -483,14 +520,16 @@ const getHtmlBlockEnd = (lines: string[], start: number): number | null => {
  * @param lines 全部行
  * @param start 起始行
  * @param fence 起始围栏信息
+ * @param end 搜索结束行（不含），用于限制在容器边界内
  * @returns 闭合行，找不到时为 -1
  */
 const findFenceClose = (
   lines: string[],
   start: number,
   fence: { marker: string; length: number },
+  end = lines.length,
 ): number => {
-  for (let index = start + 1; index < lines.length; index += 1) {
+  for (let index = start + 1; index < end; index += 1) {
     const closeFence = getFenceInfo(lines[index]);
 
     if (
@@ -1221,9 +1260,36 @@ const maskFenceBlocks = (
       continue;
     }
 
-    const closeIndex = findFenceClose(lines, index, fence);
+    const openerIndent = expandLeadingIndent(line);
+    // 1-3 空格缩进的围栏可能是列表项续行上的围栏，其作用范围不能越过列表项边界；
+    // 若把容器结束后的围栏当成闭合行，会把中间普通段落误标成受保护内容。
+    let containerBoundary = lines.length;
+
+    if (openerIndent > 0) {
+      for (let next = index + 1; next < lines.length; next += 1) {
+        if (lines[next].trim() === "") continue;
+
+        if (expandLeadingIndent(lines[next]) < openerIndent) {
+          containerBoundary = next;
+          break;
+        }
+      }
+    }
+
+    const closeIndex = findFenceClose(lines, index, fence, containerBoundary);
 
     if (closeIndex === -1) {
+      if (containerBoundary < lines.length) {
+        // 列表项内的未闭合围栏：只保护到列表项结束，之后的段落必须继续中和。
+        const protectedByVPre = hasFenceVPre(fence.info);
+
+        for (let next = index; next < containerBoundary; next += 1)
+          result.push(protectedByVPre ? stash(lines[next]) : lines[next]);
+
+        index = containerBoundary - 1;
+        continue;
+      }
+
       // markdown-it 会把未闭合围栏一直当作代码；这里标记到末尾并一律拆开花括号，
       // 不按 v-pre 保留，避免围栏之后的文本被误当成代码。
       for (let next = index; next < lines.length; next += 1) {

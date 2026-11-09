@@ -548,6 +548,39 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     expect(markdownIt.render(twoItemsMarkdown)).not.toContain("{{");
     expect(markdownIt.render(twoItemsDescMarkdown)).not.toContain("{{");
 
+    // 列表续行 opener 后面又出现另一个围栏时，不能把中间段落当成配对内容
+    const pseudoCloseCases = [
+      "- item\n  ```js\n{{7*7}}\n  ```",
+      "- item\n  ~~~js\n{{7*7}}\n  ~~~",
+      "- item\n  ````js\n{{7*7}}\n  ````",
+      "1. item\n   ```js\n{{7*7}}\n   ```",
+      "- item\n  ```js\n\n{{7*7}}\n  ```",
+    ];
+
+    for (const content of pseudoCloseCases) {
+      const textMarkdown = getPageMarkdown(createPage([{ tag: "text", text: content }]), {
+        location: "probe/pseudo-close",
+      });
+      const descMarkdown = getPageMarkdown(createPage([], content), {
+        location: "probe/pseudo-close-desc",
+      });
+
+      expect(textMarkdown).not.toContain("{{");
+      expect(descMarkdown).not.toContain("{{");
+      expect(markdownIt.render(textMarkdown)).not.toContain("{{");
+      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
+    }
+
+    // desc 内引用前缀会占列；tab 必须按原行列展开，不能剥离 `>` 后从 0 列计算
+    for (const content of ["1. ```js\n\t{{7*7}}", "10. ```js\n\t{{7*7}}"]) {
+      const descMarkdown = getPageMarkdown(createPage([], content), {
+        location: "probe/desc-tab-fence",
+      });
+
+      expect(descMarkdown).not.toContain("{{");
+      expect(markdownIt.render(descMarkdown)).not.toContain("{{");
+    }
+
     // 缩进仍属于合法顶层围栏时，内容保持 v-pre 原文
     const indented = getPageMarkdown(
       createPage([{ tag: "text", text: "  ```js\n  {{7*7}}\n  ```" }]),
