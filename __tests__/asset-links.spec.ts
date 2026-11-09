@@ -110,6 +110,61 @@ describe(resolveAssetLink, () => {
     expect(resolveAssetLink("$img/%2e%2e/x.png")).toBeNull();
   });
 
+  it("rejects percent-encoded separators", () => {
+    for (const link of [
+      "$img/%2E%2E%2f/x",
+      "$img/%2e%2e%2fx",
+      "$img/..%2f/x",
+      "$..%2f/x",
+      "$C:%2f/x",
+      "$img/..%5cx",
+      "$img/%2f/x",
+      "$img/%5c/x",
+    ])
+      expect(resolveAssetLink(link)).toBeNull();
+  });
+
+  it("rejects percent-encoded dot segments even inside the asset root", () => {
+    expect(resolveAssetLink("$img/sub/%2e%2e/x.png")).toBeNull();
+    expect(resolveAssetLink("$img/%2e/x.png")).toBeNull();
+    expect(resolveAssetLink("$%2e%2e/x.png")).toBeNull();
+  });
+
+  it("preserves percent-encoded file names and normalizes literal segments", () => {
+    expect(resolveAssetLink("$img/a%20b.png")).toStrictEqual({
+      root: "img",
+      path: "img/a%20b.png",
+      suffix: "",
+    });
+    expect(resolveAssetLink("$img/a%2eb.png")).toStrictEqual({
+      root: "img",
+      path: "img/a%2eb.png",
+      suffix: "",
+    });
+    expect(resolveAssetLink("$img/%2e%2e.png")).toStrictEqual({
+      root: "img",
+      path: "img/%2e%2e.png",
+      suffix: "",
+    });
+    expect(resolveAssetLink("$img//x.png")?.path).toBe("img/x.png");
+    expect(resolveAssetLink("$img/./x.png")?.path).toBe("img/x.png");
+    expect(resolveAssetLink("$img/sub/../x.png")?.path).toBe("img/x.png");
+  });
+
+  it("keeps encoded separators inside the query string and hash", () => {
+    expect(resolveAssetLink("$img/a.png?next=%2f#%5c")).toStrictEqual({
+      root: "img",
+      path: "img/a.png",
+      suffix: "?next=%2f#%5c",
+    });
+  });
+
+  it("rejects whitespace roots and malformed percent encoding", () => {
+    expect(resolveAssetLink("$ /x.png")).toBeNull();
+    expect(resolveAssetLink("$%20/x.png")).toBeNull();
+    expect(resolveAssetLink("$img/a%zz.png")).toBeNull();
+  });
+
   it("rejects non-asset links and bare asset roots", () => {
     expect(resolveAssetLink("https://example.com/a.png")).toBeNull();
     expect(resolveAssetLink("$img")).toBeNull();
@@ -136,6 +191,17 @@ describe("站内资源 schema", () => {
     withAssetTempRoot(() => {
       expect(getMessages(fileSchema, "$file/../x.pdf")).toStrictEqual([
         "文件 $file/../x.pdf 不是有效的资源路径",
+      ]);
+    });
+  });
+
+  it("rejects internal links carrying percent-encoded separators", () => {
+    withAssetTempRoot(() => {
+      expect(getMessages(imgSchema, "$img/..%2fx.png")).toStrictEqual([
+        "图片 $img/..%2fx.png 不是有效的资源路径",
+      ]);
+      expect(getMessages(fileSchema, "$file/..%5cx.pdf")).toStrictEqual([
+        "文件 $file/..%5cx.pdf 不是有效的资源路径",
       ]);
     });
   });
@@ -257,6 +323,35 @@ describe(checkFile, () => {
       }
     });
   });
+
+  it("rejects percent-encoded separators in checkFile", () => {
+    withAssetTempRoot(() => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      try {
+        for (const link of [
+          "$img/%2E%2E%2f/x",
+          "$img/%2e%2e%2fx",
+          "$img/..%2f/x",
+          "$..%2f/x",
+          "$C:%2f/x",
+          "$img/..%5cx",
+          "$img/%2f/x",
+          "$img/%5c/x",
+          "$ /x.png",
+        ]) {
+          const issues = checkFile(link, "guide");
+
+          expect(issues).toHaveLength(1);
+          expect(issues[0]).toContain("不是有效的资源路径");
+        }
+
+        expect(errorSpy).toHaveBeenCalledTimes(9);
+      } finally {
+        errorSpy.mockRestore();
+      }
+    });
+  });
 });
 
 describe(getFileLink, () => {
@@ -282,6 +377,40 @@ describe(getFileLink, () => {
     expect(getFileLink("$file/../x.pdf")).toBeNull();
     expect(getFileLink("$../x.png")).toBeNull();
     expect(getFileLink("$C:/x.png")).toBeNull();
+  });
+
+  it("returns null for percent-encoded separators", () => {
+    for (const link of [
+      "$img/%2E%2E%2f/x",
+      "$img/%2e%2e%2fx",
+      "$img/..%2f/x",
+      "$..%2f/x",
+      "$C:%2f/x",
+      "$img/..%5cx",
+      "$img/%2f/x",
+      "$img/%5c/x",
+      "$ /x.png",
+    ])
+      expect(getFileLink(link)).toBeNull();
+  });
+
+  it("keeps percent-encoded characters in generated links", () => {
+    config({
+      assets: "https://cdn.example.com/assets",
+      icon: "",
+      mapFolder: "",
+      mapKey: "",
+      pageFolder: "page",
+    });
+
+    try {
+      expect(getFileLink("$img/a%20b.png")).toBe("https://cdn.example.com/assets/img/a%20b.png");
+      expect(getFileLink("$img/a%2eb.png")).toBe("https://cdn.example.com/assets/img/a%2eb.png");
+      expect(getFileLink("$img//x.png")).toBe("https://cdn.example.com/assets/img/x.png");
+      expect(getFileLink("$img/./x.png")).toBe("https://cdn.example.com/assets/img/x.png");
+    } finally {
+      Object.assign(generatorConfig, originalConfig);
+    }
   });
 
   it("returns external links unchanged", () => {
