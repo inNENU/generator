@@ -43,10 +43,10 @@ const encodedBracePattern = /%(?:7[bB]|7[dD])/gu;
 const maxEntityDecodeDepth = 10;
 
 /** 数字实体 body（不含 `&` 与 `;`）的匹配 */
-const numericEntityPattern = /^#(?:(?<decimal>0*\d+)|[xX](?<hex>0*[\da-fA-F]+))$/u;
+const numericEntityPattern = /^#(?:(?<decimal>\d+)|[xX](?<hex>[\da-fA-F]+))$/u;
 
 /** 单个 HTML 实体（含 `&` 与 `;`）的匹配 */
-const htmlEntityPattern = /&(?:#(?:(?:0*\d+)|[xX]0*[\da-fA-F]+)|[a-zA-Z][a-zA-Z\d]*);/uy;
+const htmlEntityPattern = /&(?:#(?:(?:\d+)|[xX][\da-fA-F]+)|[a-zA-Z][a-zA-Z\d]*);/uy;
 
 /** HTML 命名实体中可能表示 `&` 的形式 */
 const ampersandEntityPattern = /^(?:amp|AMP)$/u;
@@ -110,6 +110,9 @@ const decodeEntityAt = (
   const match = htmlEntityPattern.exec(value);
 
   if (!match || match.index !== index) return null;
+
+  // 限制实体长度，避免病态输入（如 `&#000…0;`）在后续解析中产生二次开销
+  if (match[0].length > 40) return null;
 
   const character = decodeEntityBody(match[0].slice(1, -1));
 
