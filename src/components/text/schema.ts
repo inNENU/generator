@@ -189,7 +189,15 @@ export const checkText = (text: TextComponentOptions, location = "", pageId = ""
     : collectZodIssues(location, "发现非法 text 数据", result.error);
 
   // 检查跳转路径是否存在（排除小程序路径）
-  if (pageId && "path" in text && text.path && !("appId" in text))
+  if (
+    pageId &&
+    text &&
+    typeof text === "object" &&
+    "path" in text &&
+    typeof text.path === "string" &&
+    text.path &&
+    !("appId" in text)
+  )
     issues.push(...checkPagePath(text.path, pageId, location));
 
   return issues;

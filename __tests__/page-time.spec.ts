@@ -60,7 +60,8 @@ describe("page time update", () => {
 
       expect(nextContent).toContain(`time: ${new Date("2024-05-01T12:00:00.000Z").toISOString()}`);
       expect(nextContent).not.toContain("time: 2024-01-01");
-      expect(pageData.time).toMatch(/^2024 年 5 月 1 日/u);
+      // UTC 12:00 对应上海墙钟 20:00，锁住按 Asia/Shanghai 输出的新格式化路径
+      expect(pageData.time).toBe("2024 年 5 月 1 日 20:00:00");
 
       // 临时文件已被清理，目录内只剩页面文件
       expect(readdirSync(path.join(pageFolder, "guide"))).toStrictEqual(["about.yml"]);

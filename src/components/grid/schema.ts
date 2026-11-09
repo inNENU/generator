@@ -129,10 +129,13 @@ export const checkGrid = (grid: GridComponentOptions, location = "", pageId = ""
     ? []
     : collectZodIssues(location, "发现非法 grid 数据", result.error);
 
-  if (pageId) {
+  if (pageId && grid && typeof grid === "object" && Array.isArray(grid.items)) {
     grid.items.forEach((item) => {
+      // 结构损坏时（如 items 中混入 null）跳过，交给 schema 校验报告
+      if (!item || typeof item !== "object") return;
+
       // 检查跳转路径是否存在（排除小程序路径）
-      if ("path" in item && !("appId" in item))
+      if ("path" in item && typeof item.path === "string" && !("appId" in item))
         issues.push(...checkPagePath(item.path, pageId, location));
     });
   }

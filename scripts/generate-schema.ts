@@ -1,5 +1,5 @@
-#!/usr/bin/env tsx
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+#!/usr/bin/env unrun
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import type { ZodType } from "zod";
@@ -22,6 +22,16 @@ const SCHEMA_DIR = path.join(__dirname, "..", "schemas");
 
 // 确保输出目录存在
 if (!existsSync(SCHEMA_DIR)) mkdirSync(SCHEMA_DIR, { recursive: true });
+
+/**
+ * 清理上一次生成、本次可能不再产出的 JSON Schema
+ *
+ * `schemas/` 是生成产物目录：组件或配置改名后旧文件会残留，并随 `files` 一起被打包，因此在生成前清空其中的 `*.json`。
+ */
+const cleanSchemaDir = (): void => {
+  for (const file of readdirSync(SCHEMA_DIR))
+    if (file.endsWith(".json")) rmSync(path.join(SCHEMA_DIR, file), { force: true });
+};
 
 /**
  * 生成 JSON Schema 文件
@@ -55,6 +65,8 @@ const generateJsonSchema = (schema: ZodType, filename: string, title?: string): 
 /** 主函数 */
 const main: () => void = () => {
   console.log("🚀 Generating JSON Schemas...\n");
+
+  cleanSchemaDir();
 
   generateJsonSchema(pageConfigSchema, "page-config.schema.json", "Page Config");
   generateJsonSchema(componentSchema, "component.schema.json", "Page Components");
