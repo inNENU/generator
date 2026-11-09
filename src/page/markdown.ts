@@ -103,6 +103,9 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
 
   if (!page) throw new Error(`${location} 页面数据不存在`);
 
+  // 缺 content 属页面结构问题：check=false 时直接抛出精确文案；check=true 交给下面的内容校验汇总
+  if (!check && !page.content) throw new Error(`${location} 页面缺少可渲染内容`);
+
   /**
    * 当前处理阶段
    *
@@ -111,9 +114,7 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
   let phase: "config" | "content" = "content";
 
   try {
-    // 先确认页面结构可用，再执行可选校验；校验实现本身抛出的异常由 runValidation 统一包装为 ValidationError
-    if (!page.content) throw new Error(`${location} 页面缺少可渲染内容`);
-
+    // 校验实现本身抛出的异常由 runValidation 统一包装为 ValidationError
     if (check) {
       runValidation(`${location} 页面校验失败`, () => {
         const configIssues = checkPageConfig(page, location);

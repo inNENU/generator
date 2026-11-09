@@ -63,6 +63,9 @@ export const getPageText = (
 ): string => {
   if (!page) throw new Error(`${pagePath} 页面数据不存在`);
 
+  // 缺 content 属页面结构问题：check=false 时直接抛出精确文案；check=true 交给下面的内容校验汇总
+  if (!options.check && !page.content) throw new Error(`${pagePath} 页面缺少可渲染内容`);
+
   /**
    * 当前处理阶段
    *
@@ -86,8 +89,6 @@ export const getPageText = (
         }
       });
     }
-
-    if (!page.content) throw new Error(`${pagePath} 页面缺少可渲染内容`);
 
     phase = "config";
 

@@ -48,15 +48,33 @@ describe.each(pipelines)("$name 错误文案", ({ run }) => {
     expect(err.message).toContain(`${location} 页面数据不存在`);
   });
 
-  it("空 content 抛出中文普通 Error，而不是英文文案", () => {
+  it("缺少 content 时抛出精确的中文普通 Error，而不是重复包装的文案", () => {
     const err = capture(() => run({ title: "无内容页面" } as unknown as PageConfig));
 
     expect(err).toBeInstanceOf(Error);
     expect(err).not.toBeInstanceOf(ValidationError);
-    expect(err.message).toContain(location);
-    expect(err.message).toContain("内容");
+    // 精确断言：文案只出现一次 location，也不再追加「页面内容处理失败」前缀
+    expect(err.message).toBe(`${location} 页面缺少可渲染内容`);
     expect(err.message).not.toMatch(/doesn't contain anything/u);
-    expect(err.message).not.toContain("配置");
+  });
+
+  it("check=true 且缺少 content 时抛出内容校验失败", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const err = capture(() => run({ title: "无内容页面" } as unknown as PageConfig, true));
+
+      expect(err).toBeInstanceOf(ValidationError);
+      expect(err.message).toContain(`${location} 页面内容校验失败`);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("content 为空数组时保持宽松生成，不抛错", () => {
+    const page = createPage({ content: [] });
+
+    expect(() => run(page)).not.toThrow();
   });
 
   it("content 组件非法时归为内容处理失败", () => {
