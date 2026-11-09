@@ -2,13 +2,13 @@ import * as zod from "zod";
 
 import { useCompiled } from "../../helpers/compile.js";
 import { collectZodIssues } from "../../helpers/validation.js";
-import { envListSchema, styleSchema } from "../../schema/common.js";
+import { envListSchema, singleLineTextSchema, styleSchema } from "../../schema/common.js";
 
 export const titleSchema = zod
   .strictObject({
     tag: zod.literal("title"),
     /** 标题文字 */
-    text: zod.string().min(1, "标题文字不能为空").meta({
+    text: singleLineTextSchema("标题文字").min(1, "标题文字不能为空").meta({
       description: "标题文字",
     }),
     /** 标题 css 样式 */

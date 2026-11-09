@@ -10,6 +10,7 @@ import {
   officialArticleSchema,
   officialProfileSchema,
   pathSchema,
+  singleLineTextSchema,
   urlSchema,
 } from "../../schema/common.js";
 import { checkPagePath } from "../../utils.js";
@@ -91,8 +92,7 @@ export const listSchema = zod
   .strictObject({
     tag: zod.literal("list"),
     /** 列表标题 */
-    header: zod
-      .string()
+    header: singleLineTextSchema("列表标题")
       .meta({
         description: "列表标题",
       })
@@ -301,7 +301,7 @@ export const functionalListSchema = zod
     tag: zod.literal("functional-list"),
     /** 列表标题 */
     header: zod
-      .union([zod.string(), zod.literal(false)])
+      .union([singleLineTextSchema("列表标题"), zod.literal(false)])
       .meta({
         description: "列表标题",
       })

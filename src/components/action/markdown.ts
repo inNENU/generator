@@ -4,6 +4,7 @@ import {
   escapeMarkdownLinkLabel,
   formatMarkdownDestination,
   getFileLink,
+  normalizeInlineText,
 } from "../../utils.js";
 import type { ActionComponentOptions } from "./schema.js";
 import { checkAction } from "./schema.js";
@@ -59,7 +60,9 @@ export const getActionMarkdown = (
 
   checkAction(action, location);
 
-  const { content: rawContent, header } = action;
+  const { content: rawContent, header: rawHeader } = action;
+  // 标题会被拼进 `####` 标题行，换行会提前结束标题，统一压成单行
+  const header = rawHeader ? normalizeInlineText(rawHeader) : rawHeader;
 
   // 经 urlConverter 转换（web/miniapp 各自取对应形式），否则 $ 前缀资源引用转为完整 URL
   const converted = options.urlConverter?.(rawContent);

@@ -12,6 +12,7 @@ import {
   officialArticleSchema,
   officialProfileSchema,
   pathSchema,
+  singleLineTextSchema,
   urlSchema,
 } from "../../schema/common.js";
 import { checkPagePath } from "../../utils.js";
@@ -84,8 +85,7 @@ export const gridSchema = zod
   .strictObject({
     tag: zod.literal("grid"),
     /** 网格标题 */
-    header: zod
-      .string()
+    header: singleLineTextSchema("网格标题")
       .meta({
         description: "网格标题",
       })

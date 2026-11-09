@@ -11,6 +11,7 @@ import {
   officialArticleSchema,
   officialProfileSchema,
   pathSchema,
+  singleLineTextSchema,
   styleSchema,
   urlSchema,
 } from "../../schema/common.js";
@@ -21,7 +22,7 @@ const baseTextComponentSchema = zod.strictObject({
   tag: zod.enum(["text", "p", "ol", "ul"]),
   /** 段落标题 */
   header: zod
-    .union([zod.string(), zod.literal(false)])
+    .union([singleLineTextSchema("段落标题"), zod.literal(false)])
     .meta({
       description: "段落标题",
     })

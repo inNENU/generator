@@ -23,6 +23,7 @@ import {
   escapeMarkdownLinkLabel,
   formatMarkdownDestination,
   getFileLink,
+  normalizeInlineText,
 } from "../utils.js";
 import type { ComponentOptions } from "./schema.js";
 
@@ -111,12 +112,12 @@ const renderTextBlock = (
   if (mode === "miniapp" && type && type !== "none") {
     const typeName = type === "danger" ? "caution" : type;
 
-    return `::: ${typeName}${header ? ` ${escapeHtml(header)}` : ""}\n\n${texts
+    return `::: ${typeName}${header ? ` ${escapeHtml(normalizeInlineText(header))}` : ""}\n\n${texts
       .map((item) => `${marker}${escapeContainerBodySyntax(escapeHtml(item))}`)
       .join("\n\n")}\n\n:::\n\n`;
   }
 
-  const textContent = `${header ? `### ${escapeHtml(header)}\n\n` : ""}${texts
+  const textContent = `${header ? `### ${escapeHtml(normalizeInlineText(header))}\n\n` : ""}${texts
     .map((item) => `${marker}${escapeHtml(item)}`)
     .join("\n\n")}`;
 
@@ -139,7 +140,7 @@ const renderTextComponentMarkdown = (
 
   switch (component.tag) {
     case "title": {
-      return `## ${escapeHtml(component.text)}\n\n`;
+      return `## ${escapeHtml(normalizeInlineText(component.text))}\n\n`;
     }
 
     case "text":
@@ -193,7 +194,7 @@ const renderTextComponentMarkdown = (
         .join("\n");
 
       return `\
-${header ? `#### ${escapeHtml(header)}\n\n` : ""}\
+${header ? `#### ${escapeHtml(normalizeInlineText(header))}\n\n` : ""}\
 ${renderedItems}
 
 ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
@@ -299,7 +300,7 @@ ${footer ? `> ${escapeHtml(footer)}\n\n` : ""}\
       const { header, points } = component;
 
       return `\
-${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
+${header ? `#### ${escapeHtml(normalizeInlineText(header))}位置\n\n` : ""}\
 ![在腾讯地图中查看](${formatMarkdownDestination(getLocationMarkerUrl(points))})\n\n`;
     }
 
@@ -360,7 +361,7 @@ ${header ? `#### ${escapeHtml(header)}位置\n\n` : ""}\
       const mailUrl = mail ? sanitizeUrl(`mailto:${mail}`) : null;
 
       return `\
-#### ${escapeHtml(header || `${lName}${fName} 联系方式`)}
+#### ${escapeHtml(normalizeInlineText(header || `${lName}${fName} 联系方式`))}
 
 - 姓名: ${escapeHtml(lName)}${escapeHtml(fName)}
 - 电话: ${
