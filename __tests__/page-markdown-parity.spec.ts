@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { config, resetConfig } from "../src/config.js";
 import { getPageMarkdown } from "../src/page/markdown.js";
 import type { PageConfig } from "../src/page/schema.js";
 import { getPageText } from "../src/page/text.js";
@@ -134,7 +135,7 @@ describe("page markdown parity", () => {
     expect(text).toContain("| 列 |\n| :-: |\n| 值 |");
   });
 
-  it("carousel 目前仅文本管线输出图片", () => {
+  it("carousel 在两条管线中输出一致的图片列表", () => {
     const page = createPage([
       { tag: "carousel", images: ["https://example.com/a.png", "https://example.com/b.png"] },
     ]);
@@ -142,9 +143,39 @@ describe("page markdown parity", () => {
     const markdown = getPageMarkdown(page, { location: "guide/carousel" });
     const text = getPageText(page, "guide/carousel");
 
-    // 站点端还没有 carousel 渲染器，暂不输出；文本管线为知识库保留图片链接。
+    // 站点端与文本管线使用相同的图片链接与顺序，知识库检索与页面展示保持一致。
+    expect(markdown).toContain("![''](https://example.com/a.png)");
+    expect(markdown).toContain("![''](https://example.com/b.png)");
     expect(text).toContain("![''](https://example.com/a.png)");
     expect(text).toContain("![''](https://example.com/b.png)");
-    expect(markdown).not.toContain("https://example.com/a.png");
+  });
+
+  it("carousel 站点渲染遵守 env 过滤", () => {
+    const page = createPage([
+      { tag: "carousel", images: ["https://example.com/wx-only.png"], env: ["wx"] },
+    ]);
+
+    const markdown = getPageMarkdown(page, { location: "guide/carousel" });
+
+    expect(markdown).not.toContain("https://example.com/wx-only.png");
+  });
+
+  it("carousel 在两条管线中都将 `$` 资源解析为配置的资源地址", () => {
+    config({ assets: "https://assets.example.com" });
+    // 测试环境没有 `$img/a.png`，校验会打印文件缺失错误，测试中静音
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const page = createPage([{ tag: "carousel", images: ["$img/a.png"] }]);
+
+      const markdown = getPageMarkdown(page, { location: "guide/carousel" });
+      const text = getPageText(page, "guide/carousel");
+
+      expect(markdown).toContain("![''](https://assets.example.com/img/a.png)");
+      expect(text).toContain("![''](https://assets.example.com/img/a.png)");
+    } finally {
+      errorSpy.mockRestore();
+      resetConfig();
+    }
   });
 });

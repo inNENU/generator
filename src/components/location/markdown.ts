@@ -46,7 +46,7 @@ ${
 `
     : ""
 }\
-<iframe class="location-iframe" src="${getLocationMarkerUrl(points)}" frameborder="0" width="100%" height="320px" />
+<iframe class="location-iframe" src="${escapeHtml(getLocationMarkerUrl(points))}" frameborder="0" width="100%" height="320px" />
 
 `;
 };

@@ -19,6 +19,68 @@ export interface PageMarkdownOptions extends MarkdownOptions {
 }
 
 /**
+ * 生成页面 frontmatter
+ *
+ * 空数组与缺省等价：`author: []`、`cite: []` 不输出只有键名的裸 YAML 键，来源为空时页面仍标记为原创。
+ *
+ * @param page 页面数据
+ * @returns 含首尾 `---` 的 frontmatter 内容
+ */
+const buildFrontmatter = (page: PageConfig): string => {
+  const { title, icon, author, cite, time } = page;
+
+  let frontmatter = `\
+---
+title: ${getYamlValue(title)}
+`;
+
+  if (icon) {
+    const iconLink = getIconLink(icon);
+
+    if (iconLink) {
+      frontmatter += `\
+icon: ${iconLink}
+`;
+    }
+  }
+
+  if (Array.isArray(author)) {
+    if (author.length > 0) {
+      frontmatter += `\
+author:
+${author.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
+`;
+    }
+  } else if (author) {
+    frontmatter += `\
+author: ${getYamlValue(author)}
+`;
+  }
+
+  if (time) {
+    frontmatter += `\
+date: ${time}
+`;
+  }
+
+  const cites = Array.isArray(cite) ? cite : cite ? [cite] : [];
+
+  if (cites.length > 0) {
+    frontmatter += `\
+cite:
+${cites.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
+`;
+  } else {
+    frontmatter += `\
+isOriginal: true
+`;
+  }
+
+  return `${frontmatter}---
+`;
+};
+
+/**
  * 生成页面 Markdown
  *
  * @param page 页面数据
@@ -31,6 +93,9 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
   if (!page) throw new Error(`${location} doesn't contain anything`);
 
   try {
+    // 先确认页面结构可用，再执行可选校验；校验实现本身抛出的异常由 runValidation 统一包装为 ValidationError
+    if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
+
     if (check) {
       runValidation(`${location} 页面校验失败`, () => {
         const issues = [
@@ -42,61 +107,8 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
       });
     }
 
-    if (!page.content) throw new Error(`${location} page content doesn't contain anything`);
-
-    const { title, icon, author, desc, cite, content: pageContents, time } = page;
-
-    let frontmatter = `\
----
-title: ${getYamlValue(title)}
-`;
-
-    if (icon) {
-      const iconLink = getIconLink(icon);
-
-      if (iconLink) {
-        frontmatter += `\
-icon: ${iconLink}
-`;
-      }
-    }
-
-    if (Array.isArray(author)) {
-      frontmatter += `\
-author:
-${author.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
-`;
-    } else if (author) {
-      frontmatter += `\
-author: ${getYamlValue(author)}
-`;
-    }
-
-    if (time) {
-      frontmatter += `\
-date: ${time}
-`;
-    }
-
-    if (cite) {
-      frontmatter += Array.isArray(cite)
-        ? `\
-cite:
-${cite.map((item) => `  - ${getYamlValue(item)}`).join("\n")}
-`
-        : `\
-cite:
-  - ${getYamlValue(cite)}
-`;
-    } else {
-      frontmatter += `\
-isOriginal: true
-`;
-    }
-
-    frontmatter += `\
----
-`;
+    const { desc, content: pageContents } = page;
+    const frontmatter = buildFrontmatter(page);
 
     const blocks: string[] = [];
 

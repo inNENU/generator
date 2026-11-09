@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 
 import * as zod from "zod";
 
+import { resolveAssetLink } from "../utils.js";
+
 export const envSchema = zod.enum(["web", "wx", "app"]).meta({
   description: "环境类型",
 });
@@ -33,8 +35,24 @@ export const imageModeSchema = zod
   });
 export type ImageMode = zod.infer<typeof imageModeSchema>;
 
+/** 支持的图片扩展名 */
+const imageExtensions = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".svg",
+  ".bmp",
+  ".ico",
+] as const;
+
+/** 支持的文档扩展名 */
+const docExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"] as const;
+
 export const imageExtensionSchema = zod
-  .enum([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".bmp", ".ico"], {
+  .enum(imageExtensions, {
     error: ({ input }) => `输入 ${String(input)}不满足指定图片后缀`,
   })
   .meta({
@@ -42,33 +60,132 @@ export const imageExtensionSchema = zod
   });
 
 export const docExtensionSchema = zod
-  .enum([".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"], {
+  .enum(docExtensions, {
     error: ({ input }) => `输入 ${String(input)}不满足指定文档后缀`,
   })
   .meta({
     description: "文档文件扩展名",
   });
 
+/**
+ * 拼接扩展名分组
+ *
+ * @param extensions 扩展名列表
+ * @returns 可直接嵌入正则的扩展名分组（不含开头的点）
+ */
+const toExtensionPattern = (extensions: readonly string[]): string =>
+  extensions.map((extension) => extension.slice(1)).join("|");
+
+const imageExtensionPattern = toExtensionPattern(imageExtensions);
+const docExtensionPattern = toExtensionPattern(docExtensions);
+
+/** 站内图片路径格式；该正则同时用于生成 JSON Schema，更严格的校验由 `superRefine` 完成 */
+const internalImgPattern = new RegExp(
+  String.raw`^\$img[\\/](?:[^?#]*[\\/])?[^\\/?#]+\.(?:${imageExtensionPattern})(?:[?#].*)?$`,
+  "u",
+);
+
+/** 站内文件路径格式；文件可以是任意后缀（音频、视频等），但必须包含文件名 */
+const internalFilePattern = /^\$file[\\/](?:[^?#]*[\\/])?[^\\/?#]+(?:[?#].*)?$/u;
+
+/** 站内文档路径格式 */
+const internalDocsPattern = new RegExp(
+  String.raw`^\$file[\\/](?:[^?#]*[\\/])?[^\\/?#]+\.(?:${docExtensionPattern})(?:[?#].*)?$`,
+  "u",
+);
+
+/**
+ * 判断值是否为普通对象
+ *
+ * @param value 待判断的值
+ * @returns 是否为普通对象
+ */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value != null;
+
+/**
+ * 读取链接的站内资源根目录
+ *
+ * @param link 原始链接
+ * @returns 以 `$` 开头时返回第一段目录名，否则返回空字符串
+ */
+const getAssetFolder = (link: string): string => {
+  if (!link.startsWith("$")) return "";
+
+  const [folder] = link.slice(1).split(/[\\/]/u);
+
+  return folder ?? "";
+};
+
+/**
+ * 读取联合类型校验中指定分支的首个错误信息
+ *
+ * `zod.union` 默认只保留联合错误，会丢失内部错误；这里按分支取出更明确的提示。
+ *
+ * @param issue 联合类型错误
+ * @param branchIndex 分支下标
+ * @returns 分支错误信息，取不到时返回 `null`
+ */
+const getBranchError = (issue: unknown, branchIndex: number): string | null => {
+  if (!isRecord(issue) || !Array.isArray(issue.errors)) return null;
+
+  const branchIssues = (issue.errors as unknown[])[branchIndex];
+
+  if (!Array.isArray(branchIssues)) return null;
+
+  const [firstIssue] = branchIssues as unknown[];
+
+  if (!isRecord(firstIssue) || typeof firstIssue.message !== "string") return null;
+
+  return firstIssue.message;
+};
+
+/**
+ * 校验站内资源是否存在
+ *
+ * @param link 资源链接
+ * @param label 资源的中文名称
+ * @param ctx Zod 校验上下文
+ */
+const refineInternalAsset = (link: string, label: string, ctx: zod.RefinementCtx): void => {
+  const resolved = resolveAssetLink(link);
+
+  if (!resolved) {
+    ctx.addIssue({ code: "custom", message: `${label} ${link} 不是有效的资源路径` });
+
+    return;
+  }
+
+  if (!existsSync(`./${resolved.path}`))
+    ctx.addIssue({ code: "custom", message: `${label} ${link} 不存在` });
+};
+
 export const internalImgSchema = zod
-  .templateLiteral(["$img/", zod.string(), imageExtensionSchema])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
-    error: ({ input }) => `图片 ${String(input)} 不存在`,
-    abort: true,
-  }) as unknown as zod.ZodString;
+  .string()
+  .regex(internalImgPattern, {
+    error: ({ input }) => `图片 ${String(input)} 必须以 $img/ 开头并使用受支持的图片扩展名`,
+  })
+  .superRefine((link, ctx) => {
+    if (internalImgPattern.test(link)) refineInternalAsset(link, "图片", ctx);
+  });
 
 export const internalDocsSchema = zod
-  .templateLiteral(["$file/", zod.string(), docExtensionSchema])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
-    error: ({ input }) => `文档 ${String(input)} 不存在`,
-    abort: true,
-  }) as unknown as zod.ZodString;
+  .string()
+  .regex(internalDocsPattern, {
+    error: ({ input }) => `文档 ${String(input)} 必须以 $file/ 开头并使用受支持的文档扩展名`,
+  })
+  .superRefine((link, ctx) => {
+    if (internalDocsPattern.test(link)) refineInternalAsset(link, "文档", ctx);
+  });
 
 export const internalFileSchema = zod
-  .templateLiteral(["$file/", zod.string()])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
-    error: ({ input }) => `文件 ${String(input)} 不存在`,
-    abort: true,
-  }) as unknown as zod.ZodString;
+  .string()
+  .regex(internalFilePattern, {
+    error: ({ input }) => `文件 ${String(input)} 必须以 $file/ 开头且包含文件名`,
+  })
+  .superRefine((link, ctx) => {
+    if (internalFilePattern.test(link)) refineInternalAsset(link, "文件", ctx);
+  });
 
 /**
  * HTTPS 链接
@@ -85,13 +202,35 @@ export const httpsLinkSchema = zod
 
 export const imgSchema = zod
   .union([httpsLinkSchema, internalImgSchema], {
-    error: ({ input }) => `图片 ${String(input)} 不满足指定格式`,
+    error: (issue) => {
+      const link = String(issue.input);
+
+      if (/^https:/iu.test(link)) return `图片 ${link} 不是有效的 HTTPS 链接`;
+
+      if (/^https?:/iu.test(link)) return `图片 ${link} 必须是 HTTPS 链接`;
+
+      if (getAssetFolder(link) === "img")
+        return getBranchError(issue, 1) ?? `图片 ${link} 不满足指定格式`;
+
+      return `图片 ${link} 必须是以 $img/ 开头的站内路径或 HTTPS 链接`;
+    },
   })
   .meta({ description: "图片地址" });
 
 export const fileSchema = zod
   .union([httpsLinkSchema, internalFileSchema], {
-    error: ({ input }) => `文件 ${String(input)} 不满足指定格式`,
+    error: (issue) => {
+      const link = String(issue.input);
+
+      if (/^https:/iu.test(link)) return `文件 ${link} 不是有效的 HTTPS 链接`;
+
+      if (/^https?:/iu.test(link)) return `文件 ${link} 必须是 HTTPS 链接`;
+
+      if (getAssetFolder(link) === "file")
+        return getBranchError(issue, 1) ?? `文件 ${link} 不满足指定格式`;
+
+      return `文件 ${link} 必须是以 $file/ 开头的站内路径或 HTTPS 链接`;
+    },
   })
   .meta({ description: "文件地址" });
 
@@ -105,9 +244,21 @@ export const internalIconSchema = zod
     abort: true,
   });
 
-export const iconSchema = zod.union([internalIconSchema, imgSchema]).meta({
-  description: "图标",
-});
+export const iconSchema = zod
+  .union([internalIconSchema, imgSchema], {
+    error: (issue) => {
+      const icon = String(issue.input);
+      const folder = getAssetFolder(icon);
+
+      if (folder === "img" || folder === "file" || /^https?:/iu.test(icon))
+        return getBranchError(issue, 1) ?? `图标 ${icon} 不满足指定格式`;
+
+      return getBranchError(issue, 0) ?? `图标 ${icon} 不满足指定格式`;
+    },
+  })
+  .meta({
+    description: "图标",
+  });
 
 /** 十进制坐标，禁止指数、正号、多余空格与超过 6 位的小数 */
 const coordinatePattern = /^-?\d+(?:\.\d{1,6})?$/u;

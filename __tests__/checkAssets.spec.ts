@@ -86,6 +86,19 @@ describe(checkAssets, () => {
     });
   });
 
+  it("matches references followed by a YAML line comment", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+
+      writeText(path.join(assets, "cover.png"), "");
+      writeText(path.join(assets, "orphan.png"), "");
+      writeText(path.join(pages, "page.yml"), `cover: $${assets}/cover.png # 首页封面\n`);
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([path.join(assets, "orphan.png")]);
+    });
+  });
+
   it("scans .yaml pages in addition to .yml pages", () => {
     withTempRoot(({ root }) => {
       const assets = makeDir(root, "assets");
