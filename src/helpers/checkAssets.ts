@@ -4,9 +4,7 @@ import { join } from "upath";
 
 import { getFileList } from "./getFileList.js";
 import { ValidationError } from "./validation.js";
-
-/** 扫描引用时使用的页面文件扩展名 */
-const pageExtensions = ["yml", "yaml"] as const;
+import { YAML_EXTENSIONS } from "./yamlPath.js";
 
 /**
  * 转义正则表达式元字符
@@ -75,9 +73,7 @@ export const checkAssets = (
   );
 
   pageFolders
-    .flatMap((folder) =>
-      pageExtensions.flatMap((ext) => getFileList(folder, ext).map((path) => join(folder, path))),
-    )
+    .flatMap((folder) => getFileList(folder, YAML_EXTENSIONS).map((path) => join(folder, path)))
     .forEach((path) => {
       [...readFileSync(path, { encoding: "utf-8" }).matchAll(assetRegExp)].forEach(
         ([, assetLink]) => {

@@ -12,6 +12,7 @@ import {
 import { getFileList } from "./getFileList.js";
 import type { FileMapItem } from "./getFileMap.js";
 import { getFileMap } from "./getFileMap.js";
+import { stripYamlExtension, YAML_EXTENSIONS } from "./yamlPath.js";
 
 export { removeStaleOutputs } from "./generation-manifest.js";
 
@@ -207,6 +208,37 @@ export const getYamlValue = (content: string): string => {
 };
 
 /**
+ * 检查 YAML 源文件映射到目标文件时是否冲突
+ *
+ * `.yml` 与 `.yaml` 都可能被转换，例如同一目录下的 `a.yml` 与 `a.yaml` 会写出同一个 `a.json`。 这里在写入前统一检查，避免后写入的文件静默覆盖前一个。
+ *
+ * @param fileList 源文件相对路径列表
+ * @param extension 目标文件扩展名
+ * @param format 目标格式名称，仅用于错误信息
+ * @throws {Error} 当两个源文件映射到同一目标路径时抛出
+ */
+const assertUniqueOutputPaths = (
+  fileList: readonly string[],
+  extension: ".json" | ".md",
+  format: string,
+): void => {
+  const targetSources = new Map<string, string>();
+
+  fileList.forEach((filePath) => {
+    const targetRelativePath = getOutputRelativePath(filePath, extension);
+    const existingSource = targetSources.get(targetRelativePath);
+
+    if (existingSource) {
+      throw new Error(
+        `YAML 转 ${format} 输出路径冲突: ${existingSource} 与 ${filePath} 都映射到 ${targetRelativePath}`,
+      );
+    }
+
+    targetSources.set(targetRelativePath, filePath);
+  });
+};
+
+/**
  * 检查源文件夹下的所有 YAML 文件
  *
  * @param sourceFolder 源文件夹
@@ -217,7 +249,7 @@ export const checkYamlFiles = <T = unknown>(
   sourceFolder: string,
   checker: (data: T, filePath: string) => void,
 ): void => {
-  const fileList = getFileList(sourceFolder, "yml");
+  const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
 
   fileList.forEach((filePath) => {
     const content = readFileSync(resolve(sourceFolder, filePath), {
@@ -231,7 +263,7 @@ export const checkYamlFiles = <T = unknown>(
       return;
     }
 
-    checker(json, relative("./", filePath.replace(/\.yml$/u, "")));
+    checker(json, relative("./", stripYamlExtension(filePath)));
   });
 };
 
@@ -252,7 +284,10 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
   convertFunction: (data: T, filePath: string) => Value = (data): Value => data as unknown as Value,
   processFunction?: (content: string, filePath: string) => string,
 ): void => {
-  const fileList = getFileList(sourceFolder, "yml");
+  const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
+
+  assertUniqueOutputPaths(fileList, ".json", "JSON");
+
   const errors: Error[] = [];
   const generatedFiles = new Set<string>();
 
@@ -260,7 +295,7 @@ export const convertYamlFilesToJson = <T = unknown, Value = T>(
     const sourceFilename = resolve(sourceFolder, filePath);
     const targetFilename = resolve(targetFolder, getOutputRelativePath(filePath, ".json"));
     const targetFolderPath = dirname(targetFilename);
-    const yamlRelativePath = relative("./", filePath.replace(/\.yml$/u, ""));
+    const yamlRelativePath = relative("./", stripYamlExtension(filePath));
 
     try {
       const content = readFileSync(sourceFilename, { encoding: "utf-8" });
@@ -314,7 +349,10 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
   convertFunction: (data: T, filePath: string) => string,
   targetFolder = sourceFolder,
 ): void => {
-  const fileList = getFileList(sourceFolder, "yml");
+  const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
+
+  assertUniqueOutputPaths(fileList, ".md", "Markdown");
+
   const errors: Error[] = [];
   const generatedFiles = new Set<string>();
 
@@ -332,7 +370,7 @@ export const convertYamlFilesToMarkdown = <T = unknown>(
         return;
       }
 
-      const result = convertFunction(parsed, relative("./", filePath.replace(/\.yml$/u, "")));
+      const result = convertFunction(parsed, relative("./", stripYamlExtension(filePath)));
 
       if (!existsSync(targetFolderPath)) mkdirSync(targetFolderPath, { recursive: true });
 
@@ -380,7 +418,7 @@ export const getYamlMap = <T = unknown, Value = T>(
   sourceFolder: string,
   convertFunction: (data: T, filePath: string) => Value = (data): Value => data as unknown as Value,
 ): YamlMapItem<Value>[] => {
-  const fileMap = getFileMap(sourceFolder, "yml");
+  const fileMap = getFileMap(sourceFolder, YAML_EXTENSIONS);
 
   const convertYaml = (base: string, item: FileMapItem): YamlMapItem<Value> | undefined => {
     if (item.type === "file") {
@@ -396,7 +434,7 @@ export const getYamlMap = <T = unknown, Value = T>(
       return {
         type: "file",
         filename: item.filename,
-        value: convertFunction(parsed, filename.replace(/\.yml$/u, "")),
+        value: convertFunction(parsed, stripYamlExtension(filename)),
       };
     }
 

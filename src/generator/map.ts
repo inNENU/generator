@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
-
 import { join } from "upath";
 
 import { generatorConfig } from "../config.js";
 import { formatZodError } from "../helpers/validation.js";
+import { findYamlFile } from "../helpers/yamlPath.js";
 import { getPageJSON } from "../page/json.js";
 import { checkPageContent } from "../page/schema.js";
 import type {
@@ -76,9 +75,10 @@ export const getMarkerJSON = (
 
   if (marker.path) {
     const path = join(category, marker.path);
-    const filePath = join(generatorConfig.mapFolder, folder, category, `${marker.path}.yml`);
+    const basePath = join(generatorConfig.mapFolder, folder, category, marker.path);
 
-    if (check && !existsSync(filePath)) console.error(`路径 ${filePath} 在 ${path} 中不存在!`);
+    if (check && !findYamlFile(basePath))
+      console.error(`路径 ${basePath}.yml 或 ${basePath}.yaml 在 ${path} 中不存在!`);
 
     markerData.path = path;
   }

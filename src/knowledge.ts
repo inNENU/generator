@@ -4,6 +4,7 @@ import { dump, JSON_SCHEMA, load } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
 
 import { formatZodError, getFileList } from "./helpers/index.js";
+import { stripYamlExtension, YAML_EXTENSIONS } from "./helpers/yamlPath.js";
 import { pageConfigSchema } from "./page/schema.js";
 import { getPageText } from "./page/text.js";
 import type { UrlConverter } from "./page/text.js";
@@ -66,16 +67,16 @@ export const generateKnowledgeContent = (
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
-  const fileList = getFileList(sourceFolder, "yml");
+  const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
 
   fileList.forEach((filePath) => {
-    const filePathRelative = relative("./", filePath.replace(/\.yml$/u, ""));
+    const filePathRelative = relative("./", stripYamlExtension(filePath));
     const sourceFilename = resolve(sourceFolder, filePath);
     const data = loadPageConfig(sourceFilename, filePath);
 
     if (!data || data.aiIgnore) return;
 
-    const targetFilename = resolve(distFolder, filePath.replace(/\.yml$/u, ".md"));
+    const targetFilename = resolve(distFolder, `${stripYamlExtension(filePath)}.md`);
 
     try {
       const text = getPageText(data, filePathRelative, options);
@@ -232,7 +233,7 @@ export const generateKnowledgeIndex = (
 ): void => {
   if (!existsSync(distFolder)) mkdirSync(distFolder, { recursive: true });
 
-  const fileList = getFileList(sourceFolder, "yml");
+  const fileList = getFileList(sourceFolder, YAML_EXTENSIONS);
 
   const resolveSorter = (): KnowledgeIndexSorter | null =>
     sorter ? (typeof sorter === "function" ? sorter : createKnowledgeSorter(sorter)) : null;
@@ -244,7 +245,7 @@ export const generateKnowledgeIndex = (
 
       if (!data || data.aiIgnore) return null;
 
-      const path = filePath.replace(/\.yml$/u, "");
+      const path = stripYamlExtension(filePath);
 
       const info = (data.summary ?? data.title).trim();
 

@@ -21,6 +21,7 @@ import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
 import { generatorConfig } from "../config.js";
 import { ValidationError } from "../helpers/validation.js";
+import { findYamlFile } from "../helpers/yamlPath.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
 
@@ -240,6 +241,18 @@ export const updatePageTime = (pageYAMLPath: string): Date => {
 };
 
 /**
+ * 获取页面 YAML 文件路径
+ *
+ * 同时支持 `.yml` 与 `.yaml`；两者都不存在时返回 `.yml` 路径，供后续读取时报错。
+ *
+ * @param pagePath 页面路径
+ * @returns 页面 YAML 文件路径
+ */
+const getPageYAMLPath = (pagePath: string): string =>
+  findYamlFile(join(generatorConfig.pageFolder, pagePath)) ??
+  join(generatorConfig.pageFolder, `${pagePath}.yml`);
+
+/**
  * 处理页面数据
  *
  * @param page 页面数据
@@ -289,7 +302,7 @@ export const getPageJSON = (
     if (!pageData.cite?.length) delete pageData.cite;
 
     if (time) {
-      const pageYAMLPath = join(generatorConfig.pageFolder, `${pagePath}.yml`);
+      const pageYAMLPath = getPageYAMLPath(pagePath);
       const date = changedFiles.has(pageYAMLPath) ? updatePageTime(pageYAMLPath) : time;
 
       pageData.time = formatPageTime(date);

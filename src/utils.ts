@@ -4,6 +4,7 @@ import path from "node:path";
 import { join } from "upath";
 
 import { generatorConfig } from "./config.js";
+import { findYamlFile } from "./helpers/yamlPath.js";
 
 /**
  * 将驼峰命名字符串转换为 kebab-case
@@ -193,7 +194,7 @@ export const checkPagePath = (
 
   if (!resolvedPath) return [];
 
-  if (!existsSync(join(generatorConfig.pageFolder, `${resolvedPath}.yml`))) {
+  if (!findYamlFile(join(generatorConfig.pageFolder, resolvedPath))) {
     const message = `路径 ${resolvedPath} 在 ${location} 中不存在`;
 
     console.error(message);

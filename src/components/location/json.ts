@@ -1,8 +1,7 @@
-import { existsSync } from "node:fs";
-
 import { join } from "upath";
 
 import { generatorConfig } from "../../config.js";
+import { findYamlFile } from "../../helpers/yamlPath.js";
 import { resolvePath } from "../../utils.js";
 import type { LocationComponentOptions } from "./schema.js";
 
@@ -14,7 +13,7 @@ export const getLocationJSON = (
     if (item.path) {
       const path = resolvePath(item.path);
 
-      if (!existsSync(join(generatorConfig.mapFolder, `${path}.yml`)))
+      if (!findYamlFile(join(generatorConfig.mapFolder, path)))
         console.error(`路径 ${path} 在 ${location} 中不存在`);
     }
   });

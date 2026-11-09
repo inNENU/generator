@@ -18,6 +18,7 @@ import {
 import { isAbsolute, normalize, relative, resolve } from "upath";
 
 import { getFileList } from "./getFileList.js";
+import { stripYamlExtension, YAML_EXTENSIONS } from "./yamlPath.js";
 
 /**
  * 原子写入文件：先写临时文件再 rename，避免中途失败留下半截内容
@@ -104,10 +105,13 @@ const getGenerationManifestName = (sourceFolder: string, extension: ".json" | ".
  * @param extension 目标文件扩展名
  * @returns 目标文件相对路径
  */
-export const getOutputRelativePath = (filePath: string, extension: ".json" | ".md"): string =>
-  extension === ".md"
-    ? filePath.replace(/\.yml$/u, ".md").replace(/(?<sep>\/|^)index\.md$/u, "$<sep>README.md")
-    : filePath.replace(/\.yml$/u, ".json");
+export const getOutputRelativePath = (filePath: string, extension: ".json" | ".md"): string => {
+  const basePath = stripYamlExtension(filePath);
+
+  return extension === ".md"
+    ? `${basePath}.md`.replace(/(?<sep>\/|^)index\.md$/u, "$<sep>README.md")
+    : `${basePath}.json`;
+};
 
 /**
  * 规范化生成清单中的相对路径
@@ -458,7 +462,7 @@ export const syncGeneratedOutputs = (
  * 仅在源与目标文件夹不同时执行（按真实路径比较，符号链接别名视为同一目录）；清单文件带源文件夹真实路径与扩展名的哈希，多个源共用同一目标文件夹时互不影响。只要目标文件夹中存在无法读取的其它清单，本次就完全跳过清理，避免误删其它源仍在生成的文件。清理不会跟随符号链接目录，删除前还会用
  * `realpath` 确认文件仍位于目标文件夹内。
  *
- * 只把 `.yml` 当作源文件（转换函数也只读取 `.yml`），`源名.yaml` 不会进入生成集。
+ * `.yml` 与 `.yaml` 都会被当作源文件，与转换函数的读取范围保持一致。
  *
  * @param sourceFolder 源文件夹
  * @param targetFolder 目标文件夹
@@ -477,7 +481,7 @@ export const removeStaleOutputs = (
     return;
   }
 
-  const generatedFiles = getFileList(sourceFolder, "yml").map((filePath) =>
+  const generatedFiles = getFileList(sourceFolder, YAML_EXTENSIONS).map((filePath) =>
     getOutputRelativePath(filePath, extension),
   );
 
