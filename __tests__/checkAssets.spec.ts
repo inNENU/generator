@@ -113,6 +113,77 @@ describe(checkAssets, () => {
     });
   });
 
+  it("matches references wrapped in quotes", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+
+      writeText(path.join(assets, "cover.png"), "");
+      writeText(path.join(assets, "avatar.png"), "");
+      writeText(
+        path.join(pages, "page.yml"),
+        [`cover: "$${assets}/cover.png"`, `avatar: '$${assets}/avatar.png'`, ""].join("\n"),
+      );
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([]);
+    });
+  });
+
+  it("matches references wrapped in Markdown image syntax", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+
+      writeText(path.join(assets, "cover.png"), "");
+      writeText(path.join(pages, "page.yml"), `markdown: "![封面]($${assets}/cover.png)"\n`);
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([]);
+    });
+  });
+
+  it("matches quoted references followed by a YAML line comment", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+
+      writeText(path.join(assets, "cover.png"), "");
+      writeText(path.join(assets, "orphan.png"), "");
+      writeText(path.join(pages, "page.yml"), `cover: "$${assets}/cover.png" # 首页封面\n`);
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([path.join(assets, "orphan.png")]);
+    });
+  });
+
+  it("matches multiple references on a single line", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+
+      writeText(path.join(assets, "a.png"), "");
+      writeText(path.join(assets, "b.png"), "");
+      writeText(path.join(pages, "page.yml"), `gallery: [$${assets}/a.png, $${assets}/b.png]\n`);
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([]);
+    });
+  });
+
+  it("ignores references that only appear inside YAML comments", () => {
+    withTempRoot(({ root }) => {
+      const assets = makeDir(root, "assets");
+      const pages = makeDir(root, "pages");
+      const orphan = path.join(assets, "orphan.png");
+
+      writeText(path.join(assets, "used.png"), "");
+      writeText(orphan, "");
+      writeText(
+        path.join(pages, "page.yml"),
+        [`image: $${assets}/used.png`, `# 示例: $${assets}/orphan.png`, ""].join("\n"),
+      );
+
+      expect(checkAssets([pages], [assets])).toStrictEqual([orphan]);
+    });
+  });
+
   it("reports unused assets, keeps logging and supports strict mode", () => {
     withTempRoot(({ root, log }) => {
       const assets = makeDir(root, "assets");
