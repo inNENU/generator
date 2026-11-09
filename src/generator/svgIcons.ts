@@ -4,6 +4,10 @@ import { resolve } from "upath";
 
 import { convertSVGToDataURI, getFileList } from "../helpers/index.js";
 
+// 无原型对象：`__proto__`、`constructor`、`toString` 都是合法的分类名/图标名，
+// 普通对象字面量会把它们写到原型链上（静默丢数据甚至污染全局原型）。
+const createIconRecord = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
+
 /**
  * 生成 SVG 图标文件
  *
@@ -72,7 +76,7 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
 
   if (!existsSync(targetFolder)) mkdirSync(targetFolder, { recursive: true });
 
-  const iconStore: Record<string, Record<string, string>> = {};
+  const iconStore = createIconRecord<Record<string, string>>();
 
   entries.forEach(({ filePath, category, name }) => {
     const sourceFilename = resolve(sourceFolder, filePath);
@@ -80,8 +84,10 @@ export const generateSvgIcons = (sourceFolder: string, targetFolder: string): vo
     const dataUri = convertSVGToDataURI(svgContent);
 
     if (category) {
-      iconStore[category] ??= {};
-      iconStore[category][name] = dataUri;
+      const categoryIcons = iconStore[category] ?? createIconRecord<string>();
+
+      iconStore[category] = categoryIcons;
+      categoryIcons[name] = dataUri;
 
       return;
     }
