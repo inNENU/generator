@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 
 import * as zod from "zod";
 
+import { isAssetFileCheckEnabled } from "../helpers/assetCheck.js";
+
 export const envSchema = zod.enum(["web", "wx", "app"]).meta({
   description: "环境类型",
 });
@@ -51,21 +53,21 @@ export const docExtensionSchema = zod
 
 export const internalImgSchema = zod
   .templateLiteral(["$img/", zod.string(), imageExtensionSchema])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
+  .refine((link) => !isAssetFileCheckEnabled() || existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `图片 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalDocsSchema = zod
   .templateLiteral(["$file/", zod.string(), docExtensionSchema])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
+  .refine((link) => !isAssetFileCheckEnabled() || existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `文档 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
 
 export const internalFileSchema = zod
   .templateLiteral(["$file/", zod.string()])
-  .refine((link) => existsSync(`./${link.slice(1)}`), {
+  .refine((link) => !isAssetFileCheckEnabled() || existsSync(`./${link.slice(1)}`), {
     error: ({ input }) => `文件 ${String(input)} 不存在`,
     abort: true,
   }) as unknown as zod.ZodString;
@@ -100,7 +102,7 @@ export const internalIconSchema = zod
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u, {
     error: ({ input }) => `图标 ${String(input)} 只能包含小写字母、数字和连字符`,
   })
-  .refine((icon) => existsSync(`./data/icon/${icon}.svg`), {
+  .refine((icon) => !isAssetFileCheckEnabled() || existsSync(`./data/icon/${icon}.svg`), {
     error: ({ input }) => `图标文件 ${String(input)} 不存在`,
     abort: true,
   });

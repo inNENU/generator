@@ -32,6 +32,8 @@ const pageJSON = getPageJSON({ title: "Home", content: [...] }, "home", [], { ch
 const pageMarkdown = getPageMarkdown("home", { mode: "web" });
 ```
 
+`getPageJSON` looks up the source YAML under `pageFolder` by default. If a page's source lives elsewhere, pass `sourcePath` so `diffFiles` can still refresh its `time`; `getMapPageJSON` resolves map sources under `mapFolder` automatically.
+
 `config()` accepts:
 
 | Option       | Description                                                     |

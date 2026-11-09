@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
 
-import { join } from "upath";
+import { isAbsolute, join, resolve } from "upath";
 
 import { generatorConfig } from "../config.js";
+import { withoutAssetFileCheck } from "../helpers/assetCheck.js";
 import { ValidationError, formatZodError, runValidation } from "../helpers/validation.js";
 import { getPageJSON } from "../page/json.js";
 import { checkPageContent } from "../page/schema.js";
@@ -29,12 +30,109 @@ export interface GetMapPageJSONOptions {
   /**
    * 是否进行完整性校验
    *
+   * - `true`：校验输入配置、内容组件以及 `$img`/图标等资源文件是否存在。
+   * - `false`：跳过输入校验与资源文件存在性检查（用于没有 `img/` 的稀疏检出）， 但仍校验生成数据的形状与类型，避免输出非法数据。
+   *
    * @default true
    */
   check?: boolean;
-  /** 变更文件列表，用于判断是否需要更新页面 `time` 字段 */
+  /**
+   * 变更文件列表，用于判断是否需要更新页面 `time` 字段
+   *
+   * 地图页源文件位于 `mapFolder`，传入的路径需能按 `mapFolder` + `filePath` 归一化后匹配。
+   */
   diffFiles?: string[];
 }
+
+/**
+ * 将路径拆分为片段，统一分隔符并忽略空片段与 `.`
+ *
+ * @param filePath 待拆分的路径
+ * @returns 路径片段
+ */
+const splitPath = (filePath: string): string[] =>
+  filePath.split(/[\\/]/u).filter((segment) => segment && segment !== ".");
+
+/**
+ * 计算地图页源 YAML 的候选路径
+ *
+ * 候选路径来源：
+ *
+ * - 绝对路径，或相对 cwd 的完整路径；
+ * - 去掉 `mapFolder` 末尾与 `filePath` 开头的重叠片段后拼接（如 `mapFolder=data/function/map`、
+ *   `filePath=function/map/benbu/building/library`）；
+ * - `mapFolder` 与 `filePath` 直接拼接。
+ *
+ * @param filePath 地图页路径
+ * @returns 去重后的候选 YAML 路径
+ */
+const getMapSourceCandidates = (filePath: string): string[] => {
+  const normalizedFilePath = filePath.replaceAll("\\", "/");
+  const mapFolderSegments = splitPath(generatorConfig.mapFolder);
+  const fileSegments = splitPath(normalizedFilePath);
+  const candidates = new Set<string>();
+
+  const addCandidate = (candidate: string): void => {
+    candidates.add(candidate.endsWith(".yml") ? candidate : `${candidate}.yml`);
+  };
+
+  if (isAbsolute(normalizedFilePath)) addCandidate(normalizedFilePath);
+  else addCandidate(resolve(normalizedFilePath));
+
+  // 去掉 mapFolder 末尾与 filePath 开头重叠的片段，例如 mapFolder=data/function/map、
+  // filePath=function/map/benbu/building/library
+  for (
+    let overlap = Math.min(mapFolderSegments.length, fileSegments.length);
+    overlap >= 0;
+    overlap -= 1
+  ) {
+    const mapTail = mapFolderSegments.slice(mapFolderSegments.length - overlap);
+    const fileHead = fileSegments.slice(0, overlap);
+
+    if (!mapTail.every((segment, index) => segment === fileHead[index])) continue;
+
+    const rest = fileSegments.slice(overlap);
+
+    if (rest.length) addCandidate(join(generatorConfig.mapFolder, ...rest));
+
+    break;
+  }
+
+  if (!isAbsolute(normalizedFilePath))
+    addCandidate(join(generatorConfig.mapFolder, normalizedFilePath));
+
+  return [...candidates];
+};
+
+/**
+ * 查找地图页对应的源 YAML
+ *
+ * 优先使用 `mapFolder` 下的真实文件；未找到时回退到旧版 `pageFolder` 布局，保持向后兼容。
+ *
+ * 文件不存在时返回 undefined，调用方不得据此写入或抛错。
+ *
+ * @param filePath 地图页路径
+ * @param diffFiles 变更文件列表
+ * @returns 存在的源 YAML 路径，未找到时为 undefined
+ */
+const findMapSourcePath = (filePath: string, diffFiles: string[]): string | undefined => {
+  const candidates = getMapSourceCandidates(filePath).filter((candidate) => existsSync(candidate));
+
+  if (!candidates.length) {
+    const legacyPath = join(generatorConfig.pageFolder, `${filePath}.yml`);
+
+    if (existsSync(legacyPath)) return legacyPath;
+
+    // oxlint-disable-next-line eslint/no-undefined -- 未找到源文件时用 undefined 表示不更新时间
+    return undefined;
+  }
+
+  if (candidates.length === 1) return candidates[0];
+
+  const changedFiles = new Set(diffFiles.map((changedFilePath) => resolve(changedFilePath)));
+
+  return candidates.find((candidate) => changedFiles.has(resolve(candidate))) ?? candidates[0];
+};
 
 /**
  * 处理地图页面数据
@@ -62,13 +160,22 @@ export const getMapPageJSON = (
     });
   }
 
+  // 地图 YAML 位于 mapFolder，而不是 pageFolder；未找到真实源文件时不更新时间，避免误抛
+  const sourcePath = findMapSourcePath(filePath, diffFiles);
+
   // 输入校验已由上方完成，getPageJSON 内不再重复检查，仅做纯转换
-  const pageData: MapPageData = getPageJSON(data, filePath, diffFiles, { check: false });
+  const pageData: MapPageData = getPageJSON(data, filePath, sourcePath ? diffFiles : [], {
+    check: false,
+    sourcePath,
+  });
 
   if (data.photo) pageData.photo = data.photo;
 
-  // 输出兜底：即使 check=false，也不允许产出不符合 mapPageDataSchema 的数据
-  const parsed = mapPageDataSchema.safeParse(pageData);
+  // 输出兜底：即使 check=false，也不允许产出不符合 mapPageDataSchema 的数据；
+  // 稀疏检出下没有 img/ 等资源目录，只校验形状/类型，跳过 existsSync
+  const parsed = check
+    ? mapPageDataSchema.safeParse(pageData)
+    : withoutAssetFileCheck(() => mapPageDataSchema.safeParse(pageData));
 
   if (!parsed.success) {
     throw new ValidationError(`${filePath} 地图页面数据校验失败`, [
