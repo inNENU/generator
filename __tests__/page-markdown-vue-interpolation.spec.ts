@@ -459,6 +459,44 @@ describe("站点 Markdown 的 Vue 插值中和", () => {
     }
   });
 
+  it("中和引用块与列表中围栏边界外的插值", () => {
+    const desces = [
+      "> ```js\n> {{7*7}}\n> ```",
+      "> > ```js\n> > {{7*7}}\n> > ```",
+      "- ```js\n{{7*7}}\n```",
+      "> - ```js\n>   {{7*7}}\n>   ```",
+    ];
+
+    for (const desc of desces) {
+      const markdown = getPageMarkdown(createPage([], desc), {
+        location: "probe/container-fence",
+      });
+      const html = markdownIt.render(markdown);
+
+      expect(markdown).not.toContain("{{");
+      expect(html).not.toContain("{{");
+    }
+
+    // 顶层合法围栏仍按 v-pre 代码原样保留
+    const fenceMarkdown = getPageMarkdown(createPage([], "```js\n{{7*7}}\n```"), {
+      location: "probe/top-fence",
+    });
+
+    expect(fenceMarkdown).toContain("```js");
+    expect(fenceMarkdown).toContain("{{7*7}}");
+    expect(fenceMarkdown).not.toContain("<!-- -->");
+  });
+
+  it("站点文本管线中和未缩进列表围栏外的插值", () => {
+    const markdown = getPageMarkdown(createPage([{ tag: "text", text: "- ```js\n{{7*7}}\n```" }]), {
+      location: "probe/text-list-fence",
+    });
+    const html = markdownIt.render(markdown);
+
+    expect(markdown).not.toContain("{{");
+    expect(html).not.toContain("{{");
+  });
+
   it("转义行内与关闭 plaintext 标签且不误伤行内代码", () => {
     const desces = ["前文 <plaintext> 后文 {{7*7}}", "</plaintext>"];
 

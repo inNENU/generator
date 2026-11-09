@@ -186,6 +186,45 @@ const addFenceLineRange = (
  * @param htmlBlockLines 原始 HTML 块行号
  * @returns 列表项围栏的行号集合
  */
+/**
+ * 计算行首缩进宽度（tab 按 4 列计）
+ *
+ * @param value 行首空白
+ * @returns 缩进宽度
+ */
+const expandLeadingIndent = (value: string): number => {
+  let width = 0;
+
+  for (const char of value) {
+    if (char === "\t") width += 4;
+    else if (char === " ") width += 1;
+    else break;
+  }
+
+  return width;
+};
+
+/**
+ * 计算行首引用块深度
+ *
+ * @param line 单行文本
+ * @returns 引用块层数
+ */
+const getBlockquoteDepth = (line: string): number => {
+  let depth = 0;
+  let rest = line;
+
+  for (;;) {
+    const match = /^ {0,3}>[ \t]?/u.exec(rest);
+
+    if (!match) return depth;
+
+    depth += 1;
+    rest = rest.slice(match[0].length);
+  }
+};
+
+// oxlint-disable-next-line eslint/max-statements -- 列表项围栏需要顺序维护容器缩进与引用深度
 const collectListItemFenceLines = (
   lines: string[],
   htmlBlockLines: Set<number>,
@@ -200,29 +239,57 @@ const collectListItemFenceLines = (
 
     if (!fence) continue;
 
+    const container = /^(?<indent> {0,3})(?<marker>[-+*]|\d{1,9}[.)])(?<spacing>[ \t]+)/u.exec(
+      stripBlockquotePrefix(lines[index]),
+    );
+    const contentIndent = container?.groups
+      ? expandLeadingIndent(container.groups.indent ?? "") +
+        (container.groups.marker ?? "").length +
+        expandLeadingIndent(container.groups.spacing ?? "")
+      : 2;
+    const vPreProtected = hasFenceVPre(fence.info);
+    const quoteDepth = getBlockquoteDepth(lines[index]);
+
     result.add(index);
     let closed = false;
+    let boundary = lines.length;
 
     for (let next = index + 1; next < lines.length; next += 1) {
-      const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
+      // 引用层数变浅会结束整个引用容器，列表项与围栏也随之结束。
+      if (getBlockquoteDepth(lines[next]) < quoteDepth) {
+        boundary = next;
+        break;
+      }
+
+      const rawLine = stripBlockquotePrefix(lines[next]);
+
+      // 空行不结束列表项，围栏可以跨过。
+      if (rawLine.trim() !== "") {
+        const indent = expandLeadingIndent(rawLine);
+
+        // 非空行未缩进到列表内容列时会结束列表项，围栏也随之结束。
+        if (indent < contentIndent) {
+          boundary = next;
+          break;
+        }
+      }
+
+      const candidateLine = rawLine.trimStart();
       const candidate = getFenceInfo(candidateLine);
 
       if (isMatchingFenceClose(candidate, fence, candidateLine)) {
-        addFenceLineRange(
-          { lines: result, protectedLines, vPreProtected: hasFenceVPre(fence.info) },
-          index,
-          next,
-        );
+        addFenceLineRange({ lines: result, protectedLines, vPreProtected }, index, next);
         index = next;
         closed = true;
         break;
       }
     }
 
-    if (!closed) {
-      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
-      break;
-    }
+    if (closed) continue;
+
+    addFenceLineRange({ lines: result, protectedLines, vPreProtected }, index, boundary - 1);
+
+    if (boundary > index + 1) index = boundary - 1;
   }
 
   return { lines: result, protectedLines };
@@ -231,7 +298,7 @@ const collectListItemFenceLines = (
 /**
  * 标记引用块或顶层围栏代码块所在的行
  *
- * `desc` 会被逐行加上 `> `，围栏代码块因此不在行首；这些行不能按普通行做标签遮蔽。
+ * `desc` 会被逐行加上 `> `，围栏代码块因此不在行首；这些行不能按普通行做标签遮蔽。 引用块可能嵌套多层：只有同级或更深层的引用行才能延续围栏，否则围栏随容器结束。
  *
  * @param lines 全部行
  * @param htmlBlockLines 原始 HTML 块行号
@@ -251,34 +318,49 @@ const collectBlockquoteFenceLines = (
 
     if (!fence) continue;
 
+    const depth = getBlockquoteDepth(lines[index]);
+    const vPreProtected = hasFenceVPre(fence.info);
+
     result.add(index);
     let closed = false;
+    let boundary = lines.length;
 
     for (let next = index + 1; next < lines.length; next += 1) {
+      if (getBlockquoteDepth(lines[next]) < depth) {
+        boundary = next;
+        break;
+      }
+
       const candidateLine = stripBlockquotePrefix(lines[next]).trimStart();
       const candidate = getFenceInfo(candidateLine);
 
       if (isMatchingFenceClose(candidate, fence, candidateLine)) {
-        addFenceLineRange(
-          { lines: result, protectedLines, vPreProtected: hasFenceVPre(fence.info) },
-          index,
-          next,
-        );
+        addFenceLineRange({ lines: result, protectedLines, vPreProtected }, index, next);
         index = next;
         closed = true;
         break;
       }
     }
 
-    if (!closed) {
-      for (let cursor = index + 1; cursor < lines.length; cursor += 1) result.add(cursor);
-      break;
-    }
+    if (closed) continue;
+
+    addFenceLineRange({ lines: result, protectedLines, vPreProtected }, index, boundary - 1);
+
+    if (boundary > index + 1) index = boundary - 1;
   }
 
   return { lines: result, protectedLines };
 };
 
+/**
+ * 标记引用块或顶层围栏代码块所在的行
+ *
+ * `desc` 会被逐行加上 `> `，围栏代码块因此不在行首；这些行不能按普通行做标签遮蔽。
+ *
+ * @param lines 全部行
+ * @param htmlBlockLines 原始 HTML 块行号
+ * @returns 围栏代码块行号
+ */
 /**
  * 找到包含指定结束标记的行
  *

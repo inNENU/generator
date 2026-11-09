@@ -187,6 +187,24 @@ describe("vue 编译级插值防护", () => {
     }
   });
 
+  it("引用块与列表围栏边界外不产生插值", () => {
+    const desces = [
+      "> ```js\n> {{7*7}}\n> ```",
+      "> > ```js\n> > {{7*7}}\n> > ```",
+      "- ```js\n{{7*7}}\n```",
+      "> - ```js\n>   {{7*7}}\n>   ```",
+      "```js\n{{7*7}}\n```",
+    ];
+
+    for (const desc of desces) {
+      const code = compileTemplate(
+        getPageMarkdown(createPage([], desc), { location: "probe/container-fence" }),
+      );
+
+      expect(code).not.toContain("_toDisplayString");
+    }
+  });
+
   it("行内与关闭 plaintext 标签不产生插值或编译错误", () => {
     const desces = [
       "前文 <plaintext> 后文 {{7*7}}",

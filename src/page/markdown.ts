@@ -154,11 +154,28 @@ export const getPageMarkdown = (page: PageConfig, options: PageMarkdownOptions =
     if (desc) {
       // 描述是页面配置字段，处理它时切回配置阶段，确保异常文案指向配置而不是内容
       phase = "config";
+      // desc 会逐行加上 `> ` 前缀并用 `>` 分隔行拼接，这会改变引用块/列表围栏的嵌套边界。
+      // 若 desc 自身带容器前缀的围栏，必须按最终 Markdown 结构中和；否则保持原有单行处理语义。
+      const hasContainerFence = desc.split("\n").some((line) => {
+        const stripped = line.replace(/^(?: {0,3}>[ \t]?)+/u, "");
+        return (
+          /^ {0,3}(?:[-+*]|\d{1,9}[.)])[ \t]+(?:```|~~~)/u.test(stripped) ||
+          (/^(?: {0,3}>[ \t]?)+/u.test(line) && /(?:```|~~~)/u.test(stripped))
+        );
+      });
+
       blocks.push(
-        escapeVueInterpolation(desc)
-          .split("\n")
-          .map((line) => `> ${line}`)
-          .join("\n>\n"),
+        hasContainerFence
+          ? escapeVueInterpolation(
+              desc
+                .split("\n")
+                .map((line) => `> ${line}`)
+                .join("\n>\n"),
+            )
+          : escapeVueInterpolation(desc)
+              .split("\n")
+              .map((line) => `> ${line}`)
+              .join("\n>\n"),
       );
       phase = "content";
     }
