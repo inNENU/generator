@@ -202,6 +202,22 @@ describe("page time update", () => {
     }
   });
 
+  it("空文件只输出一次缺少 time 的警告，不误报 YAML 解析失败", () => {
+    const { pageFolder, pageYAMLPath } = setupPage("");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      updatePageTime(pageYAMLPath);
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("不存在 time 字段"));
+      expect(readFileSync(pageYAMLPath, { encoding: "utf-8" })).toBe("");
+    } finally {
+      warnSpy.mockRestore();
+      rmSync(pageFolder, { recursive: true, force: true });
+    }
+  });
+
   it("页面 YAML 不存在时抛出带路径的错误", () => {
     const { pageFolder } = setupPage(
       "title: 关于\ntime: 2024-01-01\ncontent:\n  - tag: text\n    text: hi\n",

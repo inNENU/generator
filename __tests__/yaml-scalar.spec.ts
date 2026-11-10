@@ -71,9 +71,15 @@ describe(updateYamlScalar, () => {
   });
 
   it("keeps the raw scalar contract for empty and CRLF values", () => {
-    expect(updateYamlScalar("time: 2020-01-01\n", "time", "")).toBe("time: \n");
+    // 空字符串输出 `""`，保证 js-yaml 与 yaml 都读成空字符串而不是 null
+    expect(updateYamlScalar("time: 2020-01-01\n", "time", "")).toBe('time: ""\n');
     // CRLF 值使用双引号转义，避免块标量中出现裸 CR
     expect(updateYamlScalar("time: 2020-01-01\n", "time", "a\r\nb")).toBe('time: "a\\r\n\n  b"\n');
+  });
+
+  it("returns null for empty or comment-only documents", () => {
+    expect(updateYamlScalar("", "time", "2026-11-10")).toBeNull();
+    expect(updateYamlScalar("# only comment\n", "time", "2026-11-10")).toBeNull();
   });
 
   it("returns null when the top-level key is missing", () => {

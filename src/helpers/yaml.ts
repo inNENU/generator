@@ -202,8 +202,8 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
  * @internal
  */
 export const getYamlValue = (content: string): string => {
-  // 含换行或首尾空白时，`yaml` 的 1.1 stringify 会输出跨行单引号标量，`trimEnd` 也会吃掉尾部空白； 这两种情况直接改用 JSON
-  // 双引号转义，保证输出始终是单行且逐字符保留。
+  // 含换行或首尾空白时，yaml 的跨行/折行输出不保证 frontmatter 仍是单行标量；这里直接改用 JSON 双引号转义，
+  // 保证输出始终是单行且逐字符保留（首尾空白本来就需要引号，统一走 JSON 也更简单）。
   if (/[\r\n]/u.test(content) || /^\s|\s$/u.test(content)) return JSON.stringify(content);
 
   const serialized = stringifyYaml(content, {
@@ -233,6 +233,9 @@ export const getYamlValue = (content: string): string => {
  * @throws {Error} YAML 无法解析时抛出
  */
 export const updateYamlScalar = (content: string, key: string, value: string): string | null => {
+  // 空文件/纯注释文件没有可更新的文档，按“字段不存在”处理，避免调用方把它当成解析错误
+  if (content.replaceAll(/^[ \t]*#.*$/gmu, "").trim() === "") return null;
+
   const tokens = [...new Parser().parse(content)];
   const [document] = [...new Composer({ keepSourceTokens: true }).compose(tokens)];
 
@@ -255,18 +258,17 @@ export const updateYamlScalar = (content: string, key: string, value: string): s
   const blockScalar = currentType === "BLOCK_LITERAL" || currentType === "BLOCK_FOLDED";
   // flow collection 里不能用块标量，且逗号/方括号等会改变结构，统一退回双引号标量
   const inFlow = contents.flow === true;
-  const quote = inFlow || value.includes("\r");
+  // 空字符串用双引号保持字符串语义（否则 js-yaml 与 yaml 对空节点分别读成 "" / null）
+  const quote = inFlow || value.includes("\r") || value.length === 0;
 
-  // 目标原本是块标量、或新值含换行时，必须继续用块标量写回；否则 `CST.setScalarValue` 会把 body 顶到第 0 列，生成非法 YAML。
-  // 含 CR 或处于 flow collection 的值改用双引号转义。
+  // 目标原本是块标量、或新值含换行/为空时，必须显式指定标量类型；否则 `CST.setScalarValue` 会把 body 顶到第 0 列或输出空节点。
+  // 含 CR、空串或处于 flow collection 的值改用双引号转义，其余多行值用块标量。
   CST.setScalarValue(pair.srcToken.value, value, {
     afterKey: true,
     inFlow,
-    ...(multiline
+    ...(multiline || blockScalar || value.length === 0
       ? { type: quote ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
-      : blockScalar
-        ? { type: quote ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
-        : {}),
+      : {}),
   } as const);
 
   return tokens.map((token) => CST.stringify(token)).join("");
