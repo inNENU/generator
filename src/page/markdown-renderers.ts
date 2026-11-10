@@ -25,6 +25,7 @@ import {
   getFileLink,
   normalizeInlineText,
 } from "../utils.js";
+import { escapeVueInterpolation } from "../vue-interpolation.js";
 import type { ComponentOptions } from "./schema.js";
 
 /** URL 转换结果 */
@@ -562,13 +563,20 @@ export const renderComponentMarkdown = (
   if (component.env && !component.env.includes("web")) return "";
 
   const { location = "", mode = "web", urlConverter } = options;
+  const isText = options.dialect === "text";
 
-  if (component.tag === "action")
-    return getActionMarkdown(component, location, { mode, urlConverter });
+  let markdown: string;
 
-  if (component.tag === "table") return getTableMarkdown(component, location);
+  if (component.tag === "action") {
+    markdown = getActionMarkdown(component, location, { mode, urlConverter });
+  } else if (component.tag === "table") {
+    markdown = getTableMarkdown(component, location);
+  } else {
+    markdown = isText
+      ? renderTextComponentMarkdown(component, options)
+      : renderVuePressComponentMarkdown(component, options);
+  }
 
-  return options.dialect === "text"
-    ? renderTextComponentMarkdown(component, options)
-    : renderVuePressComponentMarkdown(component, options);
+  // 只有站点管线经过 Vue 编译；文本管线与共用组件保持原样。
+  return isText ? markdown : escapeVueInterpolation(markdown);
 };
