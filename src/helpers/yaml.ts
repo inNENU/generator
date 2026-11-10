@@ -202,18 +202,22 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
  * @internal
  */
 export const getYamlValue = (content: string): string => {
+  // 含换行或首尾空白时，`yaml` 的 1.1 stringify 会输出跨行单引号标量，`trimEnd` 也会吃掉尾部空白； 这两种情况直接改用 JSON
+  // 双引号转义，保证输出始终是单行且逐字符保留。
+  if (/[\r\n]/u.test(content) || /^\s|\s$/u.test(content)) return JSON.stringify(content);
+
   const serialized = stringifyYaml(content, {
     // 与 js-yaml 的 JSON_SCHEMA 行为对齐：YAML 1.1 会额外把 `y`/`n`、`1:20` 等视为非字符串
     schema: "yaml-1.1",
     // 不使用 `>` 折叠块，且不自动折行；frontmatter 单行标量更易读、diff 更稳定
     blockQuote: false,
     lineWidth: 0,
-  }).trimEnd();
+  });
+  // stringify 只在末尾追加一个换行，不能整体 trimEnd（会吃掉值本身的尾部空白）
+  const body = serialized.endsWith("\n") ? serialized.slice(0, -1) : serialized;
 
   // YAML 1.1 不认识 1.2 的 `0o` 八进制，会按普通字符串输出；VuePress 使用的 js-yaml 默认 schema 会把它解析成数字
-  return serialized === content && /^[-+]?0o[0-7]+$/u.test(content)
-    ? JSON.stringify(content)
-    : serialized;
+  return body === content && /^[-+]?0o[0-7]+$/u.test(content) ? JSON.stringify(content) : body;
 };
 
 /**
@@ -224,7 +228,7 @@ export const getYamlValue = (content: string): string => {
  *
  * @param content 原始 YAML 文本
  * @param key 顶层 key
- * @param value 新的标量文本
+ * @param value 新的标量文本（按原始标量文本写入，调用方负责在需要字符串语义时先做引号化，例如 {@link getYamlValue}）
  * @returns 更新后的文本；顶层不存在该 key（或 `key:` 后没有值）时返回 `null`
  * @throws {Error} YAML 无法解析时抛出
  */
@@ -246,7 +250,20 @@ export const updateYamlScalar = (content: string, key: string, value: string): s
   // `key:` 后没有值时没有可替换的 token，保持“字段不存在”的旧行为
   if (!pair || !isScalar(pair.value) || !pair.srcToken?.value) return null;
 
-  CST.setScalarValue(pair.srcToken.value, value);
+  const currentType = pair.value.type;
+  const multiline = /[\r\n]/u.test(value);
+  const blockScalar = currentType === "BLOCK_LITERAL" || currentType === "BLOCK_FOLDED";
+
+  // 目标原本是块标量、或新值含换行时，必须继续用块标量写回；否则 `CST.setScalarValue` 会把 body 顶到第 0 列，生成非法 YAML。
+  // 含 CR 的值改用双引号转义，避免块标量里出现裸 CR。
+  CST.setScalarValue(pair.srcToken.value, value, {
+    afterKey: true,
+    ...(multiline
+      ? { type: value.includes("\r") ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
+      : blockScalar
+        ? { type: "BLOCK_LITERAL" }
+        : {}),
+  } as const);
 
   return tokens.map((token) => CST.stringify(token)).join("");
 };
