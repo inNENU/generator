@@ -37,7 +37,21 @@ describe(getYamlValue, () => {
     ];
 
     for (const value of values) {
-      expect(getYamlValue(value)).toMatch(/^".*"$/u);
+      const quoted = getYamlValue(value);
+
+      // `yaml` 可能使用单引号或双引号，只要求“被引号包裹且能 roundtrip”
+      expect(quoted).not.toBe(value);
+      expect(quoted).toMatch(/^["']/u);
+      expect(roundTrip(value)).toBe(value);
+    }
+  });
+
+  it("quotes values that YAML 1.1 would parse as non-strings", () => {
+    // 旧实现依赖手写正则，容易漏掉 YAML 1.1 的隐式类型；这里锁住这些边界
+    for (const value of ["", "---", "...", "1:20", "12:34", "y", "n"]) {
+      const quoted = getYamlValue(value);
+
+      expect(quoted).not.toBe(value);
       expect(roundTrip(value)).toBe(value);
     }
   });

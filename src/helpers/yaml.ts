@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import type { Schema } from "js-yaml";
 import { JSON_SCHEMA, NOT_RESOLVED, defineScalarTag, intJsonTag, load } from "js-yaml";
 import { dirname, join, relative, resolve } from "upath";
+import { Composer, CST, Parser, isMap, isPair, isScalar, stringify as stringifyYaml } from "yaml";
 
 import {
   getOutputRelativePath,
@@ -194,14 +195,6 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 };
 
 /**
- * 匹配会被 YAML 解析成非字符串的纯标量
- *
- * 例如 `123`、`true`、`null`、`0x1A`、`2024-01-01` 直接写进 frontmatter 会变成 number/boolean/null/Date。
- */
-const ambiguousScalarPattern =
-  /^(?:~|null|true|false|yes|no|on|off|[-+]?(?:\d[\d_]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|0x[\da-f]+|0o[0-7]+|0b[01]+|[-+]?\.(?:inf|nan)|\d{4}-\d{2}-\d{2}(?:[Tt ].*)?)$/iu;
-
-/**
  * 获取 YAML 值
  *
  * @param content 内容
@@ -209,22 +202,53 @@ const ambiguousScalarPattern =
  * @internal
  */
 export const getYamlValue = (content: string): string => {
-  const needsQuote =
-    content.length > 0 &&
-    (/^[@#?!&*%|>{}[\]"',`]/u.test(content) ||
-      /^[-?:](?:\s|$)/u.test(content) ||
-      /:\s| #|:$/u.test(content) ||
-      /[\r\n]/u.test(content) ||
-      /^\s|\s$/u.test(content) ||
-      ambiguousScalarPattern.test(content));
+  const serialized = stringifyYaml(content, {
+    // 与 js-yaml 的 JSON_SCHEMA 行为对齐：YAML 1.1 会额外把 `y`/`n`、`1:20` 等视为非字符串
+    schema: "yaml-1.1",
+    // 不使用 `>` 折叠块，且不自动折行；frontmatter 单行标量更易读、diff 更稳定
+    blockQuote: false,
+    lineWidth: 0,
+  }).trimEnd();
 
-  return needsQuote
-    ? `"${content
-        .replaceAll("\\", String.raw`\\`)
-        .replaceAll('"', String.raw`\"`)
-        .replaceAll("\r", String.raw`\r`)
-        .replaceAll("\n", String.raw`\n`)}"`
-    : content;
+  // YAML 1.1 不认识 1.2 的 `0o` 八进制，会按普通字符串输出；VuePress 使用的 js-yaml 默认 schema 会把它解析成数字
+  return serialized === content && /^[-+]?0o[0-7]+$/u.test(content)
+    ? JSON.stringify(content)
+    : serialized;
+};
+
+/**
+ * 只更新 YAML 文本中顶层某个标量的值，保留注释、空行、引号风格与其余字节
+ *
+ * 基于 `yaml` 的 CST 源 token 编辑：解析出源 token → 定位顶层 key → 只替换目标标量的 token → 再把原 token 重新拼接。与整份
+ * `Document.toString()` 不同，长标量不会被重新折行，flow 集合也不会被改写。
+ *
+ * @param content 原始 YAML 文本
+ * @param key 顶层 key
+ * @param value 新的标量文本
+ * @returns 更新后的文本；顶层不存在该 key（或 `key:` 后没有值）时返回 `null`
+ * @throws {Error} YAML 无法解析时抛出
+ */
+export const updateYamlScalar = (content: string, key: string, value: string): string | null => {
+  const tokens = [...new Parser().parse(content)];
+  const [document] = [...new Composer({ keepSourceTokens: true }).compose(tokens)];
+
+  if (!document || document.errors.length > 0)
+    throw new Error(`YAML 解析失败，无法更新 ${key} 字段`);
+
+  const { contents } = document;
+
+  if (!isMap(contents)) return null;
+
+  const pair = contents.items.find(
+    (item) => isPair(item) && isScalar(item.key) && item.key.value === key,
+  );
+
+  // `key:` 后没有值时没有可替换的 token，保持“字段不存在”的旧行为
+  if (!pair || !isScalar(pair.value) || !pair.srcToken?.value) return null;
+
+  CST.setScalarValue(pair.srcToken.value, value);
+
+  return tokens.map((token) => CST.stringify(token)).join("");
 };
 
 /**

@@ -121,6 +121,32 @@ describe("page time update", () => {
     }
   });
 
+  it("保留 time 的引号风格与行尾注释", () => {
+    const { pageFolder, pageYAMLPath } = setupPage(
+      "title: 关于\ntime: '2024-01-01' # 最后更新\ncontent:\n  - tag: text\n    text: hi\n",
+    );
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-05-01T12:00:00.000Z"));
+
+    try {
+      const page: PageConfig = {
+        title: "关于",
+        time: "2024-01-01",
+        content: [{ tag: "text", text: "hi" }],
+      };
+
+      getPageJSON(page, "guide/about", [pageYAMLPath], { check: false });
+
+      expect(readFileSync(pageYAMLPath, { encoding: "utf-8" })).toBe(
+        "title: 关于\ntime: '2024-05-01T12:00:00.000Z' # 最后更新\ncontent:\n  - tag: text\n    text: hi\n",
+      );
+    } finally {
+      vi.useRealTimers();
+      rmSync(pageFolder, { recursive: true, force: true });
+    }
+  });
+
   it("页面 YAML 不存在时抛出带路径的错误", () => {
     const { pageFolder } = setupPage(
       "title: 关于\ntime: 2024-01-01\ncontent:\n  - tag: text\n    text: hi\n",
