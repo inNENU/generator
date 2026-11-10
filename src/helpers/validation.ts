@@ -219,8 +219,8 @@ const collectUnionMessages = (
 const formatUnionIssue = (issue: zod.core.$ZodIssueInvalidUnion): string => {
   const path = issue.path ?? [];
 
-  // 联合类型自身带有作者文案时（如 `imgSchema` 的 `error` 回调），该文案已汇总分支信息，直接使用
-  if (issue.errors.length > 0 && !isDefaultMessage(issue)) return withLocation(issue.message, path);
+  // 联合类型自身带有作者文案时（如 `imgSchema` 的 `error` 回调、判别值不匹配的定制提示），该文案已汇总分支信息，直接使用
+  if (!isDefaultMessage(issue)) return withLocation(issue.message, path);
 
   const collected: UnionIssueMessage[] = [];
 

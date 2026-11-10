@@ -161,6 +161,18 @@ describe("zod 错误消息格式化", () => {
     expect(formatZodError(failureOf(result))).toBe("✖ 取值不符合要求");
   });
 
+  it("判别值不匹配时仍保留联合类型自身的自定义 error 文案", () => {
+    const union = zod.discriminatedUnion(
+      "tag",
+      [zod.object({ tag: zod.literal("a") }), zod.object({ tag: zod.literal("b") })],
+      { error: () => "自定义判别错误" },
+    );
+    const result = union.safeParse({ tag: "zzz" });
+
+    expect(result.success).toBe(false);
+    expect(formatZodError(failureOf(result))).toBe("✖ 自定义判别错误（位置: tag）");
+  });
+
   it("联合类型分支的重复文案只保留一次", () => {
     const union = zod.union([
       zod.object({ title: zod.string().min(2, "标题不合法") }),
