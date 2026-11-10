@@ -175,6 +175,33 @@ describe("page time update", () => {
     }
   });
 
+  it("yaml 无法解析且没有 time 时输出两条警告并保持文件不变", () => {
+    const { pageFolder, pageYAMLPath } = setupPage("title: [unclosed\ncontent: hi\n");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      updatePageTime(pageYAMLPath);
+
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("YAML 无法解析，回退为按行更新"),
+        expect.anything(),
+      );
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("不存在 time 字段，跳过更新时间"),
+      );
+      expect(readFileSync(pageYAMLPath, { encoding: "utf-8" })).toBe(
+        "title: [unclosed\ncontent: hi\n",
+      );
+      expect(readdirSync(join(pageFolder, "guide"))).toStrictEqual(["about.yml"]);
+    } finally {
+      warnSpy.mockRestore();
+      rmSync(pageFolder, { recursive: true, force: true });
+    }
+  });
+
   it("页面 YAML 不存在时抛出带路径的错误", () => {
     const { pageFolder } = setupPage(
       "title: 关于\ntime: 2024-01-01\ncontent:\n  - tag: text\n    text: hi\n",

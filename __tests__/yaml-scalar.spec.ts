@@ -1,4 +1,6 @@
+import { JSON_SCHEMA, load } from "js-yaml";
 import { describe, expect, it } from "vitest";
+import { parse as parseYaml } from "yaml";
 
 import { updateYamlScalar } from "../src/helpers/yaml.js";
 
@@ -53,6 +55,19 @@ describe(updateYamlScalar, () => {
       "time: |-\n  2026-11-10\ntitle: x\n",
     );
     expect(updateYamlScalar("time: 2020-01-01\n", "time", "a\nb")).toBe("time: |-\n  a\n  b\n");
+  });
+
+  it("quotes values inside top-level flow maps", () => {
+    const content = "{time: 2020, title: x}\n";
+
+    for (const value of ["a\nb", "a, b", "a]b", "a}b", "2026-11-10T09:00:00.000Z"]) {
+      const next = updateYamlScalar(content, "time", value);
+
+      expect(next).not.toBeNull();
+      expect(next).not.toMatch(/\{\s*time: \|/u);
+      expect(load(next!, { schema: JSON_SCHEMA })).toStrictEqual({ time: value, title: "x" });
+      expect(parseYaml(next!)).toStrictEqual({ time: value, title: "x" });
+    }
   });
 
   it("keeps the raw scalar contract for empty and CRLF values", () => {

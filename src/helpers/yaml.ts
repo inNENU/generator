@@ -228,8 +228,8 @@ export const getYamlValue = (content: string): string => {
  *
  * @param content 原始 YAML 文本
  * @param key 顶层 key
- * @param value 新的标量文本（按原始标量文本写入，调用方负责在需要字符串语义时先做引号化，例如 {@link getYamlValue}）
- * @returns 更新后的文本；顶层不存在该 key（或 `key:` 后没有值）时返回 `null`
+ * @param value 新的标量内容（按标量内容写入，不是 YAML 源文本；不会被当作已引号化的片段）
+ * @returns 更新后的文本；根不是 map、顶层不存在该 key、`key:` 后没有值、或目标不是标量（alias/flow 集合/嵌套 map）时返回 `null`
  * @throws {Error} YAML 无法解析时抛出
  */
 export const updateYamlScalar = (content: string, key: string, value: string): string | null => {
@@ -253,15 +253,19 @@ export const updateYamlScalar = (content: string, key: string, value: string): s
   const currentType = pair.value.type;
   const multiline = /[\r\n]/u.test(value);
   const blockScalar = currentType === "BLOCK_LITERAL" || currentType === "BLOCK_FOLDED";
+  // flow collection 里不能用块标量，且逗号/方括号等会改变结构，统一退回双引号标量
+  const inFlow = contents.flow === true;
+  const quote = inFlow || value.includes("\r");
 
   // 目标原本是块标量、或新值含换行时，必须继续用块标量写回；否则 `CST.setScalarValue` 会把 body 顶到第 0 列，生成非法 YAML。
-  // 含 CR 的值改用双引号转义，避免块标量里出现裸 CR。
+  // 含 CR 或处于 flow collection 的值改用双引号转义。
   CST.setScalarValue(pair.srcToken.value, value, {
     afterKey: true,
+    inFlow,
     ...(multiline
-      ? { type: value.includes("\r") ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
+      ? { type: quote ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
       : blockScalar
-        ? { type: "BLOCK_LITERAL" }
+        ? { type: quote ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
         : {}),
   } as const);
 
