@@ -132,6 +132,17 @@ describe("vue 插值中和的编译级验证", () => {
   });
 });
 
+describe("线性扫描", () => {
+  it("不在缺少分号的 & 上退化为 O(n²)", () => {
+    const value = "&".repeat(1_000_000);
+    const started = performance.now();
+
+    escapeVueInterpolation(value);
+
+    expect(performance.now() - started).toBeLessThan(3000);
+  });
+});
+
 describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
   /**
    * 用真实 VuePress Markdown 与 figure 插件渲染

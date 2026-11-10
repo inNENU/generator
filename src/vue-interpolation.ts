@@ -172,13 +172,15 @@ const decodeEntityAt = (
   hasAmpersandPrefix: boolean,
 ): { character: string; end: number } | null => {
   if (hasAmpersandPrefix) {
-    const end = value.indexOf(";", index);
+    // 只在前瞻窗口内找分号，避免 `&amp;` 后无分号的长文本退化为 O(n²)
+    const window = value.slice(index, index + 33);
+    const end = window.indexOf(";");
 
-    if (end === -1 || end - index > 32) return null;
+    if (end === -1) return null;
 
-    const character = decodeEntityBodyWithEscapes(value.slice(index, end));
+    const character = decodeEntityBodyWithEscapes(window.slice(0, end));
 
-    return character ? { character, end: end + 1 } : null;
+    return character ? { character, end: index + end + 1 } : null;
   }
 
   htmlEntityPattern.lastIndex = index;
@@ -195,13 +197,14 @@ const decodeEntityAt = (
   }
 
   // `&\\#123;` 这类实体会被 Markdown 先还原反斜杠再解码
-  const semicolon = value.indexOf(";", index + 1);
+  const window = value.slice(index + 1, index + 41);
+  const semicolon = window.indexOf(";");
 
-  if (semicolon === -1 || semicolon - index > 40) return null;
+  if (semicolon === -1) return null;
 
-  const escapedCharacter = decodeEntityBodyWithEscapes(value.slice(index + 1, semicolon));
+  const escapedCharacter = decodeEntityBodyWithEscapes(window.slice(0, semicolon));
 
-  return escapedCharacter ? { character: escapedCharacter, end: semicolon + 1 } : null;
+  return escapedCharacter ? { character: escapedCharacter, end: index + semicolon + 2 } : null;
 };
 
 /**
