@@ -203,6 +203,11 @@ describe("@mdit/plugin-figure 对图片 title 的二次解码", () => {
     ["desc 实体反斜杠 + 实体反斜杠 + 花括号", '![a](x "{&#92;&#92;&#123;7*7&#92;&#125;}")'],
     ["desc 命名实体反斜杠 + 实体花括号", '![a](x "{&bsol;&lcub;&#10;alert(1)}&bsol;&rcub;}")'],
     ["desc 十六进制实体反斜杠 + 实体花括号", '![a](x "{&#x5c;&#x7b;&#x0a;alert(1)}&#x5c;&#x7d;}")'],
+    ["desc 转义 # 的实体 title", String.raw`![a](x "&\#123;7*7&\#125;}")`],
+    ["desc 实体 & 加转义 # title", String.raw`![a](x "&#38;\#123;7*7&#38;\#125;}")`],
+    ["desc amp 前缀加转义 # title", String.raw`![a](x "&amp;\#123;7*7&amp;\#125;}")`],
+    ["desc 双转义 # 的实体 title", String.raw`![a](x "&\\#123;7*7&\\#125;}")`],
+    ["desc 转义 # 的实体与 alert", String.raw`![a](x "&\#123;{alert(1)}&\#125;}")`],
   ];
 
   it("保留 figure 标题中的裸 & 文本", () => {

@@ -65,12 +65,16 @@ const braces: Record<string, string> = {
  *
  * 在花括号后插入 HTML 注释；若已有输出以花括号结尾（可能是字面花括号或前一条改写结果），先插入注释隔开， 避免实体/反斜杠解码后两个花括号变成相邻的 `{{` / `}}`。
  *
- * @param result 已累积的输出
+ * @param parts 已累积的输出片段
  * @param brace 需要中和的花括号
- * @returns 更新后的输出
  */
-const appendNeutralizedBrace = (result: string, brace: "{" | "}"): string =>
-  `${result}${result.endsWith("{") || result.endsWith("}") ? "<!-- -->" : ""}${brace}<!-- -->`;
+const appendNeutralizedBrace = (parts: string[], brace: "{" | "}"): void => {
+  const last = parts[parts.length - 1] ?? "";
+
+  if (last.endsWith("{") || last.endsWith("}")) parts.push("<!-- -->");
+
+  parts.push(brace, "<!-- -->");
+};
 
 /**
  * 解码实体 body（不含开头 `&` 与结尾 `;`）
@@ -96,6 +100,65 @@ const decodeEntityBody = (body: string): string | null => {
 };
 
 /**
+ * 按 Markdown 的转义规则还原 ASCII 标点前的反斜杠
+ *
+ * `unescapeAll` 会把 `\\#` 还原成 `#`，因此 `&\\#123;` 在 Markdown 解析后等价于 `&#123;`。
+ *
+ * @param value 输入文本
+ * @returns 还原后的文本
+ */
+const unescapeMarkdownPunctuation = (value: string): string => {
+  let result = "";
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+
+    if (character === "\\" && index + 1 < value.length) {
+      const codePoint = value.codePointAt(index + 1) ?? 0;
+
+      if (
+        (codePoint >= 0x21 && codePoint <= 0x2f) ||
+        (codePoint >= 0x3a && codePoint <= 0x40) ||
+        (codePoint >= 0x5b && codePoint <= 0x60) ||
+        (codePoint >= 0x7b && codePoint <= 0x7e)
+      ) {
+        result += value[index + 1];
+        index += 1;
+        continue;
+      }
+    }
+
+    result += character;
+  }
+
+  return result;
+};
+
+/**
+ * 解码可能夹有 Markdown 转义反斜杠的实体 body
+ *
+ * @param body 实体 body
+ * @returns 解码出的字符，不是已知实体则返回 `null`
+ */
+const decodeEntityBodyWithEscapes = (body: string): string | null => {
+  let current = body;
+
+  for (let depth = 0; depth < 4; depth += 1) {
+    const decoded = decodeEntityBody(current);
+
+    if (decoded) return decoded;
+
+    const next = unescapeMarkdownPunctuation(current);
+
+    if (next === current) return null;
+
+    current = next;
+  }
+
+  return decodeEntityBody(current);
+};
+
+/**
  * 解码从指定位置开始的一层 HTML 实体
  *
  * @param value 输入文本
@@ -113,7 +176,7 @@ const decodeEntityAt = (
 
     if (end === -1 || end - index > 32) return null;
 
-    const character = decodeEntityBody(value.slice(index, end));
+    const character = decodeEntityBodyWithEscapes(value.slice(index, end));
 
     return character ? { character, end: end + 1 } : null;
   }
@@ -122,14 +185,23 @@ const decodeEntityAt = (
 
   const match = htmlEntityPattern.exec(value);
 
-  if (!match || match.index !== index) return null;
+  if (match?.index === index) {
+    // 限制实体长度，避免病态输入（如 `&#000…0;`）在后续解析中产生二次开销
+    if (match[0].length > 40) return null;
 
-  // 限制实体长度，避免病态输入（如 `&#000…0;`）在后续解析中产生二次开销
-  if (match[0].length > 40) return null;
+    const character = decodeEntityBody(match[0].slice(1, -1));
 
-  const character = decodeEntityBody(match[0].slice(1, -1));
+    return character ? { character, end: index + match[0].length } : null;
+  }
 
-  return character ? { character, end: index + match[0].length } : null;
+  // `&\\#123;` 这类实体会被 Markdown 先还原反斜杠再解码
+  const semicolon = value.indexOf(";", index + 1);
+
+  if (semicolon === -1 || semicolon - index > 40) return null;
+
+  const escapedCharacter = decodeEntityBodyWithEscapes(value.slice(index + 1, semicolon));
+
+  return escapedCharacter ? { character: escapedCharacter, end: semicolon + 1 } : null;
 };
 
 /**
@@ -184,6 +256,9 @@ const findBraceAfterBackslashes = (
   let position = start;
 
   while (position < value.length) {
+    // 限制前瞻长度：超过 64 个字符仍没有花括号时，多次解析后也不会相邻
+    if (position - start > 64) return null;
+
     const character = value[position];
 
     if (character === "\\") {
@@ -222,12 +297,12 @@ const findBraceAfterBackslashes = (
  * @returns 不会解码出 `{{` / `}}` 的 Markdown
  */
 const neutralizeDecodedBraces = (value: string): string => {
-  let result = "";
+  const parts: string[] = [];
   let index = 0;
 
   while (index < value.length) {
     if (value[index] !== "&") {
-      result += value[index];
+      parts.push(value[index]);
       index += 1;
       continue;
     }
@@ -235,7 +310,7 @@ const neutralizeDecodedBraces = (value: string): string => {
     const decoded = decodeEntityChain(value, index);
 
     if (decoded?.character === "{" || decoded?.character === "}") {
-      result = appendNeutralizedBrace(result, decoded.character);
+      appendNeutralizedBrace(parts, decoded.character);
       index = decoded.end;
       continue;
     }
@@ -245,17 +320,18 @@ const neutralizeDecodedBraces = (value: string): string => {
       const nextBrace = findBraceAfterBackslashes(value, decoded.end);
 
       if (nextBrace) {
-        result = appendNeutralizedBrace(result, nextBrace.character);
+        appendNeutralizedBrace(parts, nextBrace.character);
         index = nextBrace.end;
         continue;
       }
     }
 
-    result += "&";
+    parts.push("&");
     index += 1;
   }
 
-  return result
+  return parts
+    .join("")
     .replaceAll(encodedBracePattern, (match) => `%25${match.slice(1)}`)
     .replaceAll(/<\/?plaintext\b/giu, (tag) => `&lt;${tag.slice(1)}`);
 };
@@ -270,12 +346,12 @@ const neutralizeDecodedBraces = (value: string): string => {
  * @returns 花括号不再依赖 Markdown 转义语义的文本
  */
 const normalizeEscapedBraces = (value: string): string => {
-  let result = "";
+  const parts: string[] = [];
   let index = 0;
 
   while (index < value.length) {
     if (value[index] !== "\\") {
-      result += value[index];
+      parts.push(value[index]);
       index += 1;
       continue;
     }
@@ -287,16 +363,16 @@ const normalizeEscapedBraces = (value: string): string => {
     const brace = value[end];
 
     if (brace !== "{" && brace !== "}") {
-      result += value.slice(index, end);
+      parts.push(value.slice(index, end));
       index = end;
       continue;
     }
 
-    result = appendNeutralizedBrace(result, brace);
+    appendNeutralizedBrace(parts, brace);
     index = end + 1;
   }
 
-  return result;
+  return parts.join("");
 };
 
 /**
