@@ -479,15 +479,44 @@ describe("yaml strictness parity", () => {
     );
 
     expect(pageConfigSchema.safeParse(injected).success).toBe(false);
+
+    // 合法 page config 上注入 own `__proto__`，确认拒绝来自 strict unknown-key 校验，而不是缺少 title/content
+    const valid = {
+      title: "t",
+      content: [{ tag: "text", text: "x" }],
+    } as Record<string, unknown>;
+
+    Object.defineProperty(valid, "__proto__", {
+      configurable: true,
+      enumerable: true,
+      value: { title: "注入标题" },
+      writable: true,
+    });
+
+    const parsed = pageConfigSchema.safeParse(valid);
+
+    expect(parsed.success).toBe(false);
+
+    const unknownKeyIssue = parsed.error?.issues.find(
+      (issue) => issue.code === "unrecognized_keys",
+    );
+
+    expect(unknownKeyIssue?.keys).toContain("__proto__");
   });
 
   it("does not count alias chains toward the nesting limit", () => {
-    const lines = ["a0: &a0 [0]"];
+    const chain = (length: number): string => {
+      const lines = ["a0: &a0 [0]"];
 
-    for (let index = 1; index < 99; index += 1)
-      lines.push(`a${index}: &a${index} [*a${index - 1}]`);
+      for (let index = 1; index <= length; index += 1)
+        lines.push(`a${index}: &a${index} [*a${index - 1}]`);
 
-    expect(() => parseYaml(lines.join("\n"))).not.toThrow();
+      return lines.join("\n");
+    };
+
+    expect(() => parseYaml(chain(99))).not.toThrow();
+    expect(() => parseYaml(chain(100))).not.toThrow();
+    expect(() => parseYaml(chain(101), "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
   });
 
   it("rejects extremely deep literals without overflowing the stack", () => {

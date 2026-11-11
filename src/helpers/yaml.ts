@@ -654,7 +654,7 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 
     const [document] = documents;
 
-    // 只有指令、没有文档内容时 yaml 会返回空文档流；旧版 js-yaml 对此报错
+    // 纯指令/空流在 hasYamlDocument 之外仍可能产生空文档流；这里兜底报错
     if (!document) throw new Error("输入不是有效的 YAML 文档");
 
     if (document.errors.length > 0) {
