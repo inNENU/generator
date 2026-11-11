@@ -79,6 +79,15 @@ describe(parseYaml, () => {
     expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
   });
 
+  it("recognizes a stream-leading indented `---` after a BOM", () => {
+    expect(parseYaml("\uFEFF  ---\na: 1")).toStrictEqual({ a: 1 });
+  });
+
+  it("treats content after a stream-leading indented `---` as document content", () => {
+    expect(parseYaml("  --- foo")).toBe("foo");
+    expect(parseYaml("  --- foo\nbar")).toBe("foo bar");
+  });
+
   it("handles CRLF and CR line endings in markers and comments", () => {
     expect(parseYaml("--- # c\r\n")).toBeUndefined();
     expect(parseYaml("--- # c\r")).toBeUndefined();
@@ -251,7 +260,7 @@ describe("yaml alias protection", () => {
     const aliases = Array.from({ length: 101 }, () => "*base").join(",");
 
     expect(() => parseYaml(`base: &base 1\nlist: [${aliases}]`, "bomb.yml")).toThrow(
-      /YAML 解析失败/u,
+      /别名展开后过大（maxAliases: 100）/u,
     );
   });
 
@@ -278,7 +287,57 @@ describe("yaml alias protection", () => {
       "root: *l5",
     ].join("\n");
 
-    expect(() => parseYaml(content, "bomb.yml")).toThrow(/展开后过大/u);
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
+  });
+});
+
+describe("yaml JSON schema scalar resolution", () => {
+  it("resolves only JSON scalars and keeps YAML 1.1 style values as strings", () => {
+    const cases: [string, unknown][] = [
+      ["42", 42],
+      ["0x1A", "0x1A"],
+      ["0o17", "0o17"],
+      ["1:20", "1:20"],
+      ["2024-01-01", "2024-01-01"],
+      ["true", true],
+      ["TRUE", "TRUE"],
+      ["yes", "yes"],
+      ["~", "~"],
+      [".inf", ".inf"],
+      ["1_000", "1_000"],
+      ["null", null],
+      ["Null", "Null"],
+    ];
+
+    for (const [source, expected] of cases)
+      expect(parseYaml(`value: ${source}`)).toStrictEqual({ value: expected });
+  });
+
+  it("supports explicit integer tags with JSON bases", () => {
+    expect(parseYaml("value: !!int 0x1A")).toStrictEqual({ value: 26 });
+    expect(parseYaml("value: !!int 0o17")).toStrictEqual({ value: 15 });
+    expect(parseYaml("value: !!int 0b101")).toStrictEqual({ value: 5 });
+  });
+
+  it("rejects multiple documents in a stream", () => {
+    expect(() => parseYaml("---\na: 1\n---\nb: 2")).toThrow(/expected a single document/u);
+  });
+});
+
+describe("yaml strictness parity", () => {
+  it("keeps explicit float tags as strings", () => {
+    expect(parseYaml("v: !!float .inf")).toStrictEqual({ v: ".inf" });
+    expect(parseYaml("v: !!float .nan")).toStrictEqual({ v: ".nan" });
+  });
+
+  it("rejects tags outside the JSON schema", () => {
+    const cases = ["v: !foo bar", "v: !!timestamp 2024-01-01", "v: !!binary aGVsbG8=", "v: !!set"];
+
+    for (const source of cases) expect(() => parseYaml(source, "tag.yml")).toThrow(/unknown tag/u);
+  });
+
+  it("rejects NUL bytes", () => {
+    expect(() => parseYaml(`v: "a${String.fromCodePoint(0)}b"`, "nul.yml")).toThrow(/null byte/u);
   });
 });
 

@@ -1,9 +1,20 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 
-import type { Schema } from "js-yaml";
-import { JSON_SCHEMA, NOT_RESOLVED, defineScalarTag, intJsonTag, load } from "js-yaml";
 import { dirname, join, relative, resolve } from "upath";
-import { Composer, CST, Parser, isMap, isPair, isScalar, stringify as stringifyYaml } from "yaml";
+import type { CollectionTag, ScalarTag, Tags } from "yaml";
+import {
+  Composer,
+  CST,
+  Parser,
+  Schema,
+  isAlias,
+  isMap,
+  isPair,
+  isScalar,
+  isSeq,
+  parseAllDocuments,
+  stringify as stringifyYaml,
+} from "yaml";
 
 import {
   getOutputRelativePath,
@@ -26,7 +37,7 @@ const MAX_YAML_EXPANDED_NODES = 100_000;
 /**
  * 校验解析结果可以安全序列化
  *
- * 别名会被 js-yaml 解析为共享引用，正常的重复引用可以复用；但自引用会形成环（`JSON.stringify` 会抛错）， 嵌套别名还可能指数级展开（俗称 YAML
+ * 别名会被解析为共享引用，正常的重复引用可以复用；但自引用会形成环（`JSON.stringify` 会抛错）， 嵌套别名还可能指数级展开（俗称 YAML
  * 别名炸弹）。这里在返回前做一次带上限的展开遍历。
  *
  * @param value 解析结果
@@ -88,30 +99,88 @@ const warnIfUnsafeInteger = (source: string, filePath: string): void => {
   );
 };
 
+/** JSON schema 允许的隐式整数写法（十进制，无前导零） */
+const jsonImplicitIntegerPattern = /^-?(?:0|[1-9][0-9]*)$/u;
+
+/** JSON schema 允许的显式 `!!int` 写法（含 1.2 的 0b/0o/0x） */
+const jsonExplicitIntegerPattern =
+  /^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$/u;
+
+/**
+ * 解析显式 `!!int` 的整数原文
+ *
+ * @param source 整数原文
+ * @returns 解析后的整数
+ */
+const parseIntegerSource = (source: string): number => {
+  let value = source;
+  let sign = 1;
+
+  if (value.startsWith("-") || value.startsWith("+")) {
+    if (value.startsWith("-")) sign = -1;
+    value = value.slice(1);
+  }
+
+  if (value.startsWith("0b")) return sign * Number.parseInt(value.slice(2), 2);
+  if (value.startsWith("0o")) return sign * Number.parseInt(value.slice(2), 8);
+  if (value.startsWith("0x")) return sign * Number.parseInt(value.slice(2), 16);
+
+  return sign * Math.trunc(Number(value));
+};
+
+/**
+ * 创建带大整数告警的整数标签
+ *
+ * 保留 `yaml` JSON schema 的整数语义（隐式只接受十进制 JSON 整数，显式 `!!int` 支持 1.2 的 0b/0o/0x）， 只额外在整数超出 JavaScript
+ * 安全整数范围时打印告警，避免静默丢失精度。
+ *
+ * @param filePath 文件路径，仅用于告警信息
+ * @returns 用于本次解析的整数标签（显式标签在前，隐式标签在后）
+ */
+const createIntegerTags = (filePath: string): ScalarTag[] => [
+  {
+    tag: "tag:yaml.org,2002:int",
+    default: false,
+    resolve: (source: string) => {
+      if (!jsonExplicitIntegerPattern.test(source))
+        throw new Error("cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag");
+
+      warnIfUnsafeInteger(source, filePath);
+
+      return parseIntegerSource(source);
+    },
+  },
+  {
+    tag: "tag:yaml.org,2002:int",
+    default: true,
+    test: jsonImplicitIntegerPattern,
+    resolve: (source: string) => {
+      warnIfUnsafeInteger(source, filePath);
+
+      return Math.trunc(Number(source));
+    },
+  },
+];
+
 /**
  * 创建带大整数告警的 YAML schema
  *
- * 在 js-yaml 默认 JSON schema 的基础上替换整数标签：仍按原逻辑解析，但整数超出 JavaScript 安全整数范围时打印告警，避免静默丢失精度。
+ * 基于 `yaml` 内置的 JSON schema，但去掉“无法解析的 plain scalar 直接报错”的兜底标签，让未匹配 JSON 标量的纯量按字符串处理，与旧版 js-yaml
+ * JSON schema 行为一致。
  *
  * @param filePath 文件路径，仅用于告警信息
  * @returns 用于本次解析的 schema
  */
 const createYamlSchema = (filePath: string): Schema =>
-  JSON_SCHEMA.withTags(
-    defineScalarTag<number>("tag:yaml.org,2002:int", {
-      implicit: true,
-      implicitFirstChars: ["-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-      identify: intJsonTag.identify,
-      represent: intJsonTag.represent,
-      resolve: (source, isExplicit, tagName) => {
-        const value = intJsonTag.resolve(source, isExplicit, tagName);
-
-        if (value !== NOT_RESOLVED) warnIfUnsafeInteger(source, filePath);
-
-        return value;
-      },
-    }),
-  );
+  new Schema({
+    schema: "json",
+    customTags: (tags: Tags): Tags =>
+      (tags as (CollectionTag | ScalarTag)[])
+        .filter((tag) => tag.tag !== "")
+        .flatMap((tag) =>
+          tag.tag === "tag:yaml.org,2002:int" ? createIntegerTags(filePath) : [tag],
+        ),
+  });
 
 /**
  * 匹配位于第 0 列的文档标记行（`---`、`...`）
@@ -123,14 +192,14 @@ const yamlDocumentMarkerPattern = /^(?:---|\.\.\.)(?:[ \t]+(?:#.*)?)?$/u;
 /**
  * 匹配流起始处带缩进的 `---`
  *
- * 解析器（js-yaml）会把文件首行缩进的 `---`（可带行尾注释）当作文档开始标记，而不是普通标量；同样的内容出现在第二行及以后才是标量，因此只在首行应用。`...` 没有这个特例。
+ * 旧版 js-yaml 解析器会把文件首行缩进的 `---`（可带行尾注释）当作文档开始标记，而不是普通标量；同样的内容出现在第二行及以后才是标量，因此只在首行应用。`...` 没有这个特例。
  */
 const yamlIndentedStartMarkerPattern = /^[ \t]+---(?:[ \t]+(?:#.*)?)?$/u;
 
 /**
  * 匹配 YAML 指令行
  *
- * 只承认规范定义的 `%YAML`/`%TAG`；其它第 0 列的 `%` 行不是可跳过的内容，交给 js-yaml 判定（可能是非法指令）。
+ * 只承认规范定义的 `%YAML`/`%TAG`；其它第 0 列的 `%` 行不是可跳过的内容，交给解析器判定（可能是非法指令）。
  */
 const yamlDirectivePattern = /^%(?:YAML|TAG)\b/u;
 
@@ -138,7 +207,7 @@ const yamlDirectivePattern = /^%(?:YAML|TAG)\b/u;
  * 判断 YAML 内容是否包含实际文档
  *
  * 空行、注释、文档标记（`---`/`...`）与指令（`%YAML`/`%TAG`）都不构成文档内容。文件开头的 BOM 会先剥离，CRLF/CR 行尾按换行拆分，因此行尾不会影响判断。
- * 文档标记与指令按规范必须位于第 0 列，缩进的 `...` 属于普通标量；但 js-yaml 会把流起始处缩进的 `---` 当作文档开始标记，这里仅在首行与之保持一致。缩进的 `%foo`
+ * 文档标记与指令按规范必须位于第 0 列，缩进的 `...` 属于普通标量；但旧版 js-yaml 会把流起始处缩进的 `---` 当作文档开始标记，这里仅在首行与之保持一致。缩进的 `%foo`
  * 也不再被误判为空文档。
  *
  * @param content YAML 内容
@@ -161,6 +230,73 @@ const hasYamlDocument = (content: string): boolean => {
 };
 
 /**
+ * 把流起始处缩进的文档标记移到第 0 列
+ *
+ * 旧版 js-yaml 会把首行缩进的 `---` 当作文档开始标记，而 `yaml` 会把它当作普通标量。这里仅在首行命中缩进标记时把该行前导空白去掉，保持旧版语义。
+ *
+ * @param content YAML 内容
+ * @returns 归一化后的 YAML 内容
+ */
+const normalizeStreamStartMarker = (content: string): string => {
+  const source = content.replace(/^\uFEFF/u, "");
+  const lines = source.split(/\r\n?|\n/u);
+
+  // 旧版 js-yaml 把首行缩进的 `---`（可带内容/注释）当作文档开始标记；yaml 则当作普通标量
+  if (lines.length > 0 && /^[ \t]+---(?:[ \t].*)?$/u.test(lines[0])) {
+    lines[0] = lines[0].trimStart();
+
+    return lines.join("\n");
+  }
+
+  return source;
+};
+
+/** JSON schema 允许的标签（与 js-yaml 的 `JSON_SCHEMA` 对齐） */
+const JSON_SCHEMA_TAGS = new Set([
+  "tag:yaml.org,2002:bool",
+  "tag:yaml.org,2002:float",
+  "tag:yaml.org,2002:int",
+  "tag:yaml.org,2002:map",
+  "tag:yaml.org,2002:null",
+  "tag:yaml.org,2002:seq",
+  "tag:yaml.org,2002:str",
+]);
+
+/**
+ * 校验文档中不存在 JSON schema 之外的标签
+ *
+ * `yaml` 在 `schema: "json"` 下仍会解析 `!!timestamp`、`!!binary`、`!!set`、`!!omap` 等内置标签，而旧版 js-yaml 的
+ * `JSON_SCHEMA` 会以 “unknown tag” 拒绝；这里递归检查 AST 节点标签，保持旧行为的严格度。
+ *
+ * @param node 待检查的节点
+ */
+const assertJsonSchemaTags = (node: unknown): void => {
+  if (isAlias(node)) return;
+
+  if (isMap(node)) {
+    if (node.tag && !JSON_SCHEMA_TAGS.has(node.tag)) throw new Error(`unknown tag ${node.tag}`);
+
+    for (const pair of node.items) {
+      assertJsonSchemaTags(pair.key);
+      assertJsonSchemaTags(pair.value);
+    }
+
+    return;
+  }
+
+  if (isSeq(node)) {
+    if (node.tag && !JSON_SCHEMA_TAGS.has(node.tag)) throw new Error(`unknown tag ${node.tag}`);
+
+    for (const item of node.items) assertJsonSchemaTags(item);
+
+    return;
+  }
+
+  if (isScalar(node) && node.tag && !JSON_SCHEMA_TAGS.has(node.tag))
+    throw new Error(`unknown tag ${node.tag}`);
+};
+
+/**
  * 解析 YAML 内容
  *
  * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。 未加引号的整数超出 JavaScript
@@ -176,12 +312,44 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
   if (!hasYamlDocument(content)) return void 0;
 
   try {
-    const value = load(content, {
-      maxAliases: MAX_YAML_ALIASES,
-      schema: createYamlSchema(filePath),
-    }) as T | undefined;
+    // 与旧版 js-yaml 一致：NUL 字节不是合法 YAML 输入
+    if (content.includes("\u0000")) throw new Error("null byte is not allowed in input");
 
-    if (value !== void 0) assertYamlValueSafe(value, filePath);
+    const documents = parseAllDocuments(normalizeStreamStartMarker(content), {
+      logLevel: "silent",
+      schema: createYamlSchema(filePath),
+    });
+
+    // 旧版 js-yaml 的 load 只接受单个文档；这里显式拒绝多文档输入，避免静默只取第一个文档
+    if (documents.length > 1)
+      throw new Error("expected a single document in the stream, but found more");
+
+    const [document] = documents;
+
+    // 只有指令、没有文档内容时 yaml 会返回空文档流；旧版 js-yaml 对此报错
+    if (!document) throw new Error("输入不是有效的 YAML 文档");
+
+    if (document.errors.length > 0) throw document.errors[0];
+
+    assertJsonSchemaTags(document.contents);
+
+    let value: T;
+
+    try {
+      value = document.toJS({ maxAliasCount: MAX_YAML_ALIASES }) as T;
+    } catch (err) {
+      // 别名展开上限由 yaml 自己检查；统一翻译成与展开节点上限一致的中文提示
+      if (err instanceof Error && /excessive alias count/iu.test(err.message)) {
+        throw new Error(
+          `YAML 别名展开后过大（maxAliases: ${MAX_YAML_ALIASES}），可能存在别名炸弹（文件: ${filePath}）`,
+          { cause: err },
+        );
+      }
+
+      throw err;
+    }
+
+    assertYamlValueSafe(value, filePath);
 
     return value;
   } catch (err) {

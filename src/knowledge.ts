@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 
-import { dump } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
+import { Document, isMap, isSeq } from "yaml";
 
 import { withoutAssetFileCheck } from "./helpers/assetCheck.js";
 import { writeFileAtomically } from "./helpers/generation-manifest.js";
@@ -232,6 +232,32 @@ export interface KnowledgeIndexOptions {
 }
 
 /**
+ * 把知识索引序列化为 YAML
+ *
+ * 每条记录一行（`- { path: ..., keywords: [...] }`），与旧版 js-yaml 的 `flowLevel: 1`
+ * 输出结构一致：顶层保持块序列，记录与记录内的数组使用 flow 风格。使用 YAML 1.1 引号策略，保证 `y`/`n`、`1:20` 等值在 js-yaml 消费方（VuePress
+ * 等）中仍按字符串读取。
+ *
+ * @param index 已排序的知识索引
+ * @returns YAML 文本
+ */
+const stringifyKnowledgeIndex = (index: KnowledgeIndexItem[]): string => {
+  const document = new Document(index, { schema: "yaml-1.1" });
+
+  if (isSeq(document.contents)) {
+    for (const item of document.contents.items) {
+      if (!isMap(item)) continue;
+
+      item.flow = true;
+
+      for (const pair of item.items) if (isSeq(pair.value)) pair.value.flow = true;
+    }
+  }
+
+  return document.toString({ flowCollectionPadding: false, lineWidth: 0, singleQuote: true });
+};
+
+/**
  * 生成知识库索引（L0 文档索引）
  *
  * 索引文件通过 `writeFileAtomically` 写出（先写临时文件再 rename），避免中途失败留下半截文件。
@@ -311,8 +337,7 @@ export const generateKnowledgeIndex = (
       format === "lora"
         ? renderLoraIndex(sortedIndex)
         : format === "yaml"
-          ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
-            dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
+          ? stringifyKnowledgeIndex(sortedIndex)
           : JSON.stringify(sortedIndex, null, 2);
 
     writeFileAtomically(targetFilename, output);

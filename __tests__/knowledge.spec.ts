@@ -212,6 +212,27 @@ describe("knowledge 索引生成", () => {
     });
   });
 
+  describe("yaml 格式兼容", () => {
+    it("需要引号时使用单引号，与旧版 js-yaml 输出一致", () => {
+      setup();
+
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/quoted.yml"),
+          ["title: '指南: 冒号'", "content:", "  - tag: text", "    text: 内容"].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", { format: "yaml" });
+
+        const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
+
+        expect(yaml).toContain("- {path: guide/quoted, info: '指南: 冒号'}");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
   describe("lora 格式", () => {
     it("缺省不传 options 时输出 index.lora", () => {
       setup();
