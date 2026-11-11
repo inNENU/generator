@@ -51,15 +51,11 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
   const ancestors = new Set<object>();
   let visited = 0;
 
-  const visit = (node: unknown, depth: number): void => {
+  const visit = (node: unknown): void => {
     visited += 1;
 
     if (visited > MAX_YAML_EXPANDED_NODES)
       throw new Error(`YAML 文档展开后过大，可能存在别名炸弹（文件: ${filePath}）`);
-
-    // 旧版 js-yaml 的 maxDepth 为 100；显式限制也避免极深文档在递归遍历时爆栈
-    if (depth >= MAX_YAML_DEPTH)
-      throw new Error(`YAML 文档嵌套层级超过上限（${MAX_YAML_DEPTH} 层，文件: ${filePath}）`);
 
     if (typeof node !== "object" || node == null) return;
 
@@ -67,13 +63,13 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
 
     ancestors.add(node);
 
-    if (Array.isArray(node)) for (const item of node) visit(item, depth + 1);
-    else for (const item of Object.values(node)) visit(item, depth + 1);
+    if (Array.isArray(node)) for (const item of node) visit(item);
+    else for (const item of Object.values(node)) visit(item);
 
     ancestors.delete(node);
   };
 
-  visit(value, 0);
+  visit(value);
 };
 
 /** JavaScript 安全整数上限，超出该范围的整数无法用 `number` 精确表示 */
@@ -522,6 +518,38 @@ const countAliasNodes = (node: unknown): number => {
 };
 
 /**
+ * 校验文档字面集合的嵌套层级
+ *
+ * 与 js-yaml 的 `maxDepth` 对齐：按源码里的 map/seq 嵌套计数，不跟随 alias（alias 链不算深度，另由别名数量上限约束）。 在
+ * `toJS`/对象转换前用迭代遍历完成，避免极深输入在递归转换时爆栈。
+ *
+ * @param node 文档根节点
+ * @param filePath 文件路径（用于错误消息）
+ */
+const assertYamlNestingDepth = (node: unknown, filePath: string): void => {
+  const stack: { node: unknown; depth: number }[] = [{ node, depth: 0 }];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (!current) break;
+
+    const { node: value, depth } = current;
+
+    if (!isMap(value) && !isSeq(value)) continue;
+
+    const nextDepth = depth + 1;
+
+    if (nextDepth >= MAX_YAML_DEPTH)
+      throw new Error(`YAML 文档嵌套层级超过上限（${MAX_YAML_DEPTH} 层，文件: ${filePath}）`);
+
+    if (isMap(value))
+      for (const pair of value.items) stack.push({ node: pair.value, depth: nextDepth });
+    else for (const item of value.items) stack.push({ node: item, depth: nextDepth });
+  }
+};
+
+/**
  * 把 `yaml` 的 `mapAsMap` 结果转换为普通对象
  *
  * 旧版 js-yaml 把 mapping 转成普通对象，并把 `null` 键序列化为 `"null"`；`yaml` 默认的 `toJS` 会把 null 键变成空串。这里保留 null
@@ -545,7 +573,12 @@ const convertYamlValue = (value: unknown): unknown => {
 
       for (const [key, item] of node) {
         // 旧版 js-yaml 的 object key 字符串化规则：null → "null"，其余用 String
-        result[key == null ? "null" : String(key)] = convert(item);
+        Object.defineProperty(result, key == null ? "null" : String(key), {
+          configurable: true,
+          enumerable: true,
+          value: convert(item),
+          writable: true,
+        });
       }
 
       return result;
@@ -592,12 +625,28 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
     // 旧版 js-yaml 把 CRLF/CR 都当换行；统一成 LF 后再解析，避免 CR-only 文件被 yaml 拒绝
     const normalizedContent = content.replaceAll(/\r\n?/gu, "\n");
 
-    const documents = parseAllDocuments(normalizeStreamStartMarker(normalizedContent), {
-      logLevel: "silent",
-      schema: createYamlSchema(filePath),
-      // yaml 默认的重复 key 检查是 O(n²)（大 map 上会退化到秒级）；这里关闭它，改用下方线性检查保持旧语义
-      uniqueKeys: false,
-    });
+    let documents;
+
+    try {
+      documents = parseAllDocuments(normalizeStreamStartMarker(normalizedContent), {
+        logLevel: "silent",
+        schema: createYamlSchema(filePath),
+        // yaml 默认的重复 key 检查是 O(n²)（大 map 上会退化到秒级）；这里关闭它，改用下方线性检查保持旧语义
+        uniqueKeys: false,
+      });
+    } catch (err) {
+      // 极深字面量在 yaml 组合阶段就会递归爆栈；按旧版 js-yaml 的 maxDepth 语义转成中文错误
+      if (
+        err instanceof RangeError ||
+        (err instanceof Error && /Maximum call stack size exceeded/u.test(err.message))
+      ) {
+        throw new Error(`YAML 文档嵌套层级超过上限（${MAX_YAML_DEPTH} 层，文件: ${filePath}）`, {
+          cause: err,
+        });
+      }
+
+      throw err;
+    }
 
     // 旧版 js-yaml 的 load 只接受单个文档；这里显式拒绝多文档输入，避免静默只取第一个文档
     if (documents.length > 1)
@@ -608,9 +657,21 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
     // 只有指令、没有文档内容时 yaml 会返回空文档流；旧版 js-yaml 对此报错
     if (!document) throw new Error("输入不是有效的 YAML 文档");
 
-    if (document.errors.length > 0) throw document.errors[0];
+    if (document.errors.length > 0) {
+      const [firstError] = document.errors;
+
+      // 极深字面量在组合阶段会递归爆栈，错误被收进 document.errors；按旧版 maxDepth 语义转成中文错误
+      if (/Maximum call stack size exceeded/u.test(firstError.message)) {
+        throw new Error(`YAML 文档嵌套层级超过上限（${MAX_YAML_DEPTH} 层，文件: ${filePath}）`, {
+          cause: firstError,
+        });
+      }
+
+      throw firstError;
+    }
 
     assertJsonSchemaTags(document.contents, document);
+    assertYamlNestingDepth(document.contents, filePath);
     assertUniqueMapKeys(document.contents, document);
 
     if (countAliasNodes(document.contents) > MAX_YAML_ALIASES)

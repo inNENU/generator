@@ -19,6 +19,7 @@ import {
   getYamlMap,
   parseYaml,
 } from "../src/helpers/yaml.js";
+import { pageConfigSchema } from "../src/page/schema.js";
 
 const createTempDir = (): string => mkdtempSync(path.join(tmpdir(), "innenu-yaml-"));
 
@@ -453,6 +454,46 @@ describe("yaml strictness parity", () => {
     expect(() => parseYaml(`nil: &nil null\n${entries}`, "bomb.yml")).toThrow(
       /别名展开后过大（maxAliases: 100）/u,
     );
+  });
+
+  it("keeps __proto__ mapping keys as own data properties", () => {
+    const cases: [string, string][] = [
+      ["__proto__: {x: 1}", '{"__proto__":{"x":1}}'],
+      ["a:\n  __proto__: 1", '{"a":{"__proto__":1}}'],
+      ["list:\n  - __proto__: 1", '{"list":[{"__proto__":1}]}'],
+      ["flow: {__proto__: 1}", '{"flow":{"__proto__":1}}'],
+      ["? __proto__\n: 1", '{"__proto__":1}'],
+      ['"__proto__": 1', '{"__proto__":1}'],
+      ["a: &p {x: 1}\n__proto__: *p", '{"a":{"x":1},"__proto__":{"x":1}}'],
+    ];
+
+    for (const [source, expected] of cases) {
+      const value = parseYaml<Record<string, unknown>>(source);
+
+      expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+      expect(JSON.stringify(value)).toBe(expected);
+    }
+
+    const injected = parseYaml<Record<string, unknown>>(
+      "__proto__: {title: 注入标题, content: [{tag: text, text: 注入正文}]}",
+    );
+
+    expect(pageConfigSchema.safeParse(injected).success).toBe(false);
+  });
+
+  it("does not count alias chains toward the nesting limit", () => {
+    const lines = ["a0: &a0 [0]"];
+
+    for (let index = 1; index < 99; index += 1)
+      lines.push(`a${index}: &a${index} [*a${index - 1}]`);
+
+    expect(() => parseYaml(lines.join("\n"))).not.toThrow();
+  });
+
+  it("rejects extremely deep literals without overflowing the stack", () => {
+    const nested = `${"[".repeat(5000)}1${"]".repeat(5000)}`;
+
+    expect(() => parseYaml(`v: ${nested}`, "deep.yml")).toThrow(/嵌套层级超过上限/u);
   });
 
   it("normalizes CR-only line endings", () => {
