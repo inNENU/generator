@@ -37,7 +37,21 @@ describe(getYamlValue, () => {
     ];
 
     for (const value of values) {
-      expect(getYamlValue(value)).toMatch(/^".*"$/u);
+      const quoted = getYamlValue(value);
+
+      // `yaml` 可能使用单引号或双引号，只要求“被引号包裹且能 roundtrip”
+      expect(quoted).not.toBe(value);
+      expect(quoted).toMatch(/^["']/u);
+      expect(roundTrip(value)).toBe(value);
+    }
+  });
+
+  it("quotes values that YAML 1.1 would parse as non-strings", () => {
+    // 旧实现依赖手写正则，容易漏掉 YAML 1.1 的隐式类型；这里锁住这些边界
+    for (const value of ["", "---", "...", "1:20", "12:34", "y", "n"]) {
+      const quoted = getYamlValue(value);
+
+      expect(quoted).not.toBe(value);
       expect(roundTrip(value)).toBe(value);
     }
   });
@@ -50,7 +64,38 @@ describe(getYamlValue, () => {
   });
 
   it("escapes quotes, backslashes and newlines", () => {
-    for (const value of ['a"b', String.raw`a\b`, "a\nb", "a\rb"])
+    // 引号与换行同时出现时，`yaml` 的 1.1 单引号输出会跨行；这里要求始终单行且可 roundtrip
+    for (const value of [
+      'a"b',
+      String.raw`a\b`,
+      "a\nb",
+      "a\rb",
+      'a"\nb',
+      "a\r\nb",
+      "第一行\n第二行",
+    ]) {
+      const quoted = getYamlValue(value);
+
+      expect(quoted).not.toMatch(/[\r\n]/u);
       expect(roundTrip(value)).toBe(value);
+    }
+  });
+
+  it("preserves leading and trailing whitespace instead of trimming it", () => {
+    for (const value of [
+      "\u00A0",
+      "页面标题\u3000",
+      "a\uFEFF",
+      "\u2028",
+      "\u2029",
+      "\u0085",
+      "  a",
+      "a  ",
+    ]) {
+      const quoted = getYamlValue(value);
+
+      expect(quoted).not.toBe(value);
+      expect(roundTrip(value)).toBe(value);
+    }
   });
 });

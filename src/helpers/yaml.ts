@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import type { Schema } from "js-yaml";
 import { JSON_SCHEMA, NOT_RESOLVED, defineScalarTag, intJsonTag, load } from "js-yaml";
 import { dirname, join, relative, resolve } from "upath";
+import { Composer, CST, Parser, isMap, isPair, isScalar, stringify as stringifyYaml } from "yaml";
 
 import {
   getOutputRelativePath,
@@ -194,14 +195,6 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 };
 
 /**
- * 匹配会被 YAML 解析成非字符串的纯标量
- *
- * 例如 `123`、`true`、`null`、`0x1A`、`2024-01-01` 直接写进 frontmatter 会变成 number/boolean/null/Date。
- */
-const ambiguousScalarPattern =
-  /^(?:~|null|true|false|yes|no|on|off|[-+]?(?:\d[\d_]*(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|0x[\da-f]+|0o[0-7]+|0b[01]+|[-+]?\.(?:inf|nan)|\d{4}-\d{2}-\d{2}(?:[Tt ].*)?)$/iu;
-
-/**
  * 获取 YAML 值
  *
  * @param content 内容
@@ -209,22 +202,76 @@ const ambiguousScalarPattern =
  * @internal
  */
 export const getYamlValue = (content: string): string => {
-  const needsQuote =
-    content.length > 0 &&
-    (/^[@#?!&*%|>{}[\]"',`]/u.test(content) ||
-      /^[-?:](?:\s|$)/u.test(content) ||
-      /:\s| #|:$/u.test(content) ||
-      /[\r\n]/u.test(content) ||
-      /^\s|\s$/u.test(content) ||
-      ambiguousScalarPattern.test(content));
+  // 含换行或首尾空白时，yaml 的跨行/折行输出不保证 frontmatter 仍是单行标量；这里直接改用 JSON 双引号转义，
+  // 保证输出始终是单行且逐字符保留（首尾空白本来就需要引号，统一走 JSON 也更简单）。
+  if (/[\r\n]/u.test(content) || /^\s|\s$/u.test(content)) return JSON.stringify(content);
 
-  return needsQuote
-    ? `"${content
-        .replaceAll("\\", String.raw`\\`)
-        .replaceAll('"', String.raw`\"`)
-        .replaceAll("\r", String.raw`\r`)
-        .replaceAll("\n", String.raw`\n`)}"`
-    : content;
+  const serialized = stringifyYaml(content, {
+    // 与 js-yaml 的 JSON_SCHEMA 行为对齐：YAML 1.1 会额外把 `y`/`n`、`1:20` 等视为非字符串
+    schema: "yaml-1.1",
+    // 不使用 `>` 折叠块，且不自动折行；frontmatter 单行标量更易读、diff 更稳定
+    blockQuote: false,
+    lineWidth: 0,
+  });
+  // stringify 只在末尾追加一个换行，不能整体 trimEnd（会吃掉值本身的尾部空白）
+  const body = serialized.endsWith("\n") ? serialized.slice(0, -1) : serialized;
+
+  // YAML 1.1 不认识 1.2 的 `0o` 八进制，会按普通字符串输出；VuePress 使用的 js-yaml 默认 schema 会把它解析成数字
+  return body === content && /^[-+]?0o[0-7]+$/u.test(content) ? JSON.stringify(content) : body;
+};
+
+/**
+ * 只更新 YAML 文本中顶层某个标量的值，保留注释、空行、引号风格与其余字节
+ *
+ * 基于 `yaml` 的 CST 源 token 编辑：解析出源 token → 定位顶层 key → 只替换目标标量的 token → 再把原 token 重新拼接。与整份
+ * `Document.toString()` 不同，长标量不会被重新折行，flow 集合也不会被改写。
+ *
+ * @param content 原始 YAML 文本
+ * @param key 顶层 key
+ * @param value 新的标量内容（按标量内容写入，不是 YAML 源文本；不会被当作已引号化的片段）
+ * @returns 更新后的文本；根不是 map、顶层不存在该 key、`key:` 后没有值、或目标不是标量（alias/flow 集合/嵌套 map）时返回 `null`
+ * @throws {Error} YAML 无法解析时抛出
+ */
+export const updateYamlScalar = (content: string, key: string, value: string): string | null => {
+  // 空文件/纯注释文件没有可更新的文档，按“字段不存在”处理，避免调用方把它当成解析错误
+  if (content.replaceAll(/^[ \t]*#.*$/gmu, "").trim() === "") return null;
+
+  const tokens = [...new Parser().parse(content)];
+  const [document] = [...new Composer({ keepSourceTokens: true }).compose(tokens)];
+
+  if (!document || document.errors.length > 0)
+    throw new Error(`YAML 解析失败，无法更新 ${key} 字段`);
+
+  const { contents } = document;
+
+  if (!isMap(contents)) return null;
+
+  const pair = contents.items.find(
+    (item) => isPair(item) && isScalar(item.key) && item.key.value === key,
+  );
+
+  // `key:` 后没有值时没有可替换的 token，保持“字段不存在”的旧行为
+  if (!pair || !isScalar(pair.value) || !pair.srcToken?.value) return null;
+
+  const currentType = pair.value.type;
+  const multiline = /[\r\n]/u.test(value);
+  const blockScalar = currentType === "BLOCK_LITERAL" || currentType === "BLOCK_FOLDED";
+  // flow collection 里不能用块标量，且逗号/方括号等会改变结构，统一退回双引号标量
+  const inFlow = contents.flow === true;
+  // 空字符串用双引号保持字符串语义（否则 js-yaml 与 yaml 对空节点分别读成 "" / null）
+  const quote = inFlow || value.includes("\r") || value.length === 0;
+
+  // 目标原本是块标量、或新值含换行/为空时，必须显式指定标量类型；否则 `CST.setScalarValue` 会把 body 顶到第 0 列或输出空节点。
+  // 含 CR、空串或处于 flow collection 的值改用双引号转义，其余多行值用块标量。
+  CST.setScalarValue(pair.srcToken.value, value, {
+    afterKey: true,
+    inFlow,
+    ...(multiline || blockScalar || value.length === 0
+      ? { type: quote ? "QUOTE_DOUBLE" : "BLOCK_LITERAL" }
+      : {}),
+  } as const);
+
+  return tokens.map((token) => CST.stringify(token)).join("");
 };
 
 /**

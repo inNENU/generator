@@ -21,6 +21,7 @@ import { getTitleJSON } from "../components/title/json.js";
 import { getVideoJSON } from "../components/video/json.js";
 import { generatorConfig } from "../config.js";
 import { ValidationError, runValidation } from "../helpers/validation.js";
+import { updateYamlScalar } from "../helpers/yaml.js";
 import { findYamlFile } from "../helpers/yamlPath.js";
 import type { CheckPageConfigOptions, ComponentOptions, PageConfig, PageData } from "./schema.js";
 import { checkPageConfig, checkPageContent } from "./schema.js";
@@ -269,14 +270,31 @@ export const updatePageTime = (pageYAMLPath: string): Date => {
 
   const content = readFileSync(pageYAMLPath, { encoding: "utf-8" });
   const date = new Date();
+  const time = date.toISOString();
+  let nextContent: string;
 
-  if (!/^time: .+$/mu.test(content)) {
-    console.warn(`${pageYAMLPath} 中不存在 time 字段，跳过更新时间`);
+  try {
+    const updatedContent = updateYamlScalar(content, "time", time);
 
-    return date;
+    if (updatedContent == null) {
+      console.warn(`${pageYAMLPath} 中不存在 time 字段，跳过更新时间`);
+
+      return date;
+    }
+
+    nextContent = updatedContent;
+  } catch (err) {
+    // 兼容无法按 YAML 文档解析的旧文件：退回按行替换，保持原有的容错行为
+    console.warn(`${pageYAMLPath} YAML 无法解析，回退为按行更新 time 字段`, err);
+
+    nextContent = content.replace(/^time: .+$/mu, `time: ${time}`);
+
+    if (nextContent === content) {
+      console.warn(`${pageYAMLPath} 中不存在 time 字段，跳过更新时间`);
+
+      return date;
+    }
   }
-
-  const nextContent = content.replace(/^time: .+$/mu, `time: ${date.toISOString()}`);
   const tempPath = `${pageYAMLPath}.${process.pid}.tmp`;
 
   try {
