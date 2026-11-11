@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 
-import { dump } from "js-yaml";
 import { resolve, relative, dirname } from "upath";
+import { Document, isMap, isScalar, isSeq } from "yaml";
 
 import { withoutAssetFileCheck } from "./helpers/assetCheck.js";
 import { writeFileAtomically } from "./helpers/generation-manifest.js";
@@ -231,6 +231,62 @@ export interface KnowledgeIndexOptions {
   priorityGetter?: (item: KnowledgeIndexItem, priority?: number) => number | null | undefined;
 }
 
+/** YAML 1.2 的八进制字符串：js-yaml 4/5 的默认 schema 会把它读成数字，需要强制加引号 */
+const yaml12OctalPattern = /^[-+]?0o[0-7]+$/u;
+
+/**
+ * 给 YAML 1.2 八进制样式的字符串加引号
+ *
+ * @param node 待处理的节点
+ */
+const quoteYaml12OctalStrings = (node: unknown): void => {
+  if (isMap(node)) {
+    for (const pair of node.items) {
+      quoteYaml12OctalStrings(pair.key);
+      quoteYaml12OctalStrings(pair.value);
+    }
+
+    return;
+  }
+
+  if (isSeq(node)) {
+    for (const item of node.items) quoteYaml12OctalStrings(item);
+
+    return;
+  }
+
+  if (isScalar(node) && typeof node.value === "string" && yaml12OctalPattern.test(node.value))
+    node.type = "QUOTE_SINGLE";
+};
+
+/**
+ * 把知识索引序列化为 YAML
+ *
+ * 每条记录一行（`- { path: ..., keywords: [...] }`），与旧版 js-yaml 的 `flowLevel: 1`
+ * 输出结构一致：顶层保持块序列，记录与记录内的数组使用 flow 风格。使用 YAML 1.1 引号策略，保证 `y`/`n`、`1:20` 等值在 js-yaml 消费方（VuePress
+ * 等）中仍按字符串读取；YAML 1.2 的八进制字符串（如 `0o17`）额外强制加引号，避免 js-yaml 4/5 读成数字。
+ *
+ * @param index 已排序的知识索引
+ * @returns YAML 文本
+ */
+const stringifyKnowledgeIndex = (index: KnowledgeIndexItem[]): string => {
+  const document = new Document(index, { schema: "yaml-1.1" });
+
+  if (isSeq(document.contents)) {
+    for (const item of document.contents.items) {
+      if (!isMap(item)) continue;
+
+      item.flow = true;
+
+      for (const pair of item.items) if (isSeq(pair.value)) pair.value.flow = true;
+    }
+  }
+
+  quoteYaml12OctalStrings(document.contents);
+
+  return document.toString({ flowCollectionPadding: false, lineWidth: 0, singleQuote: true });
+};
+
 /**
  * 生成知识库索引（L0 文档索引）
  *
@@ -311,8 +367,7 @@ export const generateKnowledgeIndex = (
       format === "lora"
         ? renderLoraIndex(sortedIndex)
         : format === "yaml"
-          ? // flowLevel: 1 → 每条记录一行（keywords 内联数组），最紧凑且自动处理转义
-            dump(sortedIndex, { indent: 2, lineWidth: -1, noRefs: true, flowLevel: 1 })
+          ? stringifyKnowledgeIndex(sortedIndex)
           : JSON.stringify(sortedIndex, null, 2);
 
     writeFileAtomically(targetFilename, output);

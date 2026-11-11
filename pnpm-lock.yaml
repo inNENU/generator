@@ -169,9 +169,6 @@ importers:
       ali-oss:
         specifier: ^6.23.0
         version: 6.23.0
-      js-yaml:
-        specifier: ^5.5.0
-        version: 5.5.0
       upath:
         specifier: ^3.0.8
         version: 3.0.8
@@ -206,6 +203,9 @@ importers:
       husky:
         specifier: 9.1.7
         version: 9.1.7
+      js-yaml:
+        specifier: ^5.5.0
+        version: 5.5.0
       markdown-it:
         specifier: 15.0.3
         version: 15.0.3

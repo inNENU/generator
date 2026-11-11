@@ -212,6 +212,57 @@ describe("knowledge 索引生成", () => {
     });
   });
 
+  describe("yaml 格式兼容", () => {
+    it("需要引号时使用单引号，与旧版 js-yaml 输出一致", () => {
+      setup();
+
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/quoted.yml"),
+          ["title: '指南: 冒号'", "content:", "  - tag: text", "    text: 内容"].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", { format: "yaml" });
+
+        const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
+
+        expect(yaml).toContain("- {path: guide/quoted, info: '指南: 冒号'}");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
+  describe("yaml 格式兼容（八进制）", () => {
+    it("给 YAML 1.2 八进制样式的字符串加引号", () => {
+      setup();
+
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/octal.yml"),
+          [
+            "title: 八进制",
+            "keywords: ['0o17', '-0o17', '+0o17']",
+            "content:",
+            "  - tag: text",
+            "    text: 内容",
+          ].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", { format: "yaml" });
+
+        const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
+
+        expect(yaml).toContain("'0o17'");
+        // signed 形式旧版 js-yaml dump 不会加引号，这两条用于保护迁移
+        expect(yaml).toContain("'-0o17'");
+        expect(yaml).toContain("'+0o17'");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
   describe("lora 格式", () => {
     it("缺省不传 options 时输出 index.lora", () => {
       setup();

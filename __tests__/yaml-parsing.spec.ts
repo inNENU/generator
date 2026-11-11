@@ -19,6 +19,7 @@ import {
   getYamlMap,
   parseYaml,
 } from "../src/helpers/yaml.js";
+import { pageConfigSchema } from "../src/page/schema.js";
 
 const createTempDir = (): string => mkdtempSync(path.join(tmpdir(), "innenu-yaml-"));
 
@@ -77,6 +78,15 @@ describe(parseYaml, () => {
     // 首行缩进的文档标记不能把紧随其后的实际内容一起跳过
     expect(parseYaml("  ---\n  foo")).toBe("foo");
     expect(parseYaml("  --- # c\nfoo: 1")).toStrictEqual({ foo: 1 });
+  });
+
+  it("recognizes a stream-leading indented `---` after a BOM", () => {
+    expect(parseYaml("\uFEFF  ---\na: 1")).toStrictEqual({ a: 1 });
+  });
+
+  it("treats content after a stream-leading indented `---` as document content", () => {
+    expect(parseYaml("  --- foo")).toBe("foo");
+    expect(parseYaml("  --- foo\nbar")).toBe("foo bar");
   });
 
   it("handles CRLF and CR line endings in markers and comments", () => {
@@ -251,8 +261,23 @@ describe("yaml alias protection", () => {
     const aliases = Array.from({ length: 101 }, () => "*base").join(",");
 
     expect(() => parseYaml(`base: &base 1\nlist: [${aliases}]`, "bomb.yml")).toThrow(
-      /YAML 解析失败/u,
+      /别名展开后过大（maxAliases: 100）/u,
     );
+  });
+
+  it("rejects documents with more than 100 distinct aliases", () => {
+    const content = Array.from(
+      { length: 101 },
+      (_, index) => `a${index}: &a${index} ${index}\nb${index}: *a${index}`,
+    ).join("\n");
+
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
+  });
+
+  it("allows 100 references to the same anchor", () => {
+    const content = `base: &base 1\n${Array.from({ length: 100 }, (_, index) => `v${index}: *base`).join("\n")}`;
+
+    expect(parseYaml<Record<string, number>>(content)).toMatchObject({ base: 1, v0: 1, v99: 1 });
   });
 
   it("rejects self-referential aliases", () => {
@@ -278,7 +303,247 @@ describe("yaml alias protection", () => {
       "root: *l5",
     ].join("\n");
 
-    expect(() => parseYaml(content, "bomb.yml")).toThrow(/展开后过大/u);
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/文档展开后过大，可能存在别名炸弹/u);
+  });
+});
+
+describe("yaml JSON schema scalar resolution", () => {
+  it("resolves only JSON scalars and keeps YAML 1.1 style values as strings", () => {
+    const cases: [string, unknown][] = [
+      ["42", 42],
+      ["0x1A", "0x1A"],
+      ["0o17", "0o17"],
+      ["1:20", "1:20"],
+      ["2024-01-01", "2024-01-01"],
+      ["true", true],
+      ["TRUE", "TRUE"],
+      ["yes", "yes"],
+      ["~", "~"],
+      [".inf", ".inf"],
+      ["1_000", "1_000"],
+      ["null", null],
+      ["Null", "Null"],
+    ];
+
+    for (const [source, expected] of cases)
+      expect(parseYaml(`value: ${source}`)).toStrictEqual({ value: expected });
+  });
+
+  it("supports explicit integer tags with JSON bases", () => {
+    expect(parseYaml("value: !!int 0x1A")).toStrictEqual({ value: 26 });
+    expect(parseYaml("value: !!int 0o17")).toStrictEqual({ value: 15 });
+    expect(parseYaml("value: !!int 0b101")).toStrictEqual({ value: 5 });
+  });
+
+  it("rejects multiple documents in a stream", () => {
+    expect(() => parseYaml("---\na: 1\n---\nb: 2")).toThrow(/expected a single document/u);
+  });
+});
+
+describe("yaml strictness parity", () => {
+  it("resolves explicit float tags like the JSON schema", () => {
+    expect(parseYaml("v: !!float .5")).toStrictEqual({ v: 0.5 });
+    expect(parseYaml("v: !!float -.5")).toStrictEqual({ v: -0.5 });
+    expect(parseYaml("v: !!float .inf")).toStrictEqual({ v: Number.POSITIVE_INFINITY });
+    expect(parseYaml("v: !!float .nan")).toStrictEqual({ v: Number.NaN });
+    expect(() => parseYaml("v: !!float abc")).toThrow(/explicit tag/u);
+    expect(() => parseYaml("v: !!float 1.2.3")).toThrow(/explicit tag/u);
+  });
+
+  it("rejects explicit tags with invalid values or wrong node kinds", () => {
+    const cases = [
+      "v: !!bool yes",
+      "v: !!bool TRUE",
+      "v: !!null ~",
+      "v: !!null NULL",
+      "v: !!str { a: 1 }",
+      "v: !!map [1]",
+      "v: !!int [1]",
+      "v: !!seq { a: 1 }",
+    ];
+
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /explicit tag|unknown (?:mapping|sequence) tag/u,
+      );
+    }
+
+    expect(() => parseYaml("? [a, b]\n: v", "tag.yml")).toThrow(/complex keys/u);
+  });
+
+  it("rejects tags outside the JSON schema", () => {
+    const cases = ["v: !foo bar", "v: !!timestamp 2024-01-01", "v: !!binary aGVsbG8=", "v: !!set"];
+
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /unknown (?:scalar|mapping|sequence) tag/u,
+      );
+    }
+  });
+
+  it("rejects NUL bytes", () => {
+    expect(() => parseYaml(`v: "a${String.fromCodePoint(0)}b"`, "nul.yml")).toThrow(/null byte/u);
+  });
+
+  it("rejects raw control characters like js-yaml", () => {
+    for (const codePoint of [0x01, 0x07, 0x0b, 0x0c, 0x1f]) {
+      expect(() => parseYaml(`v: "a${String.fromCodePoint(codePoint)}b"`, "control.yml")).toThrow(
+        /expected valid JSON character/u,
+      );
+    }
+
+    // tab 是合法 YAML 空白
+    expect(parseYaml('v: "a\tb"')).toStrictEqual({ v: "a\tb" });
+  });
+
+  it("rejects collection tags on scalar nodes", () => {
+    const cases = ["v: !!map foo", "v: !!seq foo", "v: !!map", "v: !!seq", "!!map foo: bar"];
+
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /unknown scalar tag !<tag:yaml\.org,2002:(?:map|seq)>/u,
+      );
+    }
+  });
+
+  it("keeps overflow numbers as strings and rejects explicit overflow tags", () => {
+    expect(parseYaml("v: 1e999")).toStrictEqual({ v: "1e999" });
+    expect(parseYaml("v: -1e309")).toStrictEqual({ v: "-1e309" });
+
+    const hugeInteger = "9".repeat(400);
+
+    expect(parseYaml(`v: ${hugeInteger}`)).toStrictEqual({ v: hugeInteger });
+    expect(() => parseYaml("v: !!float 1e999", "overflow.yml")).toThrow(/explicit tag/u);
+    expect(() => parseYaml(`v: !!int ${hugeInteger}`, "overflow.yml")).toThrow(/explicit tag/u);
+  });
+
+  it("applies duplicate/null/complex-key checks to alias mapping keys", () => {
+    // 标量别名 key 与同名 key 重复
+    expect(() => parseYaml("a: &k key\n? *k\n: 1\n? key\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+    // alias null key 与 "" 不同，且序列化为 "null"
+    expect(parseYaml('a: &k null\n? *k\n: 1\n? ""\n: 2')).toStrictEqual({
+      a: null,
+      null: 1,
+      "": 2,
+    });
+    // alias null key 与显式 null key 重复
+    expect(() => parseYaml("a: &k null\n? *k\n: 1\n? null\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+    // alias 指向 map/seq 作为 key 时按 complex key 拒绝
+    for (const source of ["v: &k {x: 1}\n? *k\n: 1", "v: &k [1, 2]\n? *k\n: 1"])
+      expect(() => parseYaml(source, "alias.yml")).toThrow(/complex keys/u);
+  });
+
+  it("keeps anchors on null mapping keys resolvable", () => {
+    expect(parseYaml("? &k null\n: 1\nb: *k", "alias.yml")).toStrictEqual({ null: 1, b: null });
+
+    expect(() => parseYaml("? &k null\n: 1\n? *k\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+  });
+
+  it("counts null alias keys toward the alias limit", () => {
+    const entries = Array.from(
+      { length: 101 },
+      (_, index) => `m${index}: {? *nil : ${index}}`,
+    ).join("\n");
+
+    expect(() => parseYaml(`nil: &nil null\n${entries}`, "bomb.yml")).toThrow(
+      /别名展开后过大（maxAliases: 100）/u,
+    );
+  });
+
+  it("keeps __proto__ mapping keys as own data properties", () => {
+    const cases: [string, string][] = [
+      ["__proto__: {x: 1}", '{"__proto__":{"x":1}}'],
+      ["a:\n  __proto__: 1", '{"a":{"__proto__":1}}'],
+      ["list:\n  - __proto__: 1", '{"list":[{"__proto__":1}]}'],
+      ["flow: {__proto__: 1}", '{"flow":{"__proto__":1}}'],
+      ["? __proto__\n: 1", '{"__proto__":1}'],
+      ['"__proto__": 1', '{"__proto__":1}'],
+      ["a: &p {x: 1}\n__proto__: *p", '{"a":{"x":1},"__proto__":{"x":1}}'],
+    ];
+
+    for (const [source, expected] of cases) {
+      const value = parseYaml<Record<string, unknown>>(source);
+
+      expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+      expect(JSON.stringify(value)).toBe(expected);
+    }
+
+    const injected = parseYaml<Record<string, unknown>>(
+      "__proto__: {title: 注入标题, content: [{tag: text, text: 注入正文}]}",
+    );
+
+    expect(pageConfigSchema.safeParse(injected).success).toBe(false);
+
+    // 合法 page config 上注入 own `__proto__`，确认拒绝来自 strict unknown-key 校验，而不是缺少 title/content
+    const valid = {
+      title: "t",
+      content: [{ tag: "text", text: "x" }],
+    } as Record<string, unknown>;
+
+    Object.defineProperty(valid, "__proto__", {
+      configurable: true,
+      enumerable: true,
+      value: { title: "注入标题" },
+      writable: true,
+    });
+
+    const parsed = pageConfigSchema.safeParse(valid);
+
+    expect(parsed.success).toBe(false);
+
+    const unknownKeyIssue = parsed.error?.issues.find(
+      (issue) => issue.code === "unrecognized_keys",
+    );
+
+    expect(unknownKeyIssue?.keys).toContain("__proto__");
+  });
+
+  it("does not count alias chains toward the nesting limit", () => {
+    const chain = (length: number): string => {
+      const lines = ["a0: &a0 [0]"];
+
+      for (let index = 1; index <= length; index += 1)
+        lines.push(`a${index}: &a${index} [*a${index - 1}]`);
+
+      return lines.join("\n");
+    };
+
+    expect(() => parseYaml(chain(99))).not.toThrow();
+    expect(() => parseYaml(chain(100))).not.toThrow();
+    expect(() => parseYaml(chain(101), "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
+  });
+
+  it("rejects extremely deep literals without overflowing the stack", () => {
+    const nested = `${"[".repeat(5000)}1${"]".repeat(5000)}`;
+
+    expect(() => parseYaml(`v: ${nested}`, "deep.yml")).toThrow(/嵌套层级超过上限/u);
+  });
+
+  it("normalizes CR-only line endings", () => {
+    expect(parseYaml("a: 1\rb: 2\r")).toStrictEqual({ a: 1, b: 2 });
+  });
+
+  it("limits nesting depth like js-yaml", () => {
+    const nested = (count: number): string => `v: ${"[".repeat(count)}1${"]".repeat(count)}`;
+
+    expect(() => parseYaml(nested(98))).not.toThrow();
+    expect(() => parseYaml(nested(99), "deep.yml")).toThrow(/嵌套层级超过上限/u);
+  });
+
+  it("rejects duplicate mapping keys like js-yaml", () => {
+    const cases = ["a: 1\na: 2", '1: a\n"1": b', 'true: a\n"true": b', 'null: a\n"null": b'];
+
+    for (const source of cases)
+      expect(() => parseYaml(source, "duplicate.yml")).toThrow(/duplicated mapping key/u);
+
+    // 旧版 js-yaml 中 null 键为 "null"，与空字符串键不同
+    expect(parseYaml('null: a\n"": b')).toStrictEqual({ null: "a", "": "b" });
   });
 });
 
