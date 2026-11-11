@@ -242,7 +242,7 @@ describe("knowledge 索引生成", () => {
           path.join(testDir, "pages/guide/octal.yml"),
           [
             "title: 八进制",
-            "keywords: ['0o17']",
+            "keywords: ['0o17', '-0o17', '+0o17']",
             "content:",
             "  - tag: text",
             "    text: 内容",
@@ -254,6 +254,9 @@ describe("knowledge 索引生成", () => {
         const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
 
         expect(yaml).toContain("'0o17'");
+        // signed 形式旧版 js-yaml dump 不会加引号，这两条用于保护迁移
+        expect(yaml).toContain("'-0o17'");
+        expect(yaml).toContain("'+0o17'");
       } finally {
         teardown();
       }

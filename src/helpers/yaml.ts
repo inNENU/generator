@@ -129,6 +129,17 @@ const parseIntegerSource = (source: string): number => {
 };
 
 /**
+ * 判断数值是否可安全表示
+ *
+ * 超出 `number` 表示范围的整数/浮点会变成 `Infinity`，序列化成 JSON 时又变成 `null`；旧版 js-yaml 会把隐式溢出的数字保留为字符串，并拒绝显式
+ * `!!int`/`!!float` 的溢出值。这里用有限性检查对齐该行为。
+ *
+ * @param value 待检查的数值
+ * @returns 是否为有限数值
+ */
+const isFiniteNumber = (value: number): boolean => Number.isFinite(value);
+
+/**
  * 创建带大整数告警的整数标签
  *
  * 保留 `yaml` JSON schema 的整数语义（隐式只接受十进制 JSON 整数，显式 `!!int` 支持 1.2 的 0b/0o/0x）， 只额外在整数超出 JavaScript
@@ -145,9 +156,14 @@ const createIntegerTags = (filePath: string): ScalarTag[] => [
       if (!jsonExplicitIntegerPattern.test(source))
         throw new Error("cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag");
 
+      const value = parseIntegerSource(source);
+
+      if (!isFiniteNumber(value))
+        throw new Error("cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag");
+
       warnIfUnsafeInteger(source, filePath);
 
-      return parseIntegerSource(source);
+      return value;
     },
   },
   {
@@ -155,9 +171,14 @@ const createIntegerTags = (filePath: string): ScalarTag[] => [
     default: true,
     test: jsonImplicitIntegerPattern,
     resolve: (source: string) => {
+      const value = Math.trunc(Number(source));
+
+      // 隐式超范围整数按字符串保留（与旧版 js-yaml 一致），不打印精度告警
+      if (!isFiniteNumber(value)) return source;
+
       warnIfUnsafeInteger(source, filePath);
 
-      return Math.trunc(Number(source));
+      return value;
     },
   },
 ];
@@ -233,14 +254,26 @@ const createJsonScalarTags = (): ScalarTag[] => [
       if (!jsonExplicitFloatPattern.test(source))
         throw new Error("cannot resolve a node with !<tag:yaml.org,2002:float> explicit tag");
 
-      return parseExplicitFloatSource(source);
+      const value = parseExplicitFloatSource(source);
+      // `.inf`/`.nan` 是显式允许的特殊值；其余溢出（如 `1e999`）旧实现会拒绝
+      const normalizedSource = source.replace(/^[-+]/u, "").toLowerCase();
+
+      if (!isFiniteNumber(value) && normalizedSource !== ".inf" && normalizedSource !== ".nan")
+        throw new Error("cannot resolve a node with !<tag:yaml.org,2002:float> explicit tag");
+
+      return value;
     },
   },
   {
     tag: "tag:yaml.org,2002:float",
     default: true,
     test: jsonImplicitFloatPattern,
-    resolve: Number,
+    resolve: (source: string) => {
+      const value = Number(source);
+
+      // 隐式超范围浮点按字符串保留（与旧版 js-yaml 一致）
+      return isFiniteNumber(value) ? value : source;
+    },
   },
 ];
 
@@ -341,14 +374,12 @@ const normalizeStreamStartMarker = (content: string): string => {
   return source;
 };
 
-/** JSON schema 允许的标签（与 js-yaml 的 `JSON_SCHEMA` 对齐） */
-const JSON_SCHEMA_TAGS = new Set([
+/** JSON schema 允许的标量标签（与 js-yaml 的 `JSON_SCHEMA` 对齐） */
+const JSON_SCHEMA_SCALAR_TAGS = new Set([
   "tag:yaml.org,2002:bool",
   "tag:yaml.org,2002:float",
   "tag:yaml.org,2002:int",
-  "tag:yaml.org,2002:map",
   "tag:yaml.org,2002:null",
-  "tag:yaml.org,2002:seq",
   "tag:yaml.org,2002:str",
 ]);
 
@@ -388,8 +419,65 @@ const assertJsonSchemaTags = (node: unknown): void => {
     return;
   }
 
-  if (isScalar(node) && node.tag && !JSON_SCHEMA_TAGS.has(node.tag))
+  // 标量节点只允许标量标签；`!!map foo`/`!!seq foo`/空 `!!map` 之类必须拒绝，不能降级成字符串
+  if (isScalar(node) && node.tag && !JSON_SCHEMA_SCALAR_TAGS.has(node.tag))
     throw new Error(`unknown scalar tag !<${node.tag}>`);
+};
+
+/**
+ * 把 `null` 键归一化为字符串 `"null"`
+ *
+ * 旧版 js-yaml 会把 `null:` 键序列化成 `"null"`；`yaml` 的 `stringifyKey` 对 `null` 返回空串，会把 `null: a` 与 `"": b`
+ * 合并。这里在转 JS 之前把 null 键改成字符串，保持旧行为。
+ *
+ * @param node 待归一化的节点
+ */
+const normalizeNullMapKeys = (node: unknown): void => {
+  if (isAlias(node)) return;
+
+  if (isMap(node)) {
+    for (const pair of node.items) {
+      if (isScalar(pair.key) && pair.key.value == null) pair.key.value = "null";
+
+      normalizeNullMapKeys(pair.value);
+    }
+
+    return;
+  }
+
+  if (isSeq(node)) for (const item of node.items) normalizeNullMapKeys(item);
+};
+
+/**
+ * 校验映射中不存在重复 key
+ *
+ * 旧版 js-yaml 会拒绝重复 key（`1` 与 `"1"`、`true` 与 `"true"` 视为同一个 key）；`yaml` 的同类检查是 O(n²) 的，这里关闭后按字符串化
+ * key 做线性检查，保持旧语义。
+ *
+ * @param node 待检查的节点
+ */
+const assertUniqueMapKeys = (node: unknown): void => {
+  if (isAlias(node)) return;
+
+  if (isMap(node)) {
+    const keys = new Set<string>();
+
+    for (const pair of node.items) {
+      if (isScalar(pair.key)) {
+        const key = String(pair.key.value);
+
+        if (keys.has(key)) throw new Error("duplicated mapping key");
+
+        keys.add(key);
+      }
+
+      assertUniqueMapKeys(pair.value);
+    }
+
+    return;
+  }
+
+  if (isSeq(node)) for (const item of node.items) assertUniqueMapKeys(item);
 };
 
 /**
@@ -441,10 +529,16 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
   try {
     // 与旧版 js-yaml 一致：NUL 字节不是合法 YAML 输入
     if (content.includes("\u0000")) throw new Error("null byte is not allowed in input");
+    // 其它原始 C0 控制字符（tab、CR、LF 除外）在旧版 js-yaml 中会被拒绝；这里提前拒绝，避免 yaml 静默接受
+    // oxlint-disable-next-line no-control-regex -- 这里就是要拒绝原始控制字符
+    if (/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/u.test(content))
+      throw new Error("expected valid JSON character");
 
     const documents = parseAllDocuments(normalizeStreamStartMarker(content), {
       logLevel: "silent",
       schema: createYamlSchema(filePath),
+      // yaml 默认的重复 key 检查是 O(n²)（大 map 上会退化到秒级）；这里关闭它，改用下方线性检查保持旧语义
+      uniqueKeys: false,
     });
 
     // 旧版 js-yaml 的 load 只接受单个文档；这里显式拒绝多文档输入，避免静默只取第一个文档
@@ -459,6 +553,8 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
     if (document.errors.length > 0) throw document.errors[0];
 
     assertJsonSchemaTags(document.contents);
+    normalizeNullMapKeys(document.contents);
+    assertUniqueMapKeys(document.contents);
 
     if (countAliasNodes(document.contents) > MAX_YAML_ALIASES)
       throw new Error(`YAML 别名展开后过大（maxAliases: ${MAX_YAML_ALIASES}），可能存在别名炸弹`);

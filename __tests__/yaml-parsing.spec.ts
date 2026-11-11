@@ -383,6 +383,48 @@ describe("yaml strictness parity", () => {
   it("rejects NUL bytes", () => {
     expect(() => parseYaml(`v: "a${String.fromCodePoint(0)}b"`, "nul.yml")).toThrow(/null byte/u);
   });
+
+  it("rejects raw control characters like js-yaml", () => {
+    for (const codePoint of [0x01, 0x07, 0x0b, 0x0c, 0x1f]) {
+      expect(() => parseYaml(`v: "a${String.fromCodePoint(codePoint)}b"`, "control.yml")).toThrow(
+        /expected valid JSON character/u,
+      );
+    }
+
+    // tab 是合法 YAML 空白
+    expect(parseYaml('v: "a\tb"')).toStrictEqual({ v: "a\tb" });
+  });
+
+  it("rejects collection tags on scalar nodes", () => {
+    const cases = ["v: !!map foo", "v: !!seq foo", "v: !!map", "v: !!seq", "!!map foo: bar"];
+
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /unknown scalar tag !<tag:yaml\.org,2002:(?:map|seq)>/u,
+      );
+    }
+  });
+
+  it("keeps overflow numbers as strings and rejects explicit overflow tags", () => {
+    expect(parseYaml("v: 1e999")).toStrictEqual({ v: "1e999" });
+    expect(parseYaml("v: -1e309")).toStrictEqual({ v: "-1e309" });
+
+    const hugeInteger = "9".repeat(400);
+
+    expect(parseYaml(`v: ${hugeInteger}`)).toStrictEqual({ v: hugeInteger });
+    expect(() => parseYaml("v: !!float 1e999", "overflow.yml")).toThrow(/explicit tag/u);
+    expect(() => parseYaml(`v: !!int ${hugeInteger}`, "overflow.yml")).toThrow(/explicit tag/u);
+  });
+
+  it("rejects duplicate mapping keys like js-yaml", () => {
+    const cases = ["a: 1\na: 2", '1: a\n"1": b', 'true: a\n"true": b', 'null: a\n"null": b'];
+
+    for (const source of cases)
+      expect(() => parseYaml(source, "duplicate.yml")).toThrow(/duplicated mapping key/u);
+
+    // 旧版 js-yaml 中 null 键为 "null"，与空字符串键不同
+    expect(parseYaml('null: a\n"": b')).toStrictEqual({ null: "a", "": "b" });
+  });
 });
 
 describe("yaml conversion output", () => {
