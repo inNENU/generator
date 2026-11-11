@@ -1,11 +1,13 @@
+// oxlint-disable max-lines -- YAML schema、解析、序列化与文件转换逻辑集中在同一模块
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 
 import { dirname, join, relative, resolve } from "upath";
-import type { CollectionTag, ScalarTag, Tags } from "yaml";
+import type { CollectionTag, Document, ScalarTag, Tags } from "yaml";
 import {
   Composer,
   CST,
   Parser,
+  Scalar,
   Schema,
   isAlias,
   isMap,
@@ -34,6 +36,9 @@ const MAX_YAML_ALIASES = 100;
 /** 单个 YAML 文档展开后允许访问的最大节点数，用于阻止别名指数膨胀 */
 const MAX_YAML_EXPANDED_NODES = 100_000;
 
+/** 单个 YAML 文档允许的最大嵌套层级，与旧版 js-yaml 的 maxDepth 对齐 */
+const MAX_YAML_DEPTH = 100;
+
 /**
  * 校验解析结果可以安全序列化
  *
@@ -47,11 +52,15 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
   const ancestors = new Set<object>();
   let visited = 0;
 
-  const visit = (node: unknown): void => {
+  const visit = (node: unknown, depth: number): void => {
     visited += 1;
 
     if (visited > MAX_YAML_EXPANDED_NODES)
       throw new Error(`YAML 文档展开后过大，可能存在别名炸弹（文件: ${filePath}）`);
+
+    // 旧版 js-yaml 的 maxDepth 为 100；显式限制也避免极深文档在递归遍历时爆栈
+    if (depth >= MAX_YAML_DEPTH)
+      throw new Error(`YAML 文档嵌套层级超过上限（${MAX_YAML_DEPTH} 层，文件: ${filePath}）`);
 
     if (typeof node !== "object" || node == null) return;
 
@@ -59,13 +68,13 @@ const assertYamlValueSafe = (value: unknown, filePath: string): void => {
 
     ancestors.add(node);
 
-    if (Array.isArray(node)) for (const item of node) visit(item);
-    else for (const item of Object.values(node)) visit(item);
+    if (Array.isArray(node)) for (const item of node) visit(item, depth + 1);
+    else for (const item of Object.values(node)) visit(item, depth + 1);
 
     ancestors.delete(node);
   };
 
-  visit(value);
+  visit(value, 0);
 };
 
 /** JavaScript 安全整数上限，超出该范围的整数无法用 `number` 精确表示 */
@@ -384,14 +393,35 @@ const JSON_SCHEMA_SCALAR_TAGS = new Set([
 ]);
 
 /**
+ * 解析 mapping key 上的别名
+ *
+ * 旧版 js-yaml 支持标量别名作为 key，但会拒绝指向 map/seq 的别名 key（complex key）。`yaml` 默认把别名 key 保留为 Alias 节点，这里先解析成
+ * 目标节点，让标签、null key 与重复 key 检查都能看到真实值。
+ *
+ * @param key Key 节点
+ * @param document 所属文档
+ * @returns 解析后的节点（非别名原样返回）
+ */
+const resolveKeyNode = (key: unknown, document: Document): unknown => {
+  if (!isAlias(key)) return key;
+
+  const resolved = key.resolve(document);
+
+  if (!resolved) throw new Error("unresolved alias in mapping key");
+
+  return resolved;
+};
+
+/**
  * 校验文档中不存在 JSON schema 之外的标签
  *
  * `yaml` 在 `schema: "json"` 下仍会解析 `!!timestamp`、`!!binary`、`!!set`、`!!omap` 等内置标签，而旧版 js-yaml 的
  * `JSON_SCHEMA` 会以 “unknown tag” 拒绝；这里递归检查 AST 节点标签，保持旧行为的严格度。
  *
  * @param node 待检查的节点
+ * @param document 所属文档，用于解析别名 key
  */
-const assertJsonSchemaTags = (node: unknown): void => {
+const assertJsonSchemaTags = (node: unknown, document: Document): void => {
   if (isAlias(node)) return;
 
   if (isMap(node)) {
@@ -399,12 +429,15 @@ const assertJsonSchemaTags = (node: unknown): void => {
       throw new Error(`unknown mapping tag !<${node.tag}>`);
 
     for (const pair of node.items) {
-      // 旧版 js-yaml 的 JSON schema 只支持标量 key
-      if (!isScalar(pair.key) && !isAlias(pair.key))
-        throw new Error("object-based map does not support complex keys");
+      // 旧版 js-yaml 的 object-based map 只支持标量 key；别名 key 解析后按真实节点判断
+      const keyNode = resolveKeyNode(pair.key, document);
 
-      assertJsonSchemaTags(pair.key);
-      assertJsonSchemaTags(pair.value);
+      if (!isScalar(keyNode)) throw new Error("object-based map does not support complex keys");
+
+      if (keyNode.tag && !JSON_SCHEMA_SCALAR_TAGS.has(keyNode.tag))
+        throw new Error(`unknown scalar tag !<${keyNode.tag}>`);
+
+      assertJsonSchemaTags(pair.value, document);
     }
 
     return;
@@ -414,7 +447,7 @@ const assertJsonSchemaTags = (node: unknown): void => {
     if (node.tag && node.tag !== "tag:yaml.org,2002:seq")
       throw new Error(`unknown sequence tag !<${node.tag}>`);
 
-    for (const item of node.items) assertJsonSchemaTags(item);
+    for (const item of node.items) assertJsonSchemaTags(item, document);
 
     return;
   }
@@ -431,21 +464,25 @@ const assertJsonSchemaTags = (node: unknown): void => {
  * 合并。这里在转 JS 之前把 null 键改成字符串，保持旧行为。
  *
  * @param node 待归一化的节点
+ * @param document 所属文档，用于解析别名 key
  */
-const normalizeNullMapKeys = (node: unknown): void => {
+const normalizeNullMapKeys = (node: unknown, document: Document): void => {
   if (isAlias(node)) return;
 
   if (isMap(node)) {
     for (const pair of node.items) {
-      if (isScalar(pair.key) && pair.key.value == null) pair.key.value = "null";
+      const keyNode = resolveKeyNode(pair.key, document);
 
-      normalizeNullMapKeys(pair.value);
+      // 替换整个 key 节点，避免把 anchor 指向的 null 值也改成字符串
+      if (isScalar(keyNode) && keyNode.value == null) pair.key = new Scalar("null");
+
+      normalizeNullMapKeys(pair.value, document);
     }
 
     return;
   }
 
-  if (isSeq(node)) for (const item of node.items) normalizeNullMapKeys(item);
+  if (isSeq(node)) for (const item of node.items) normalizeNullMapKeys(item, document);
 };
 
 /**
@@ -455,29 +492,31 @@ const normalizeNullMapKeys = (node: unknown): void => {
  * key 做线性检查，保持旧语义。
  *
  * @param node 待检查的节点
+ * @param document 所属文档，用于解析别名 key
  */
-const assertUniqueMapKeys = (node: unknown): void => {
+const assertUniqueMapKeys = (node: unknown, document: Document): void => {
   if (isAlias(node)) return;
 
   if (isMap(node)) {
     const keys = new Set<string>();
 
     for (const pair of node.items) {
-      if (isScalar(pair.key)) {
-        const key = String(pair.key.value);
+      const keyNode = resolveKeyNode(pair.key, document);
 
-        if (keys.has(key)) throw new Error("duplicated mapping key");
+      if (!isScalar(keyNode)) throw new Error("object-based map does not support complex keys");
 
-        keys.add(key);
-      }
+      const key = String(keyNode.value);
 
-      assertUniqueMapKeys(pair.value);
+      if (keys.has(key)) throw new Error("duplicated mapping key");
+
+      keys.add(key);
+      assertUniqueMapKeys(pair.value, document);
     }
 
     return;
   }
 
-  if (isSeq(node)) for (const item of node.items) assertUniqueMapKeys(item);
+  if (isSeq(node)) for (const item of node.items) assertUniqueMapKeys(item, document);
 };
 
 /**
@@ -534,7 +573,10 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
     if (/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/u.test(content))
       throw new Error("expected valid JSON character");
 
-    const documents = parseAllDocuments(normalizeStreamStartMarker(content), {
+    // 旧版 js-yaml 把 CRLF/CR 都当换行；统一成 LF 后再解析，避免 CR-only 文件被 yaml 拒绝
+    const normalizedContent = content.replaceAll(/\r\n?/gu, "\n");
+
+    const documents = parseAllDocuments(normalizeStreamStartMarker(normalizedContent), {
       logLevel: "silent",
       schema: createYamlSchema(filePath),
       // yaml 默认的重复 key 检查是 O(n²)（大 map 上会退化到秒级）；这里关闭它，改用下方线性检查保持旧语义
@@ -552,9 +594,9 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 
     if (document.errors.length > 0) throw document.errors[0];
 
-    assertJsonSchemaTags(document.contents);
-    normalizeNullMapKeys(document.contents);
-    assertUniqueMapKeys(document.contents);
+    assertJsonSchemaTags(document.contents, document);
+    normalizeNullMapKeys(document.contents, document);
+    assertUniqueMapKeys(document.contents, document);
 
     if (countAliasNodes(document.contents) > MAX_YAML_ALIASES)
       throw new Error(`YAML 别名展开后过大（maxAliases: ${MAX_YAML_ALIASES}），可能存在别名炸弹`);

@@ -416,6 +416,37 @@ describe("yaml strictness parity", () => {
     expect(() => parseYaml(`v: !!int ${hugeInteger}`, "overflow.yml")).toThrow(/explicit tag/u);
   });
 
+  it("applies duplicate/null/complex-key checks to alias mapping keys", () => {
+    // 标量别名 key 与同名 key 重复
+    expect(() => parseYaml("a: &k key\n? *k\n: 1\n? key\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+    // alias null key 与 "" 不同，且序列化为 "null"
+    expect(parseYaml('a: &k null\n? *k\n: 1\n? ""\n: 2')).toStrictEqual({
+      a: null,
+      null: 1,
+      "": 2,
+    });
+    // alias null key 与显式 null key 重复
+    expect(() => parseYaml("a: &k null\n? *k\n: 1\n? null\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+    // alias 指向 map/seq 作为 key 时按 complex key 拒绝
+    for (const source of ["v: &k {x: 1}\n? *k\n: 1", "v: &k [1, 2]\n? *k\n: 1"])
+      expect(() => parseYaml(source, "alias.yml")).toThrow(/complex keys/u);
+  });
+
+  it("normalizes CR-only line endings", () => {
+    expect(parseYaml("a: 1\rb: 2\r")).toStrictEqual({ a: 1, b: 2 });
+  });
+
+  it("limits nesting depth like js-yaml", () => {
+    const nested = (count: number): string => `v: ${"[".repeat(count)}1${"]".repeat(count)}`;
+
+    expect(() => parseYaml(nested(98))).not.toThrow();
+    expect(() => parseYaml(nested(99), "deep.yml")).toThrow(/嵌套层级超过上限/u);
+  });
+
   it("rejects duplicate mapping keys like js-yaml", () => {
     const cases = ["a: 1\na: 2", '1: a\n"1": b', 'true: a\n"true": b', 'null: a\n"null": b'];
 
