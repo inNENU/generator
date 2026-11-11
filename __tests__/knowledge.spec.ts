@@ -233,6 +233,33 @@ describe("knowledge 索引生成", () => {
     });
   });
 
+  describe("yaml 格式兼容（八进制）", () => {
+    it("给 YAML 1.2 八进制样式的字符串加引号", () => {
+      setup();
+
+      try {
+        writeFileSync(
+          path.join(testDir, "pages/guide/octal.yml"),
+          [
+            "title: 八进制",
+            "keywords: ['0o17']",
+            "content:",
+            "  - tag: text",
+            "    text: 内容",
+          ].join("\n"),
+        );
+
+        generateKnowledgeIndex("./pages", "./dist", { format: "yaml" });
+
+        const yaml = readFileSync(path.join(testDir, "dist/index.yaml"), { encoding: "utf-8" });
+
+        expect(yaml).toContain("'0o17'");
+      } finally {
+        teardown();
+      }
+    });
+  });
+
   describe("lora 格式", () => {
     it("缺省不传 options 时输出 index.lora", () => {
       setup();

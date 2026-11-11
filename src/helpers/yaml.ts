@@ -162,6 +162,88 @@ const createIntegerTags = (filePath: string): ScalarTag[] => [
   },
 ];
 
+/** JSON schema 允许的隐式浮点数写法（与 js-yaml 的 JSON schema 对齐） */
+const jsonImplicitFloatPattern = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$/u;
+
+/** JSON schema 允许的显式 `!!float` 写法（与 js-yaml 的 JSON schema 对齐） */
+const jsonExplicitFloatPattern =
+  /^(?:[-+]?[0-9]+(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))$/u;
+
+/**
+ * 解析显式 `!!float` 的浮点原文
+ *
+ * @param source 浮点原文
+ * @returns 解析后的浮点数（`.inf`/`.nan` 与旧版 js-yaml 一样解析为 Infinity/NaN）
+ */
+const parseExplicitFloatSource = (source: string): number => {
+  let value = source.toLowerCase();
+  const sign = value.startsWith("-") ? -1 : 1;
+
+  if (value.startsWith("-") || value.startsWith("+")) value = value.slice(1);
+  if (value === ".inf") return sign * Number.POSITIVE_INFINITY;
+  if (value === ".nan") return Number.NaN;
+
+  return sign * Number(value);
+};
+
+/**
+ * 创建与 js-yaml JSON schema 对齐的布尔、空值与浮点标签
+ *
+ * `yaml` 内置的 JSON schema 在遇到显式标签的非法值/非法节点种类时只会产生 warning 并降级，而旧版 js-yaml 会直接拒绝；这里用显式标签补回严格校验，
+ * 并保持隐式写法（`true`/`false`/`null`/JSON 浮点）与旧行为一致。
+ *
+ * @returns 用于本次解析的标量标签（每个标签均为显式在前、隐式在后）
+ */
+const createJsonScalarTags = (): ScalarTag[] => [
+  {
+    tag: "tag:yaml.org,2002:bool",
+    default: false,
+    resolve: (source: string) => {
+      if (source === "true") return true;
+      if (source === "false") return false;
+
+      throw new Error("cannot resolve a node with !<tag:yaml.org,2002:bool> explicit tag");
+    },
+  },
+  {
+    tag: "tag:yaml.org,2002:bool",
+    default: true,
+    test: /^(?:true|false)$/u,
+    resolve: (source: string) => source === "true",
+  },
+  {
+    tag: "tag:yaml.org,2002:null",
+    default: false,
+    resolve: (source: string) => {
+      if (source === "" || source === "null") return null;
+
+      throw new Error("cannot resolve a node with !<tag:yaml.org,2002:null> explicit tag");
+    },
+  },
+  {
+    tag: "tag:yaml.org,2002:null",
+    default: true,
+    test: /^null$/u,
+    resolve: () => null,
+  },
+  {
+    tag: "tag:yaml.org,2002:float",
+    default: false,
+    resolve: (source: string) => {
+      if (!jsonExplicitFloatPattern.test(source))
+        throw new Error("cannot resolve a node with !<tag:yaml.org,2002:float> explicit tag");
+
+      return parseExplicitFloatSource(source);
+    },
+  },
+  {
+    tag: "tag:yaml.org,2002:float",
+    default: true,
+    test: jsonImplicitFloatPattern,
+    resolve: Number,
+  },
+];
+
 /**
  * 创建带大整数告警的 YAML schema
  *
@@ -177,9 +259,17 @@ const createYamlSchema = (filePath: string): Schema =>
     customTags: (tags: Tags): Tags =>
       (tags as (CollectionTag | ScalarTag)[])
         .filter((tag) => tag.tag !== "")
-        .flatMap((tag) =>
-          tag.tag === "tag:yaml.org,2002:int" ? createIntegerTags(filePath) : [tag],
-        ),
+        .flatMap((tag) => {
+          if (tag.tag === "tag:yaml.org,2002:int") return createIntegerTags(filePath);
+          if (
+            tag.tag === "tag:yaml.org,2002:bool" ||
+            tag.tag === "tag:yaml.org,2002:null" ||
+            tag.tag === "tag:yaml.org,2002:float"
+          )
+            return createJsonScalarTags().filter((replacement) => replacement.tag === tag.tag);
+
+          return [tag];
+        }),
   });
 
 /**
@@ -274,9 +364,14 @@ const assertJsonSchemaTags = (node: unknown): void => {
   if (isAlias(node)) return;
 
   if (isMap(node)) {
-    if (node.tag && !JSON_SCHEMA_TAGS.has(node.tag)) throw new Error(`unknown tag ${node.tag}`);
+    if (node.tag && node.tag !== "tag:yaml.org,2002:map")
+      throw new Error(`unknown mapping tag !<${node.tag}>`);
 
     for (const pair of node.items) {
+      // 旧版 js-yaml 的 JSON schema 只支持标量 key
+      if (!isScalar(pair.key) && !isAlias(pair.key))
+        throw new Error("object-based map does not support complex keys");
+
       assertJsonSchemaTags(pair.key);
       assertJsonSchemaTags(pair.value);
     }
@@ -285,7 +380,8 @@ const assertJsonSchemaTags = (node: unknown): void => {
   }
 
   if (isSeq(node)) {
-    if (node.tag && !JSON_SCHEMA_TAGS.has(node.tag)) throw new Error(`unknown tag ${node.tag}`);
+    if (node.tag && node.tag !== "tag:yaml.org,2002:seq")
+      throw new Error(`unknown sequence tag !<${node.tag}>`);
 
     for (const item of node.items) assertJsonSchemaTags(item);
 
@@ -293,7 +389,38 @@ const assertJsonSchemaTags = (node: unknown): void => {
   }
 
   if (isScalar(node) && node.tag && !JSON_SCHEMA_TAGS.has(node.tag))
-    throw new Error(`unknown tag ${node.tag}`);
+    throw new Error(`unknown scalar tag !<${node.tag}>`);
+};
+
+/**
+ * 统计 AST 中的别名节点数量
+ *
+ * `yaml` 的 `maxAliasCount` 按「单个 anchor 的引用次数 × 展开规模」计数，与旧版 js-yaml 的「别名节点总数」口径不同；这里先按旧口径统计一次， 保证超过
+ * 100 个别名节点的输入仍会被拒绝。
+ *
+ * @param node 待统计的节点
+ * @returns 别名节点总数
+ */
+const countAliasNodes = (node: unknown): number => {
+  if (isAlias(node)) return 1;
+
+  if (isMap(node)) {
+    let count = 0;
+
+    for (const pair of node.items) count += countAliasNodes(pair.key) + countAliasNodes(pair.value);
+
+    return count;
+  }
+
+  if (isSeq(node)) {
+    let count = 0;
+
+    for (const item of node.items) count += countAliasNodes(item);
+
+    return count;
+  }
+
+  return 0;
 };
 
 /**
@@ -333,21 +460,12 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 
     assertJsonSchemaTags(document.contents);
 
-    let value: T;
+    if (countAliasNodes(document.contents) > MAX_YAML_ALIASES)
+      throw new Error(`YAML 别名展开后过大（maxAliases: ${MAX_YAML_ALIASES}），可能存在别名炸弹`);
 
-    try {
-      value = document.toJS({ maxAliasCount: MAX_YAML_ALIASES }) as T;
-    } catch (err) {
-      // 别名展开上限由 yaml 自己检查；统一翻译成与展开节点上限一致的中文提示
-      if (err instanceof Error && /excessive alias count/iu.test(err.message)) {
-        throw new Error(
-          `YAML 别名展开后过大（maxAliases: ${MAX_YAML_ALIASES}），可能存在别名炸弹（文件: ${filePath}）`,
-          { cause: err },
-        );
-      }
-
-      throw err;
-    }
+    // 别名总量已在上方按旧口径检查；这里关闭 yaml 的“单 anchor 引用次数 × 展开规模”检查，
+    // 让展开后的节点数量统一由 assertYamlValueSafe 的 10 万节点上限拦截（与旧版 js-yaml 一致）。
+    const value = document.toJS({ maxAliasCount: -1 }) as T;
 
     assertYamlValueSafe(value, filePath);
 

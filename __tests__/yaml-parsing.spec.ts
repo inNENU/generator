@@ -264,6 +264,21 @@ describe("yaml alias protection", () => {
     );
   });
 
+  it("rejects documents with more than 100 distinct aliases", () => {
+    const content = Array.from(
+      { length: 101 },
+      (_, index) => `a${index}: &a${index} ${index}\nb${index}: *a${index}`,
+    ).join("\n");
+
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
+  });
+
+  it("allows 100 references to the same anchor", () => {
+    const content = `base: &base 1\n${Array.from({ length: 100 }, (_, index) => `v${index}: *base`).join("\n")}`;
+
+    expect(parseYaml<Record<string, number>>(content)).toMatchObject({ base: 1, v0: 1, v99: 1 });
+  });
+
   it("rejects self-referential aliases", () => {
     expect(() => parseYaml("node: &node\n  self: *node", "cycle.yml")).toThrow(/循环引用/u);
   });
@@ -287,7 +302,7 @@ describe("yaml alias protection", () => {
       "root: *l5",
     ].join("\n");
 
-    expect(() => parseYaml(content, "bomb.yml")).toThrow(/别名展开后过大（maxAliases: 100）/u);
+    expect(() => parseYaml(content, "bomb.yml")).toThrow(/文档展开后过大，可能存在别名炸弹/u);
   });
 });
 
@@ -325,15 +340,44 @@ describe("yaml JSON schema scalar resolution", () => {
 });
 
 describe("yaml strictness parity", () => {
-  it("keeps explicit float tags as strings", () => {
-    expect(parseYaml("v: !!float .inf")).toStrictEqual({ v: ".inf" });
-    expect(parseYaml("v: !!float .nan")).toStrictEqual({ v: ".nan" });
+  it("resolves explicit float tags like the JSON schema", () => {
+    expect(parseYaml("v: !!float .5")).toStrictEqual({ v: 0.5 });
+    expect(parseYaml("v: !!float -.5")).toStrictEqual({ v: -0.5 });
+    expect(parseYaml("v: !!float .inf")).toStrictEqual({ v: Number.POSITIVE_INFINITY });
+    expect(parseYaml("v: !!float .nan")).toStrictEqual({ v: Number.NaN });
+    expect(() => parseYaml("v: !!float abc")).toThrow(/explicit tag/u);
+    expect(() => parseYaml("v: !!float 1.2.3")).toThrow(/explicit tag/u);
+  });
+
+  it("rejects explicit tags with invalid values or wrong node kinds", () => {
+    const cases = [
+      "v: !!bool yes",
+      "v: !!bool TRUE",
+      "v: !!null ~",
+      "v: !!null NULL",
+      "v: !!str { a: 1 }",
+      "v: !!map [1]",
+      "v: !!int [1]",
+      "v: !!seq { a: 1 }",
+    ];
+
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /explicit tag|unknown (?:mapping|sequence) tag/u,
+      );
+    }
+
+    expect(() => parseYaml("? [a, b]\n: v", "tag.yml")).toThrow(/complex keys/u);
   });
 
   it("rejects tags outside the JSON schema", () => {
     const cases = ["v: !foo bar", "v: !!timestamp 2024-01-01", "v: !!binary aGVsbG8=", "v: !!set"];
 
-    for (const source of cases) expect(() => parseYaml(source, "tag.yml")).toThrow(/unknown tag/u);
+    for (const source of cases) {
+      expect(() => parseYaml(source, "tag.yml")).toThrow(
+        /unknown (?:scalar|mapping|sequence) tag/u,
+      );
+    }
   });
 
   it("rejects NUL bytes", () => {
