@@ -436,6 +436,25 @@ describe("yaml strictness parity", () => {
       expect(() => parseYaml(source, "alias.yml")).toThrow(/complex keys/u);
   });
 
+  it("keeps anchors on null mapping keys resolvable", () => {
+    expect(parseYaml("? &k null\n: 1\nb: *k", "alias.yml")).toStrictEqual({ null: 1, b: null });
+
+    expect(() => parseYaml("? &k null\n: 1\n? *k\n: 2", "alias.yml")).toThrow(
+      /duplicated mapping key/u,
+    );
+  });
+
+  it("counts null alias keys toward the alias limit", () => {
+    const entries = Array.from(
+      { length: 101 },
+      (_, index) => `m${index}: {? *nil : ${index}}`,
+    ).join("\n");
+
+    expect(() => parseYaml(`nil: &nil null\n${entries}`, "bomb.yml")).toThrow(
+      /别名展开后过大（maxAliases: 100）/u,
+    );
+  });
+
   it("normalizes CR-only line endings", () => {
     expect(parseYaml("a: 1\rb: 2\r")).toStrictEqual({ a: 1, b: 2 });
   });

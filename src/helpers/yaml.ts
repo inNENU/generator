@@ -7,7 +7,6 @@ import {
   Composer,
   CST,
   Parser,
-  Scalar,
   Schema,
   isAlias,
   isMap,
@@ -458,34 +457,6 @@ const assertJsonSchemaTags = (node: unknown, document: Document): void => {
 };
 
 /**
- * 把 `null` 键归一化为字符串 `"null"`
- *
- * 旧版 js-yaml 会把 `null:` 键序列化成 `"null"`；`yaml` 的 `stringifyKey` 对 `null` 返回空串，会把 `null: a` 与 `"": b`
- * 合并。这里在转 JS 之前把 null 键改成字符串，保持旧行为。
- *
- * @param node 待归一化的节点
- * @param document 所属文档，用于解析别名 key
- */
-const normalizeNullMapKeys = (node: unknown, document: Document): void => {
-  if (isAlias(node)) return;
-
-  if (isMap(node)) {
-    for (const pair of node.items) {
-      const keyNode = resolveKeyNode(pair.key, document);
-
-      // 替换整个 key 节点，避免把 anchor 指向的 null 值也改成字符串
-      if (isScalar(keyNode) && keyNode.value == null) pair.key = new Scalar("null");
-
-      normalizeNullMapKeys(pair.value, document);
-    }
-
-    return;
-  }
-
-  if (isSeq(node)) for (const item of node.items) normalizeNullMapKeys(item, document);
-};
-
-/**
  * 校验映射中不存在重复 key
  *
  * 旧版 js-yaml 会拒绝重复 key（`1` 与 `"1"`、`true` 与 `"true"` 视为同一个 key）；`yaml` 的同类检查是 O(n²) 的，这里关闭后按字符串化
@@ -551,6 +522,51 @@ const countAliasNodes = (node: unknown): number => {
 };
 
 /**
+ * 把 `yaml` 的 `mapAsMap` 结果转换为普通对象
+ *
+ * 旧版 js-yaml 把 mapping 转成普通对象，并把 `null` 键序列化为 `"null"`；`yaml` 默认的 `toJS` 会把 null 键变成空串。这里保留 null
+ * 的原始值， 再按旧规则字符串化。使用 memo 保留别名共享引用与循环引用，供后续安全检查识别。
+ *
+ * @param value `toJS({ mapAsMap: true })` 的结果
+ * @returns 普通对象/数组结构
+ */
+const convertYamlValue = (value: unknown): unknown => {
+  const memo = new Map<object, unknown>();
+
+  const convert = (node: unknown): unknown => {
+    if (node == null || typeof node !== "object") return node;
+
+    if (memo.has(node)) return memo.get(node);
+
+    if (node instanceof Map) {
+      const result: Record<string, unknown> = {};
+
+      memo.set(node, result);
+
+      for (const [key, item] of node) {
+        // 旧版 js-yaml 的 object key 字符串化规则：null → "null"，其余用 String
+        result[key == null ? "null" : String(key)] = convert(item);
+      }
+
+      return result;
+    }
+
+    if (Array.isArray(node)) {
+      const result: unknown[] = [];
+
+      memo.set(node, result);
+      for (const item of node) result.push(convert(item));
+
+      return result;
+    }
+
+    return node;
+  };
+
+  return convert(value);
+};
+
+/**
  * 解析 YAML 内容
  *
  * 空文件、仅包含注释、或仅包含文档标记/指令时返回 `undefined`；解析失败时抛出带文件路径的中文错误，便于定位批量转换中的具体文件。 未加引号的整数超出 JavaScript
@@ -595,7 +611,6 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
     if (document.errors.length > 0) throw document.errors[0];
 
     assertJsonSchemaTags(document.contents, document);
-    normalizeNullMapKeys(document.contents, document);
     assertUniqueMapKeys(document.contents, document);
 
     if (countAliasNodes(document.contents) > MAX_YAML_ALIASES)
@@ -603,7 +618,10 @@ export const parseYaml = <T = unknown>(content: string, filePath = ""): T | unde
 
     // 别名总量已在上方按旧口径检查；这里关闭 yaml 的“单 anchor 引用次数 × 展开规模”检查，
     // 让展开后的节点数量统一由 assertYamlValueSafe 的 10 万节点上限拦截（与旧版 js-yaml 一致）。
-    const value = document.toJS({ maxAliasCount: -1 }) as T;
+    // 用 mapAsMap 保留 null 键的原始值（yaml 默认会把 null 键序列化成空串），再由 convertYamlValue 按旧 js-yaml 规则转成普通对象
+    const rawValue = document.toJS({ maxAliasCount: -1, mapAsMap: true }) as unknown;
+
+    const value = convertYamlValue(rawValue) as T;
 
     assertYamlValueSafe(value, filePath);
 
