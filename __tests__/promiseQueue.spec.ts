@@ -638,10 +638,7 @@ describe("createPromiseQueue resilience", () => {
     const error = await createPromiseQueue(
       [run(0, false), run(1, true), run(2, false), run(3, true), run(4, false)],
       2,
-    ).then(
-      () => undefined,
-      (err: unknown) => err,
-    );
+    ).catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(AggregateError);
     expect(started.sort((a, b) => a - b)).toStrictEqual([0, 1, 2, 3, 4]);
@@ -675,10 +672,7 @@ describe("createPromiseQueue resilience", () => {
         },
       ],
       1,
-    ).then(
-      () => undefined,
-      (err: unknown) => err,
-    );
+    ).catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(AggregateError);
     expect(executed).toStrictEqual(["first", "second", "third"]);
@@ -704,10 +698,7 @@ describe("createPromiseQueue resilience", () => {
         (): Promise<void> => Promise.reject(new Error("second failure detail")),
       ],
       2,
-    ).then(
-      () => undefined,
-      (err: unknown) => err,
-    );
+    ).catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(AggregateError);
 
@@ -726,8 +717,7 @@ describe("createPromiseQueue resilience", () => {
 
   it("should use a nested AggregateError message as the first failure summary", async () => {
     const nested = new AggregateError([new Error("inner detail")], "嵌套任务失败摘要");
-    const error = await createPromiseQueue([(): Promise<void> => Promise.reject(nested)], 1).then(
-      () => undefined,
+    const error = await createPromiseQueue([(): Promise<void> => Promise.reject(nested)], 1).catch(
       (err: unknown) => err,
     );
 
